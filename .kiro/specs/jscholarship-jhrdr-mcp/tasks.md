@@ -1,0 +1,319 @@
+# Implementation Plan
+
+- [ ] 1. Complete the repository access and schema spike
+  - [ ] 1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records
+    - Record the exact required fields and values in the JScholarship RepositoryProfile.
+    - Confirm that withdrawn, non-discoverable, non-latest, non-archived, and non-anonymous-readable items are excluded.
+    - Determine whether <code>fulltext</code> contains only publicly searchable content; keep it out of every allowlist unless that proof succeeds.
+    - _Requirements: 2.1, 2.3, 9.1-9.8, 16.1_
+  - [ ] 1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata
+    - Record the exact required and optional fields in the JHRDR RepositoryProfile.
+    - Confirm that drafts, deaccessioned versions, files, collection records, and anonymous-inaccessible datasets are excluded.
+    - _Requirements: 3.1-3.4, 9.1-9.7, 16.1_
+  - [ ] 1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets
+    - Document DNS names, ports, health behavior, and required security-group rules.
+    - _Requirements: 13.1-13.6_
+  - [ ] 1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records
+    - Remove credentials and private content before committing fixtures.
+    - _Requirements: 9, 16.1-16.2_
+
+- [ ] 2. Establish the cross-repository MCP application
+  - [ ] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
+    - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun ci</code> for reproducible installs.
+    - Configure Bun as the runtime, package manager, bundler, and test runner while retaining <code>tsc --noEmit</code> for type-checking.
+    - _Requirements: 12.1, 12.4, 12.7-12.8, 17_
+  - [ ] 2.2 Create the source layout for adapters, federation, MCP registry, models, observability, security, configuration, and tests
+    - Keep repository-specific code under its adapter boundary.
+    - _Requirements: 2, 3, 10.2_
+  - [ ] 2.3 Add environment configuration validation for internal endpoints, public base URLs, timeout bounds, concurrency, cache limits, and build metadata
+    - Reject startup when required values are absent or unsafe.
+    - _Requirements: 13.2-13.9, 14.3-14.6, 15.1, 15.8_
+
+- [ ] 3. Implement normalized domain models and JSON Schemas
+  - [ ] 3.1 Implement RepositoryId, RepositoryRecord, CanonicalRecord, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models
+    - Require nullable optional properties and empty arrays as specified.
+    - Namespace record IDs by Repository.
+    - _Requirements: 4.1-4.6, 5.1-5.5_
+  - [ ] 3.2 Define closed zod and JSON Schemas for every MCP tool input and output
+    - Set <code>additionalProperties: false</code> at every object level.
+    - Bound strings, arrays, dates, identifiers, limits, and nesting.
+    - _Requirements: 1.1-1.7, 5.3, 10.4, 12.4_
+  - [ ]* 3.3 Write property tests proving stable normalized shape and namespaced-ID non-collision
+    - Run at least 100 generated cases per property.
+    - _Requirements: 4.1-4.7, 16.2_
+
+- [ ] 4. Implement RepositoryProfiles and startup schema validation
+  - [ ] 4.1 Implement the RepositoryProfile interface and versioned JScholarship field manifest
+    - Include query, filter, facet, sort, related, identity, and system public-filter fields.
+    - _Requirements: 2.2-2.3, 10.2_
+  - [ ] 4.2 Implement the versioned JHRDR Dataverse 6.10.1 field manifest
+    - Distinguish required system fields from optional metadata-block fields.
+    - _Requirements: 3.2-3.3, 10.2_
+  - [ ] 4.3 Implement read-only Solr Schema API validation during startup
+    - Fail readiness when required fields are missing.
+    - Disable and report only optional unsupported facets.
+    - _Requirements: 6.2, 10.7, 13.9_
+  - [ ]* 4.4 Write property and fixture tests for required-field failure and optional-field degradation
+    - _Requirements: 3.2, 6.2, 10.2, 13.9_
+
+- [ ] 5. Implement the safe Solr query layer
+  - [ ] 5.1 Implement a Lucene/Solr value encoder and structured query builder parameterized by RepositoryProfile
+    - Support approved query fields, filters, sorts, facets, return fields, and related-record operations.
+    - _Requirements: 1.4, 6.1-6.5, 7.2-7.4, 10.1-10.5_
+  - [ ] 5.2 Append immutable public filters in a non-client-accessible query-builder step
+    - Ensure all search, facet, and related paths call this step.
+    - _Requirements: 2.3, 3.3, 9.1-9.4_
+  - [ ] 5.3 Add fixed collection URLs, POST-form requests, explicit field lists, row/clause/window bounds, and <code>timeAllowed</code>
+    - Disallow redirects to unconfigured hosts and all Solr admin/update paths.
+    - _Requirements: 10.5-10.7, 13.2-13.3_
+  - [ ]* 5.4 Write property tests for escaping, field traceability, immutable filters, and bounded query output
+    - Generate hostile local-parameter syntax, special characters, field names, and oversized values.
+    - _Requirements: 9.2, 10.1-10.7_
+
+- [ ] 6. Implement the DSpace canonical client
+  - [ ] 6.1 Implement anonymous item resolution by UUID and Handle through the selected private DSpace REST route
+    - Validate identifier syntax before network I/O.
+    - _Requirements: 2.4-2.5, 5.1, 5.3_
+  - [ ] 6.2 Implement the DSpace Public_Record gate
+    - Confirm anonymous retrieval, item state, discoverability, latest version, and archive status.
+    - Return identical not-found behavior for non-public and nonexistent records.
+    - _Requirements: 2.4-2.6, 5.4, 9.3-9.5_
+  - [ ] 6.3 Implement DSpace summary and full-record normalization
+    - Keep search summaries to metadata, public file count/formats when available, hierarchy, Handle URL, and thumbnail.
+    - Expand public ORIGINAL bitstream summaries only for full item lookup, cap them at 100, and never fetch file bytes.
+    - _Requirements: 2.5, 4, 5.2, 9.7, 17.3_
+  - [ ] 6.4 Add DSpace contract tests for public, withdrawn, non-discoverable, restricted, malformed, missing, timeout, and 5xx fixtures
+    - _Requirements: 2, 5, 9, 15.1-15.3, 16.1-16.2_
+
+- [ ] 7. Implement the JScholarship adapter
+  - [ ] 7.1 Implement candidate search against the private DSpace <code>search</code> collection
+    - Map search concepts through the JScholarship Field_Allowlist.
+    - Use full text only if the Phase 0 public-content proof succeeds, and then only for ranking, never returned values or snippets.
+    - _Requirements: 2.1-2.3, 9.6-9.8, 10_
+  - [ ] 7.2 Implement bounded candidate canonicalization through the DSpace client
+    - Use a fixed worker pool and over-fetch ceiling.
+    - Drop every candidate that cannot pass the Public_Record gate.
+    - _Requirements: 2.4-2.6, 9.3-9.4, 14.6_
+  - [ ] 7.3 Implement JScholarship facets and allowlisted MoreLikeThis related search
+    - _Requirements: 6.1-6.6, 7.1-7.6_
+  - [ ] 7.4 Add adapter integration tests with paired Solr and DSpace fixtures
+    - _Requirements: 2, 6, 7, 9, 16.1-16.2_
+
+- [ ] 8. Implement the Dataverse canonical client
+  - [ ] 8.1 Implement anonymous dataset resolution by DOI, Handle, and Dataverse persistent identifier
+    - Always request the latest published version and never request draft or authenticated state.
+    - _Requirements: 3.4-3.5, 5.1, 14.1_
+  - [ ] 8.2 Implement the Dataverse Public_Record gate
+    - Reject draft, deaccessioned, restricted, missing, or anonymous-inaccessible datasets.
+    - Return identical not-found behavior for non-public and nonexistent records.
+    - _Requirements: 3.3-3.7, 5.4, 9.3-9.5_
+  - [ ] 8.3 Implement Dataverse summary and full-record normalization
+    - Keep search summaries to citation-block metadata, DOI, canonical URL, license/terms, version, public file count, and formats when available.
+    - Expand public file summaries only for full dataset lookup, exclude restricted files, cap summaries at 100, and never fetch file bytes.
+    - _Requirements: 3.5-3.6, 4, 5.2, 9.7, 17.3_
+  - [ ] 8.4 Add Dataverse contract tests for public, draft, deaccessioned, restricted-file, malformed, missing, timeout, and 5xx fixtures
+    - _Requirements: 3, 5, 9, 15.1-15.3, 16.1-16.2_
+
+- [ ] 9. Implement the JHRDR adapter
+  - [ ] 9.1 Implement candidate search against private Dataverse Solr <code>collection1</code>
+    - Map static and metadata-block concepts only through the validated JHRDR Field_Allowlist.
+    - _Requirements: 3.1-3.3, 10_
+  - [ ] 9.2 Implement bounded candidate canonicalization through the Dataverse client
+    - Use a fixed worker pool and over-fetch ceiling.
+    - Drop every candidate that cannot pass the Public_Record gate.
+    - _Requirements: 3.4-3.7, 9.3-9.4, 14.6_
+  - [ ] 9.3 Implement JHRDR facets and metadata-based related search
+    - Use title, author, affiliation, subject, keyword, and description fields only.
+    - _Requirements: 6.1-6.6, 7.1, 7.3-7.6, 17.2_
+  - [ ] 9.4 Add adapter integration tests with paired Solr and Native API fixtures
+    - _Requirements: 3, 6, 7, 9, 16.1-16.2_
+
+- [ ] 10. Implement federated ranking and pagination
+  - [ ] 10.1 Implement repository-local rank preservation and balanced reciprocal-rank merging
+    - Use equal default weights and deterministic alternating tie handling.
+    - Do not consume or expose raw scores as confidence.
+    - _Requirements: 4.6, 11.1-11.3, 11.6_
+  - [ ] 10.2 Implement the versioned Cursor codec with query hash, per-repository offsets, and next tie source
+    - Validate type, version, bounds, and query binding.
+    - _Requirements: 1.6, 11.4-11.6_
+  - [ ] 10.3 Implement Partial_Result assembly and Repository-qualified warnings
+    - Ensure no internal exception or endpoint appears in warnings.
+    - _Requirements: 1.8, 15.3_
+  - [ ]* 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, and partial success
+    - _Requirements: 11, 15.3_
+
+- [ ] 11. Implement <code>search_items</code>
+  - [ ] 11.1 Orchestrate selected adapters concurrently with the normalized search request and Cursor state
+    - _Requirements: 1.1-1.4, 11_
+  - [ ] 11.2 Return canonical normalized Record_Summary results, count, next Cursor, Repository status, warnings, retrieval time, and resource links
+    - Return both structuredContent and compact text.
+    - _Requirements: 1.5-1.8, 4.1-4.7, 8.4, 12.4_
+  - [ ] 11.3 Handle zero results, complete backend failure, partial failure, deadline, malformed input, and unsupported filters
+    - _Requirements: 1.4, 1.7-1.8, 12.5, 15.1-15.3_
+
+- [ ] 12. Implement <code>get_item</code>
+  - [ ] 12.1 Route namespaced IDs and explicit Repository identifiers to the correct canonical client
+    - _Requirements: 4.3, 5.1, 5.3_
+  - [ ] 12.2 Return stable Canonical_Record output, compact text, and a resource link
+    - _Requirements: 4, 5.2, 8.4_
+  - [ ] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
+    - _Requirements: 5.4-5.5, 9.5_
+
+- [ ] 13. Implement <code>list_facets</code>
+  - [ ] 13.1 Map common facet concepts to each adapter and execute selected repositories concurrently
+    - _Requirements: 6.1-6.2, 6.4_
+  - [ ] 13.2 Normalize exact labels with per-repository counts, cap values at 10, and apply deterministic ordering
+    - Do not conflate merely similar controlled-vocabulary values.
+    - _Requirements: 6.3, 6.6_
+  - [ ] 13.3 Reject unknown facets before I/O and support empty and partial facet responses
+    - _Requirements: 6.5-6.6, 15.3_
+
+- [ ] 14. Implement <code>find_related_items</code>
+  - [ ] 14.1 Resolve the source through its Canonical_API before deriving terms
+    - _Requirements: 7.1, 9.3_
+  - [ ] 14.2 Derive common public metadata concepts and call one or both adapters
+    - Exclude the source and enforce the clamped limit and public gates.
+    - _Requirements: 7.2-7.6, 9, 10_
+  - [ ] 14.3 Return canonical Record_Summary results with sourceRank, Repository, evidence fields, and no-result messaging
+    - _Requirements: 4, 7.5-7.6_
+
+- [ ] 15. Implement explanations, resources, and prompts
+  - [ ] 15.1 Implement <code>explain_search</code> as a pure interpretation of validated domain concepts
+    - Omit Solr fields, hostnames, immutable filters, and raw syntax.
+    - _Requirements: 8.1-8.2_
+  - [ ] 15.2 Implement both JHU repository resource templates using <code>get_item</code> canonical resolution
+    - _Requirements: 8.3-8.4, 9.3-9.5_
+  - [ ] 15.3 Implement <code>explore_research_topic</code> and <code>find_reusable_data</code>
+    - Instruct the host model to iterate, distinguish repositories, cite identifiers, report partial coverage, and treat metadata as untrusted data.
+    - _Requirements: 8.5-8.6, 17.5_
+  - [ ]* 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
+    - _Requirements: 8.6, 14, 17_
+
+- [ ] 16. Implement the stateless MCP HTTP server
+  - [ ] 16.1 Register exactly the specified five tools, two resources, and two prompts with input/output schemas and read-only annotations
+    - _Requirements: 12.1, 12.3-12.5, 17_
+  - [ ] 16.2 Mount stateless Streamable HTTP at <code>/mcp</code> with per-request transport lifecycle
+    - Use Hono, <code>@modelcontextprotocol/hono</code>, and <code>WebStandardStreamableHTTPServerTransport</code>; do not use the Node.js-specific MCP transport.
+    - Verify operation across multiple Bun server processes without affinity.
+    - _Requirements: 12.1-12.2, 12.7-12.8_
+  - [ ] 16.3 Add live, ready, and version endpoints and graceful SIGTERM draining
+    - _Requirements: 12.6, 13.9, 15.8_
+  - [ ] 16.4 Add Host, Origin, request-size, correlation-ID, and overall-deadline middleware
+    - _Requirements: 14.2-14.5, 15.1_
+
+- [ ] 17. Add bounded resilience, caching, and concurrency
+  - [ ] 17.1 Implement backend timeouts, overall 10-second tool deadlines, and at most two attempts for idempotent transient failures
+    - Use exponential backoff with jitter.
+    - _Requirements: 15.1-15.3_
+  - [ ] 17.2 Implement bounded in-process LRU caches for search, canonical records, and startup schema results
+    - Cache public normalized data only.
+    - _Requirements: 15.4_
+  - [ ] 17.3 Implement per-task tool concurrency and per-repository canonicalization worker pools
+    - Return rate-limited/busy errors without queuing unbounded work.
+    - _Requirements: 10.6, 14.6_
+  - [ ]* 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, aborted requests, and concurrency saturation
+    - _Requirements: 14.6, 15.1-15.4_
+
+- [ ] 18. Implement privacy-preserving observability
+  - [ ] 18.1 Emit one structured summary log per tool invocation with only approved metadata fields
+    - Include timestamp, request ID, client metadata when supplied, tool, Repository, latency, result count, partial/cache/outcome/backend state, and build.
+    - _Requirements: 15.5, 15.8_
+  - [ ] 18.2 Implement a deny-by-default log serializer and tests that exclude raw research content and credentials
+    - _Requirements: 15.6_
+  - [ ] 18.3 Publish CloudWatch embedded metrics for tools, repositories, dependencies, omissions, zero results, partial results, cache, and concurrency
+    - _Requirements: 15.7_
+  - [ ]* 18.4 Write property tests that generated request and metadata content cannot appear in logs
+    - _Requirements: 15.5-15.6_
+
+- [ ] 19. Containerize and secure the runtime
+  - [ ] 19.1 Create a multi-stage Docker build that uses the same pinned Bun version for install, type-check, test, build, and runtime
+    - Install with <code>bun ci</code>, run <code>tsc --noEmit</code> and <code>bun test</code>, and produce a Bun-targeted production bundle.
+    - Pin the official <code>oven/bun</code> base image by version and digest; run the final image as the non-root <code>bun</code> user.
+    - Include OCI labels, build version, health check, and an appropriate stop timeout.
+    - _Requirements: 12.6-12.8, 13.8-13.9, 15.8_
+  - [ ] 19.2 Configure a read-only filesystem and minimal writable temporary storage where compatible with the MCP SDK
+    - _Requirements: 14, 17_
+  - [ ] 19.3 Verify the image starts, becomes ready after schema validation, drains gracefully, and contains no development dependencies or repository credentials
+    - Confirm that it runs under Bun and contains no Node.js runtime.
+    - _Requirements: 12.6-12.8, 13.9, 14.1_
+
+- [ ] 20. Build the OpenTofu infrastructure stack
+  - [ ] 20.1 Add or expose remote-state outputs for VPC, private subnets, repository security groups, canonical API routes, and alert topics
+    - Do not introduce a reverse dependency from repository stacks to the MCP stack.
+    - _Requirements: 13.1-13.6_
+  - [ ] 20.2 Create the MCP ECS cluster, ECR repository, task roles, log group, task definition inputs, service, target group, and autoscaling
+    - Stage default: one task. Production default: two tasks, autoscaling two through six.
+    - Default task size: 512 CPU and 1024 MiB.
+    - _Requirements: 13.1, 13.7-13.9_
+  - [ ] 20.3 Create the MCP task security group and cross-stack ingress rules for both Solr services and both Canonical_API paths
+    - Restrict MCP runtime egress to required DNS, repository, and AWS endpoints.
+    - _Requirements: 13.2-13.6_
+  - [ ] 20.4 Add OpenTofu validation and plan tests for stage and production variables
+    - _Requirements: 13_
+
+- [ ] 21. Add the public edge
+  - [ ] 21.1 Create the dedicated public ALB, HTTPS listener, ACM certificate, MCP target group, health checks, and public hostname outputs
+    - _Requirements: 14.2-14.3_
+  - [ ] 21.2 Create WAF rules for exact Host, common threats, known bad inputs, request size, and endpoint-scoped IP rate limiting
+    - _Requirements: 14.3-14.5_
+  - [ ] 21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients
+    - _Requirements: 14.4_
+  - [ ] 21.4 Decide and configure Cloudflare proxy or DNS-only behavior, then test MCP responses through the complete public path
+    - _Requirements: 12.1-12.2, 14.2_
+
+- [ ] 22. Build CI/CD and supply-chain checks
+  - [ ] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
+    - Install the pinned Bun version with the official setup action, use <code>bun ci</code>, retain <code>tsc --noEmit</code>, and run tests with <code>bun test</code>.
+    - _Requirements: 12.7, 16.1-16.2_
+  - [ ] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
+    - _Requirements: 13, 16_
+  - [ ] 22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions
+    - _Requirements: 13, 16.8_
+  - [ ] 22.4 Add post-deployment smoke tests and target-health rollback behavior
+    - _Requirements: 12, 13.9, 16.6_
+
+- [ ] 23. Complete protocol, security, and failure verification
+  - [ ] 23.1 Run a real MCP client through initialization, tool listing, every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown
+    - Run the suite against the Bun production container and its Web Standard transport.
+    - _Requirements: 12.1-12.8, 16.2, 16.6_
+  - [ ] 23.2 Verify multi-task stateless operation by distributing one client lifecycle across multiple server processes
+    - _Requirements: 12.2_
+  - [ ] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
+    - _Requirements: 9, 16.1_
+  - [ ] 23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation
+    - _Requirements: 14, 15, 16.6_
+  - [ ] 23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route
+    - _Requirements: 17_
+
+- [ ] 24. Deploy and validate stage
+  - [ ] 24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets
+    - _Requirements: 13.1-13.9_
+  - [ ] 24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms
+    - _Requirements: 13-15_
+  - [ ] 24.3 Run the target MCP client compatibility suite through the public stage hostname
+    - _Requirements: 12, 16.6_
+  - [ ] 24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior
+    - _Requirements: 15, 16.5_
+
+- [ ] 25. Evaluate discovery quality and run the pilot
+  - [ ] 25.1 Build and review at least 40 benchmark queries with JScholarship, JHRDR, and research-services staff
+    - Cover known-item, Handle/DOI, topical, author, subject, date, dataset, related, cross-repository, and zero-result cases.
+    - _Requirements: 16.3_
+  - [ ] 25.2 Measure known-item success, persistent-identifier success, precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate
+    - Require at least 95 percent known-item and exact-identifier success.
+    - _Requirements: 16.4, 16.7_
+  - [ ] 25.3 Conduct the researcher/librarian pilot using privacy-safe data collection and document relevance and trust findings
+    - Do not store raw private research questions.
+    - _Requirements: 15.6, 16.7_
+  - [ ] 25.4 Tune allowlisted field boosts, labels, and prompt wording without weakening public filters or expanding v1 scope
+    - _Requirements: 9, 10, 17_
+
+- [ ] 26. Prepare and release production
+  - [ ] 26.1 Publish the service runbook, data-flow diagram, dependency inventory, incident procedures, rollback steps, privacy statement, and client connection instructions
+    - _Requirements: 13-16_
+  - [ ] 26.2 Obtain explicit sign-off from JScholarship, JHRDR, research-services, security/privacy as required, and platform-operation owners
+    - _Requirements: 16.8_
+  - [ ] 26.3 Promote the tested image digest and deploy at least two production tasks with autoscaling, dashboards, and alarms
+    - _Requirements: 13.7, 15, 16.8_
+  - [ ] 26.4 Run production access-leakage, citation, compatibility, health, and partial-failure smoke tests
+    - _Requirements: 9, 12, 15, 16_
