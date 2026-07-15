@@ -1,0 +1,6 @@
+# Ignore harness configs
+.claude/agents/*
+.kiro/agents/*
+.kiro/settings/*
+.claude/system-prompts/*
+.claude/settings/*
