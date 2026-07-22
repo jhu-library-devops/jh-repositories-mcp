@@ -4,7 +4,6 @@
 .kiro/settings/*
 .claude/system-prompts/*
 .claude/settings/*
-
-# OpenTofu / Terraform
-.terraform/
-.terraform.lock.hcl
+infra/.terraform/*
+.terraform/*
+infra/.terraform.lock.hcl
