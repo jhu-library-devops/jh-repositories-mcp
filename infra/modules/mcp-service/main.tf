@@ -165,7 +165,7 @@ resource "aws_ecs_service" "mcp" {
   task_definition  = aws_ecs_task_definition.mcp.arn
   desired_count    = var.service_desired_count
   launch_type      = "FARGATE"
-  platform_version = "1.4.0"
+  platform_version = "LATEST"
 
   enable_execute_command             = true
   health_check_grace_period_seconds  = 60
