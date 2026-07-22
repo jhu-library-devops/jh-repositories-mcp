@@ -127,6 +127,7 @@ resource "aws_lb_target_group" "mcp" {
     interval            = 15
     timeout             = 5
     path                = "/health/ready"
+    protocol            = "HTTP"
     matcher             = "200"
   }
 
