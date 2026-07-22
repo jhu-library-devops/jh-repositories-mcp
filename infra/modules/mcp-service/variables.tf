@@ -85,13 +85,15 @@ variable "dspace_api_security_group_id" {
 }
 
 variable "dataverse_solr_security_group_id" {
-  description = "Security group ID of the Dataverse Solr service."
+  description = "Security group ID of the Dataverse Solr service. Null disables Dataverse Solr SG rules."
   type        = string
+  default     = null
 }
 
 variable "dataverse_api_security_group_id" {
-  description = "Security group ID of the Dataverse API service."
+  description = "Security group ID of the Dataverse API service. Null disables Dataverse API SG rules."
   type        = string
+  default     = null
 }
 
 # -----------------------------------------------------------------------------

@@ -7,17 +7,15 @@ aws_region = "us-east-1"
 
 # -----------------------------------------------------------------------------
 # Networking (shared VPC used by DSpace and Dataverse clusters)
-# TODO: Populate from existing DSpace/Dataverse stack outputs or AWS console
 # -----------------------------------------------------------------------------
-vpc_id             = "vpc-PLACEHOLDER"
-public_subnet_ids  = ["subnet-PLACEHOLDER-pub-1", "subnet-PLACEHOLDER-pub-2"]
-private_subnet_ids = ["subnet-PLACEHOLDER-priv-1", "subnet-PLACEHOLDER-priv-2"]
+vpc_id             = "vpc-099e345c3ac73dd47"
+public_subnet_ids  = ["subnet-0aff695440ed9d90b", "subnet-00e51cb88bd793e6f"]
+private_subnet_ids = ["subnet-022e837a0764b1822", "subnet-08d7b2cd3c6540d88"]
 
 # -----------------------------------------------------------------------------
 # TLS (wildcard or SAN cert covering both hostnames)
-# TODO: Create ACM certificate for *.mcp.library.jhu.edu or SAN cert
 # -----------------------------------------------------------------------------
-certificate_arn = "arn:aws:acm:us-east-1:390157243417:certificate/PLACEHOLDER-MCP-CERT"
+certificate_arn = "arn:aws:acm:us-east-1:390157243417:certificate/f6e78a6b-837a-4b94-a84f-912fed7bcb35"
 
 # -----------------------------------------------------------------------------
 # Public Hostnames (host-based ALB routing)
@@ -63,51 +61,53 @@ waf_rate_limit = 300
 
 # -----------------------------------------------------------------------------
 # Cross-Stack Security Group IDs — Stage
-# TODO: Populate from DSpace stage and Dataverse stage stack outputs
+# Stage MCP runs in the prod VPC, so it connects to prod DSpace services.
+# Dataverse not yet deployed — set to null.
 # -----------------------------------------------------------------------------
-stage_dspace_solr_sg_id    = "sg-PLACEHOLDER-DSPACE-SOLR-STAGE"
-stage_dspace_api_sg_id     = "sg-PLACEHOLDER-DSPACE-API-STAGE"
-stage_dataverse_solr_sg_id = "sg-PLACEHOLDER-DATAVERSE-SOLR-STAGE"
-stage_dataverse_api_sg_id  = "sg-PLACEHOLDER-DATAVERSE-API-STAGE"
+stage_dspace_solr_sg_id    = "sg-0f04633bb3d7098bf"
+stage_dspace_api_sg_id     = "sg-050c77fd4bd1d2123"
+stage_dataverse_solr_sg_id = null
+stage_dataverse_api_sg_id  = null
 
 # -----------------------------------------------------------------------------
 # Cross-Stack Security Group IDs — Production
-# TODO: Populate from DSpace prod and Dataverse prod stack outputs
+# Dataverse not yet deployed — set to null.
 # -----------------------------------------------------------------------------
-prod_dspace_solr_sg_id    = "sg-PLACEHOLDER-DSPACE-SOLR-PROD"
-prod_dspace_api_sg_id     = "sg-PLACEHOLDER-DSPACE-API-PROD"
-prod_dataverse_solr_sg_id = "sg-PLACEHOLDER-DATAVERSE-SOLR-PROD"
-prod_dataverse_api_sg_id  = "sg-PLACEHOLDER-DATAVERSE-API-PROD"
+prod_dspace_solr_sg_id    = "sg-0f04633bb3d7098bf"
+prod_dspace_api_sg_id     = "sg-050c77fd4bd1d2123"
+prod_dataverse_solr_sg_id = null
+prod_dataverse_api_sg_id  = null
 
 # -----------------------------------------------------------------------------
 # Application Endpoints — Stage
 # Internal service-discovery DNS within the shared VPC
+# Dataverse not yet deployed.
 # -----------------------------------------------------------------------------
-stage_jscholarship_solr_url   = "http://solr.dspace-stage.local:8983/solr/search"
-stage_jscholarship_api_url    = "http://stage.internal.dspace:80/server/api"
-stage_jscholarship_public_url = "https://dspace-stage.library.jhu.edu"
+stage_jscholarship_solr_url   = "http://solr.dspace-prod.local:8983/solr/search"
+stage_jscholarship_api_url    = "http://internal-private-dspace-prod-alb-1152535037.us-east-1.elb.amazonaws.com/server/api"
+stage_jscholarship_public_url = "https://jscholarship.library.jhu.edu"
 
-stage_jhrdr_solr_url   = "http://solr.dataverse-stage.internal:8983/solr/collection1"
-stage_jhrdr_api_url    = "http://dataverse.dataverse-stage.internal:8080/api"
-stage_jhrdr_public_url = "https://dataverse-stage.library.jhu.edu"
+stage_jhrdr_solr_url   = ""
+stage_jhrdr_api_url    = ""
+stage_jhrdr_public_url = ""
 
 # -----------------------------------------------------------------------------
 # Application Endpoints — Production
+# Dataverse not yet deployed.
 # -----------------------------------------------------------------------------
 prod_jscholarship_solr_url   = "http://solr.dspace-prod.local:8983/solr/search"
-prod_jscholarship_api_url    = "http://prod.internal.dspace:80/server/api"
+prod_jscholarship_api_url    = "http://internal-private-dspace-prod-alb-1152535037.us-east-1.elb.amazonaws.com/server/api"
 prod_jscholarship_public_url = "https://jscholarship.library.jhu.edu"
 
-prod_jhrdr_solr_url   = "http://solr.dataverse-prod.internal:8983/solr/collection1"
-prod_jhrdr_api_url    = "http://dataverse.dataverse-prod.internal:8080/api"
-prod_jhrdr_public_url = "https://dataverse.library.jhu.edu"
+prod_jhrdr_solr_url   = ""
+prod_jhrdr_api_url    = ""
+prod_jhrdr_public_url = ""
 
 # -----------------------------------------------------------------------------
 # Observability
 # -----------------------------------------------------------------------------
 log_retention_days  = 90
-alarm_sns_topic_arn = null # TODO: Use shared DSpace alerts topic or create a new one
-
+alarm_sns_topic_arn = "arn:aws:sns:us-east-1:390157243417:dspace-stage-alerts"
 # -----------------------------------------------------------------------------
 # Tags
 # -----------------------------------------------------------------------------

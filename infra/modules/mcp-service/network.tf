@@ -60,6 +60,7 @@ resource "aws_vpc_security_group_egress_rule" "task_to_dspace_private_alb" {
 
 # Egress: task -> Dataverse Solr (port 8983)
 resource "aws_vpc_security_group_egress_rule" "task_to_dataverse_solr" {
+  count                        = var.dataverse_solr_security_group_id != null ? 1 : 0
   security_group_id            = aws_security_group.task.id
   referenced_security_group_id = var.dataverse_solr_security_group_id
   description                  = "JHRDR Dataverse Solr collection1"
@@ -70,6 +71,7 @@ resource "aws_vpc_security_group_egress_rule" "task_to_dataverse_solr" {
 
 # Egress: task -> Dataverse API (port 8080)
 resource "aws_vpc_security_group_egress_rule" "task_to_dataverse_api" {
+  count                        = var.dataverse_api_security_group_id != null ? 1 : 0
   security_group_id            = aws_security_group.task.id
   referenced_security_group_id = var.dataverse_api_security_group_id
   description                  = "Dataverse Native API"
@@ -141,6 +143,7 @@ resource "aws_vpc_security_group_ingress_rule" "dspace_api_http_from_mcp" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "dataverse_solr_from_mcp" {
+  count                        = var.dataverse_solr_security_group_id != null ? 1 : 0
   security_group_id            = var.dataverse_solr_security_group_id
   referenced_security_group_id = aws_security_group.task.id
   description                  = "MCP ${var.environment}: JHRDR Solr read"
@@ -150,6 +153,7 @@ resource "aws_vpc_security_group_ingress_rule" "dataverse_solr_from_mcp" {
 }
 
 resource "aws_vpc_security_group_ingress_rule" "dataverse_api_from_mcp" {
+  count                        = var.dataverse_api_security_group_id != null ? 1 : 0
   security_group_id            = var.dataverse_api_security_group_id
   referenced_security_group_id = aws_security_group.task.id
   description                  = "MCP ${var.environment}: Dataverse API"
