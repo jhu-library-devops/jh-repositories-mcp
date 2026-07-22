@@ -167,13 +167,15 @@ variable "stage_dspace_api_sg_id" {
 }
 
 variable "stage_dataverse_solr_sg_id" {
-  description = "Stage Dataverse Solr security group ID."
+  description = "Stage Dataverse Solr security group ID. Null disables Dataverse SG rules."
   type        = string
+  default     = null
 }
 
 variable "stage_dataverse_api_sg_id" {
-  description = "Stage Dataverse API security group ID."
+  description = "Stage Dataverse API security group ID. Null disables Dataverse SG rules."
   type        = string
+  default     = null
 }
 
 # -----------------------------------------------------------------------------
@@ -191,13 +193,15 @@ variable "prod_dspace_api_sg_id" {
 }
 
 variable "prod_dataverse_solr_sg_id" {
-  description = "Prod Dataverse Solr security group ID."
+  description = "Prod Dataverse Solr security group ID. Null disables Dataverse SG rules."
   type        = string
+  default     = null
 }
 
 variable "prod_dataverse_api_sg_id" {
-  description = "Prod Dataverse API security group ID."
+  description = "Prod Dataverse API security group ID. Null disables Dataverse SG rules."
   type        = string
+  default     = null
 }
 
 # -----------------------------------------------------------------------------
@@ -220,18 +224,21 @@ variable "stage_jscholarship_public_url" {
 }
 
 variable "stage_jhrdr_solr_url" {
-  description = "Stage JHRDR Solr URL."
+  description = "Stage JHRDR Solr URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 variable "stage_jhrdr_api_url" {
-  description = "Stage Dataverse API URL."
+  description = "Stage Dataverse API URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 variable "stage_jhrdr_public_url" {
-  description = "Stage JHRDR public base URL."
+  description = "Stage JHRDR public base URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------
@@ -254,18 +261,21 @@ variable "prod_jscholarship_public_url" {
 }
 
 variable "prod_jhrdr_solr_url" {
-  description = "Prod JHRDR Solr URL."
+  description = "Prod JHRDR Solr URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 variable "prod_jhrdr_api_url" {
-  description = "Prod Dataverse API URL."
+  description = "Prod Dataverse API URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 variable "prod_jhrdr_public_url" {
-  description = "Prod JHRDR public base URL."
+  description = "Prod JHRDR public base URL. Empty string disables."
   type        = string
+  default     = ""
 }
 
 # -----------------------------------------------------------------------------
