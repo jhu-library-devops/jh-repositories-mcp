@@ -77,7 +77,8 @@
   - [ ] 6.2 Implement the DSpace Public_Record gate
     - Confirm anonymous retrieval, item state, discoverability, latest version, and archive status.
     - Return identical not-found behavior for non-public and nonexistent records.
-    - _Requirements: 2.4-2.6, 5.4, 9.3-9.5_
+    - Implement a lightweight HEAD-based revalidation probe for cache-emit checks.
+    - _Requirements: 2.4-2.6, 5.4, 9.3-9.5, 15.9_
   - [ ] 6.3 Implement DSpace summary and full-record normalization
     - Keep search summaries to metadata, public file count/formats when available, hierarchy, Handle URL, and thumbnail.
     - Expand public ORIGINAL bitstream summaries only for full item lookup, cap them at 100, and never fetch file bytes.
@@ -91,9 +92,13 @@
     - Use full text only if the Phase 0 public-content proof succeeds, and then only for ranking, never returned values or snippets.
     - _Requirements: 2.1-2.3, 9.6-9.8, 10_
   - [ ] 7.2 Implement bounded candidate canonicalization through the DSpace client
-    - Use a fixed worker pool and over-fetch ceiling.
+    - Query Solr with rows = 3 × limit; validate candidates sequentially in rank order using a fixed worker pool.
+    - Stop when the page is filled or the fetched window is consumed.
+    - Set nextOffset = startOffset + candidatesConsumed (passed + failed + timed-out).
+    - Set nextOffset to null only when Solr returned fewer candidates than requested.
+    - Emit a validation_attrition warning when the ceiling is exhausted before filling the page.
     - Drop every candidate that cannot pass the Public_Record gate.
-    - _Requirements: 2.4-2.6, 9.3-9.4, 14.6_
+    - _Requirements: 2.4-2.7, 9.3-9.4, 11.7-11.9, 14.6_
   - [ ] 7.3 Implement JScholarship facets and allowlisted MoreLikeThis related search
     - _Requirements: 6.1-6.6, 7.1-7.6_
   - [ ] 7.4 Add adapter integration tests with paired Solr and DSpace fixtures
@@ -106,7 +111,8 @@
   - [ ] 8.2 Implement the Dataverse Public_Record gate
     - Reject draft, deaccessioned, restricted, missing, or anonymous-inaccessible datasets.
     - Return identical not-found behavior for non-public and nonexistent records.
-    - _Requirements: 3.3-3.7, 5.4, 9.3-9.5_
+    - Implement a lightweight minimal-GET revalidation probe for cache-emit checks.
+    - _Requirements: 3.3-3.7, 5.4, 9.3-9.5, 15.9_
   - [ ] 8.3 Implement Dataverse summary and full-record normalization
     - Keep search summaries to citation-block metadata, DOI, canonical URL, license/terms, version, public file count, and formats when available.
     - Expand public file summaries only for full dataset lookup, exclude restricted files, cap summaries at 100, and never fetch file bytes.
@@ -119,9 +125,13 @@
     - Map static and metadata-block concepts only through the validated JHRDR Field_Allowlist.
     - _Requirements: 3.1-3.3, 10_
   - [ ] 9.2 Implement bounded candidate canonicalization through the Dataverse client
-    - Use a fixed worker pool and over-fetch ceiling.
+    - Query Solr with rows = 3 × limit; validate candidates sequentially in rank order using a fixed worker pool.
+    - Stop when the page is filled or the fetched window is consumed.
+    - Set nextOffset = startOffset + candidatesConsumed (passed + failed + timed-out).
+    - Set nextOffset to null only when Solr returned fewer candidates than requested.
+    - Emit a validation_attrition warning when the ceiling is exhausted before filling the page.
     - Drop every candidate that cannot pass the Public_Record gate.
-    - _Requirements: 3.4-3.7, 9.3-9.4, 14.6_
+    - _Requirements: 3.4-3.8, 9.3-9.4, 11.7-11.9, 14.6_
   - [ ] 9.3 Implement JHRDR facets and metadata-based related search
     - Use title, author, affiliation, subject, keyword, and description fields only.
     - _Requirements: 6.1-6.6, 7.1, 7.3-7.6, 17.2_
@@ -135,11 +145,14 @@
     - _Requirements: 4.6, 11.1-11.3, 11.6_
   - [ ] 10.2 Implement the versioned Cursor codec with query hash, per-repository offsets, and next tie source
     - Validate type, version, bounds, and query binding.
-    - _Requirements: 1.6, 11.4-11.6_
+    - Each per-repository offset represents the next unexamined Solr position (startOffset + candidatesConsumed from the previous page).
+    - Propagate validation_attrition warnings from adapters to the federated response.
+    - _Requirements: 1.6, 11.4-11.9_
   - [ ] 10.3 Implement Partial_Result assembly and Repository-qualified warnings
     - Ensure no internal exception or endpoint appears in warnings.
     - _Requirements: 1.8, 15.3_
-  - [ ]* 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, and partial success
+  - [ ]* 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, partial success, and offset advancement
+    - Include Property 16: nextOffset = startOffset + passed + failed, never exceeds 3 × limit beyond start.
     - _Requirements: 11, 15.3_
 
 - [ ] 11. Implement <code>search_items</code>
@@ -207,12 +220,14 @@
     - _Requirements: 15.1-15.3_
   - [ ] 17.2 Implement bounded in-process LRU caches for search, canonical records, and startup schema results
     - Cache public normalized data only.
-    - _Requirements: 15.4_
+    - Before returning a cached Canonical_Record, call the platform-specific revalidation probe; evict and return not_found on failure.
+    - Search cache does not require revalidation (results were validated during canonicalization and TTL ≤ Solr re-index lag).
+    - _Requirements: 15.4, 15.9_
   - [ ] 17.3 Implement per-task tool concurrency and per-repository canonicalization worker pools
     - Return rate-limited/busy errors without queuing unbounded work.
     - _Requirements: 10.6, 14.6_
-  - [ ]* 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, aborted requests, and concurrency saturation
-    - _Requirements: 14.6, 15.1-15.4_
+  - [ ]* 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
+    - _Requirements: 14.6, 15.1-15.4, 15.9_
 
 - [ ] 18. Implement privacy-preserving observability
   - [ ] 18.1 Emit one structured summary log per tool invocation with only approved metadata fields

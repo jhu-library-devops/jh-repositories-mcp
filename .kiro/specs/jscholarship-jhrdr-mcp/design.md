@@ -154,7 +154,34 @@ sequenceDiagram
     end
 ~~~
 
-Canonicalization is applied only to the selected candidate window, not every hit in each Solr result set. Candidates that cannot pass canonicalization are dropped; the adapter may fetch additional candidates up to a fixed over-fetch ceiling to fill the requested page. The ceiling prevents a damaged index or API outage from creating an unbounded call fan-out. (Requirements 2.4-2.6, 3.4-3.7, 9.3-9.4)
+#### Candidate Window and Over-Fetch Mechanics
+
+Canonicalization is applied only to a bounded candidate window, not every hit in each Solr result set. The adapter's page attempt proceeds as follows:
+
+1. The adapter queries Solr with <code>start = cursor offset</code> and <code>rows = min(3 × limit, maxRows)</code> where <code>limit</code> is the clamped page size for this repository.
+2. The adapter validates candidates sequentially in Solr rank order using a fixed-size worker pool.
+3. Each candidate that passes the Public_Record gate is appended to the result list. Each candidate that fails or times out is counted as a validation omission.
+4. The adapter stops when either:
+   - It has accumulated <code>limit</code> validated results (page filled), or
+   - It has consumed all fetched candidates without filling the page (ceiling exhausted).
+5. <code>nextOffset</code> is set to <code>startOffset + candidatesConsumed</code> — the count of candidates the adapter examined (passed + failed + timed-out), not the Solr <code>rows</code> value.
+6. <code>nextOffset</code> is null only when Solr returned fewer candidates than requested (the result set is exhausted).
+7. <code>validationOmissions</code> is the count of candidates that failed or timed out during this page attempt.
+8. <code>totalCandidates</code> is Solr's <code>numFound</code> for the query.
+
+The 3× ceiling prevents a degraded index or API outage from causing unbounded API fan-out while still tolerating moderate non-public rates without returning empty pages on every request.
+
+**Short-page behavior:** When the ceiling is exhausted before filling the page, the adapter returns a short page (fewer than <code>limit</code> results) with a non-null <code>nextOffset</code>. The federation layer emits a <code>validation_attrition</code> warning:
+
+~~~json
+{
+  "repository": "jscholarship",
+  "code": "validation_attrition",
+  "message": "Some JScholarship candidates could not be validated; this page contains fewer results than requested."
+}
+~~~
+
+This tells the host model that paging forward may yield additional results. (Requirements 2.4-2.7, 3.4-3.8, 9.3-9.4, 11.7-11.9)
 
 ### Get Item
 
@@ -237,11 +264,11 @@ interface RepositoryAdapter {
 
 interface RepositoryPage {
   repository: RepositoryId;
-  results: RepositoryRecord[];
-  nextOffset: number | null;
-  totalCandidates: number;
-  validationOmissions: number;
-  warnings: RepositoryWarning[];
+  results: RepositoryRecord[];       // Validated results, length ≤ limit
+  nextOffset: number | null;         // startOffset + candidatesConsumed; null when Solr exhausted
+  totalCandidates: number;           // Solr numFound for the query
+  validationOmissions: number;       // Candidates that failed/timed-out this page attempt
+  warnings: RepositoryWarning[];     // Includes validation_attrition when ceiling exhausted before page filled
 }
 ~~~
 
@@ -348,6 +375,7 @@ The DSpace client uses anonymous private REST endpoints to:
 - Resolve collection/community context.
 - Enumerate public ORIGINAL bundle bitstreams, capped at 100.
 - Resolve a public thumbnail when present.
+- Probe item public accessibility via an anonymous HEAD request (used for cache revalidation).
 
 The public gate verifies the item is retrievable anonymously and satisfies the DSpace state requirements. Any mismatch between Solr and REST fails closed. The public landing page uses the configured public JScholarship base URL and Handle. (Requirements 2, 5, 9)
 
@@ -359,6 +387,7 @@ The Dataverse client uses anonymous internal HTTP endpoints to:
 - Request the latest published version, never <code>:draft</code> or <code>:latest</code>.
 - Read citation metadata blocks, citation, license or terms, version, and file summaries.
 - Exclude restricted files.
+- Probe dataset public accessibility via a minimal anonymous GET checking publication state (used for cache revalidation).
 - Construct the canonical public dataset URL using the persistent identifier.
 
 The client does not send an <code>X-Dataverse-key</code> header or Bearer token. Deaccessioned, draft, restricted, or otherwise anonymous-inaccessible records are treated as not found. (Requirements 3, 5, 9, 14.1)
@@ -416,10 +445,23 @@ Each task uses bounded in-process LRU caches:
 | Cache | Key | Maximum TTL | Purpose |
 | --- | --- | --- | --- |
 | Search | Hash of normalized adapter request | 60 seconds | Absorb repeated AI iterations and identical client retries |
-| Canonical record | Repository plus canonical identifier | 5 minutes | Reduce repeated REST/Native API validation |
+| Canonical record | Repository plus canonical identifier | 5 minutes | Store normalized payload; revalidated before each emit |
 | Schema validation | Repository profile version | Process lifetime | Avoid repeated schema reads |
 
 Cache entries contain public normalized data only. No user identity, raw query, token, or conversation is cached. Cache absence on another task affects performance only, not correctness.
+
+#### Revalidation on Emit
+
+The Canonical_Record cache stores the fully normalized payload to avoid repeated parsing and normalization, but it does **not** bypass access-control checks. Before returning a cached record from <code>get_item</code> or a resource read, the server performs a lightweight revalidation probe:
+
+- **DSpace:** An anonymous HEAD request to the item endpoint. HTTP 200 confirms the item is still public. Any other status (401, 403, 404, or network error) triggers eviction and a <code>not_found</code> response.
+- **Dataverse:** A minimal anonymous GET to the dataset endpoint with reduced response fields. A successful response with a published latest version confirms the dataset is still public. Any error or non-published state triggers eviction and a <code>not_found</code> response.
+
+If the probe succeeds, the cached normalized payload is returned without re-fetching or re-normalizing the full record. If the probe fails or times out, the cache entry is evicted and the caller receives the standard indistinguishable <code>not_found</code> response.
+
+The probe shares the same per-call timeout and retry policy as other Canonical_API requests. Probe failures are counted in the <code>validation_omissions</code> metric. (Requirements 9.3-9.5, 15.4, 15.9)
+
+The search cache does not require revalidation because search results are already validated through the Canonical_API during the candidate canonicalization step, and the 60-second TTL is comparable to or shorter than the Solr re-index lag after a state change.
 
 A per-task semaphore limits concurrent tool calls and a lower per-repository semaphore limits canonicalization fan-out. Canonical lookups use a fixed worker pool rather than unbounded <code>Promise.all</code>. (Requirements 14.6, 15.4)
 
@@ -787,6 +829,12 @@ For any request and response values, the structured log serializer emits only ap
 For any metadata string containing instruction-like text or markup, normalization treats it as escaped data and prompt generation does not interpolate it into system or developer instructions.
 
 **Validates: Requirements 8.6, 14, 17**
+
+### Property 16: Cursor offset advances by candidates consumed, not candidates fetched
+
+For any page attempt with a starting offset, the returned <code>nextOffset</code> equals <code>startOffset + passedCount + failedCount</code>, and <code>passedCount + failedCount ≤ 3 × limit</code>. Untouched candidates beyond the consumption point are not skipped.
+
+**Validates: Requirements 11.7, 11.9**
 
 ## Testing Strategy
 

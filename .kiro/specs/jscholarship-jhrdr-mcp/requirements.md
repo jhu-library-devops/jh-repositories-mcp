@@ -182,6 +182,9 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 4. THE Cursor SHALL contain a version, normalized query hash, and independent next positions for JScholarship and JHRDR.
 5. IF a Cursor is malformed, has an unsupported version, or does not match the normalized query and filters, THEN THE MCP_Server SHALL reject it as invalid input.
 6. FOR equivalent inputs and unchanged indexes, THE MCP_Server SHALL produce deterministic ordering and Cursor progression.
+7. EACH adapter SHALL request no more than three times the requested limit from Solr per page attempt and SHALL advance its Solr offset only past the candidates it consumed, not the entire fetched window.
+8. IF the over-fetch ceiling is exhausted before accumulating the requested limit of validated results, THEN the adapter SHALL return a short page with a non-null next offset and the federation layer SHALL include a <code>validation_attrition</code> warning identifying the affected Repository.
+9. THE Cursor's per-repository offset SHALL represent the next unexamined Solr position for that Repository, computed as the page's starting offset plus the number of candidates consumed during that page attempt.
 
 ### Requirement 12: MCP Transport and Compatibility
 
@@ -237,11 +240,12 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 1. THE MCP_Server SHALL impose configurable per-call timeouts on each Solr and Canonical_API request and an overall tool deadline no greater than 10 seconds.
 2. THE MCP_Server SHALL retry only idempotent transient failures, use exponential backoff with jitter, and make no more than two total attempts per backend call.
 3. WHEN one Repository fails during an <code>all</code> search, THE MCP_Server SHALL return available results with a Repository-qualified warning.
-4. THE MCP_Server MAY cache public search responses for up to 60 seconds and Canonical_Record responses for up to 5 minutes using bounded in-process caches.
+4. THE MCP_Server MAY cache public search responses for up to 60 seconds and normalized Canonical_Record payloads for up to 5 minutes using bounded in-process caches, provided that cached Canonical_Records are revalidated before being returned.
 5. THE MCP_Server SHALL log structured events containing timestamp, request ID, client name and version when supplied, tool, Repository, latency, result count, cache status, outcome, and backend status.
 6. THE MCP_Server SHALL NOT log raw search text, filter values, prompts, conversation content, record abstracts, user identity, access tokens, or response bodies.
 7. THE MCP_Server SHALL publish CloudWatch metrics for invocation count, latency, errors, zero-result searches, Partial_Result responses, backend availability, validation omissions, cache hits, and rate-limit events.
 8. THE MCP_Server SHALL expose build version and commit identifier in health metadata and logs.
+9. BEFORE returning a cached Canonical_Record from <code>get_item</code> or a resource read, THE MCP_Server SHALL perform a lightweight revalidation probe against the Canonical_API to confirm the record remains publicly accessible; IF the probe indicates the record is no longer public, THE MCP_Server SHALL evict the cache entry and return the same <code>not_found</code> response as for a nonexistent record.
 
 ### Requirement 16: Verification and Pilot Evaluation
 
