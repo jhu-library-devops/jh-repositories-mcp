@@ -59,7 +59,7 @@ resource "aws_lb" "mcp" {
   security_groups            = [aws_security_group.alb.id]
   subnets                    = var.public_subnet_ids
   drop_invalid_header_fields = true
-  enable_deletion_protection = true
+  enable_deletion_protection = var.enable_deletion_protection
   idle_timeout               = 65
 
   tags = local.common_tags

@@ -49,6 +49,12 @@ variable "allowed_hostnames" {
 # WAF
 # -----------------------------------------------------------------------------
 
+variable "enable_deletion_protection" {
+  description = "Enable ALB deletion protection. Set to false only for legitimate teardowns."
+  type        = bool
+  default     = true
+}
+
 variable "waf_rate_limit" {
   description = "Maximum requests per 5-minute window per IP before WAF blocks."
   type        = number
