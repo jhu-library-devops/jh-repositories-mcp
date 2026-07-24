@@ -7,4 +7,15 @@
 infra/.terraform/*
 .terraform/*
 infra/.terraform.lock.hcl
-node_modules/*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
