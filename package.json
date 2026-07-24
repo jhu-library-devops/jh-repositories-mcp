@@ -9,7 +9,10 @@
     "test": "bun test",
     "typecheck": "tsc --noEmit",
     "lint": "biome check .",
-    "format": "biome format --write ."
+    "format": "biome format --write .",
+    "changelog:new": "bun run scripts/new-fragment.ts",
+    "changelog:build": "bun run scripts/changelog.ts",
+    "changelog:preview": "bun run scripts/changelog.ts --dry-run"
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.12.1",
@@ -19,6 +22,7 @@
   "devDependencies": {
     "@biomejs/biome": "^1.9.4",
     "@types/bun": "^1.2.15",
+    "fast-check": "4.9.0",
     "typescript": "^5.8.3"
   },
   "engines": {
