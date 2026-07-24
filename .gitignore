@@ -4,3 +4,15 @@
 .kiro/settings/*
 .claude/system-prompts/*
 .claude/settings/*
+
+# Dependencies
+node_modules/
+
+# Build output
+dist/
+*.tsbuildinfo
+
+# Environment
+.env
+.env.*
+!.env.example
