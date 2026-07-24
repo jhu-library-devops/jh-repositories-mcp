@@ -1,0 +1,8 @@
+{
+  "$comment": "Synthetic DSpace 7 REST API 404 response for a nonexistent or non-public item. DSpace returns this same shape whether the item doesn't exist or the caller lacks access. The MCP must NOT distinguish these cases (Requirement 9.5).",
+  "timestamp": "2024-03-20T15:00:00.000+00:00",
+  "status": 404,
+  "error": "Not Found",
+  "message": "No such resource found",
+  "path": "/server/api/core/items/00000000-0000-0000-0000-000000000000"
+}

@@ -1,0 +1,274 @@
+{
+  "$comment": "Sanitized JScholarship Solr schema fixture. Extracted from jhu-dspace-deployment schema.xml and discovery.xml. No credentials or private content.",
+  "collection": "search",
+  "platform": "dspace",
+  "capturedFrom": "jhu-dspace-deployment/config/solr/configsets/search/schema.xml",
+  "capturedAt": "2025-01-15T00:00:00Z",
+
+  "explicitFields": {
+    "search.resourceid": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "docValues": false,
+      "multiValued": false,
+      "description": "DSpace internal UUID for the record"
+    },
+    "search.resourcetype": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "docValues": false,
+      "multiValued": false,
+      "description": "Record type: Item, Collection, or Community"
+    },
+    "search.uniqueid": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "docValues": false,
+      "multiValued": false,
+      "description": "Primary key field for the Solr document"
+    },
+    "handle": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": true,
+      "multiValued": false,
+      "description": "Item Handle (persistent identifier), e.g. '1774.2/12345'"
+    },
+    "withdrawn": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": true,
+      "multiValued": false,
+      "description": "Withdrawal state: 'true' or 'false'. Withdrawn items must be excluded."
+    },
+    "discoverable": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": true,
+      "multiValued": false,
+      "description": "Discoverability flag: 'true' or 'false'. Non-discoverable items are hidden from search."
+    },
+    "latestVersion": {
+      "type": "boolean",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": false,
+      "multiValued": false,
+      "default": true,
+      "description": "Whether this is the latest version of the item. Only latest versions are shown."
+    },
+    "database_status": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": true,
+      "multiValued": false,
+      "description": "Archive lifecycle state. Only 'ARCHIVED' items are in the live repository."
+    },
+    "read": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": true,
+      "multiValued": true,
+      "description": "Group IDs with read permission. 'g0' = Anonymous group. Items must contain 'g0' to be publicly readable."
+    },
+    "fulltext": {
+      "type": "text",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": false,
+      "multiValued": true,
+      "description": "Indexed bitstream content from ALL bundles. DISABLED for MCP — may contain restricted content (DS-3498)."
+    },
+    "search_text": {
+      "type": "text",
+      "stored": false,
+      "indexed": true,
+      "required": false,
+      "docValues": false,
+      "multiValued": true,
+      "description": "Catchall field populated via copyField from '*'. Used for broad keyword search."
+    },
+    "location.comm": {
+      "type": "lowerCaseSort",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": false,
+      "multiValued": true,
+      "description": "Community hierarchy: community UUIDs containing this item."
+    },
+    "location.coll": {
+      "type": "lowerCaseSort",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "docValues": false,
+      "multiValued": true,
+      "description": "Collection hierarchy: collection UUIDs containing this item."
+    }
+  },
+
+  "dynamicFieldPatterns": {
+    "*_filter": {
+      "type": "keywordFilter",
+      "description": "Sidebar facet/filter values. Exact match, case-preserving."
+    },
+    "*_keyword": {
+      "type": "keywordFilter",
+      "description": "Keyword-indexed values for exact matching."
+    },
+    "*_partial": {
+      "type": "text",
+      "description": "Partial/browse fields with text analysis (tokenization, stemming)."
+    },
+    "*_hl": {
+      "type": "text",
+      "description": "Hit highlighting fields."
+    },
+    "*_sort": {
+      "type": "lowerCaseSort",
+      "description": "Sort fields with lowercase normalization."
+    },
+    "*_mlt": {
+      "type": "text",
+      "termVectors": true,
+      "description": "MoreLikeThis fields with term vectors for related-record discovery."
+    },
+    "*.year": {
+      "type": "sint",
+      "description": "Year facet fields (integer)."
+    },
+    "*_dt": {
+      "type": "date",
+      "description": "Date fields for sorting and range filtering."
+    }
+  },
+
+  "fieldTypes": {
+    "text": {
+      "class": "solr.TextField",
+      "analyzers": [
+        "ICUFoldingFilterFactory",
+        "SnowballPorterFilterFactory (English)",
+        "WordDelimiterFilterFactory",
+        "StopFilterFactory",
+        "SynonymFilterFactory"
+      ],
+      "description": "Full text analysis with folding, stemming, word splitting, and synonyms."
+    },
+    "keywordFilter": {
+      "class": "solr.TextField",
+      "analyzers": ["KeywordTokenizerFactory", "TrimFilterFactory"],
+      "description": "Exact-match filter with trimming. Used for facets and sidebar filters."
+    },
+    "lowerCaseSort": {
+      "class": "solr.TextField",
+      "analyzers": ["KeywordTokenizerFactory", "LowerCaseFilterFactory", "TrimFilterFactory"],
+      "description": "Lowercase keyword for sorting and hierarchy fields."
+    }
+  },
+
+  "copyFields": [
+    {
+      "source": "*",
+      "dest": "search_text",
+      "description": "All fields are copied to the catchall search_text field."
+    }
+  ],
+
+  "discoveryConfiguration": {
+    "defaultFilterQueries": [
+      "(search.resourcetype:Item AND latestVersion:true) OR search.resourcetype:Collection OR search.resourcetype:Community",
+      "-withdrawn:true AND -discoverable:false"
+    ],
+    "mcpItemOnlyFilter": "search.resourcetype:Item AND latestVersion:true AND -withdrawn:true AND -discoverable:false",
+    "searchFilters": {
+      "title": { "indexFieldName": "title", "metadata": ["dc.title"] },
+      "author": { "indexFieldName": "author", "metadata": ["dc.contributor.author", "dc.contributor.other", "dc.creator"] },
+      "subject": { "indexFieldName": "subject", "metadata": ["dc.subject.*"], "hierarchical": true, "splitter": "::" },
+      "dateIssued": { "indexFieldName": "dateIssued", "metadata": ["dc.date.issued"], "type": "date" },
+      "entityType": { "indexFieldName": "entityType", "metadata": ["dspace.entity.type"] },
+      "itemtype": { "indexFieldName": "itemtype", "metadata": ["dc.type"] },
+      "has_content_in_original_bundle": { "indexFieldName": "has_content_in_original_bundle", "programmatic": true },
+      "access_status": { "indexFieldName": "access_status", "programmatic": true },
+      "abstract": { "indexFieldName": "abstract", "metadata": ["dc.description.abstract"], "note": "Available as a Discovery search field for query (not a sidebar filter bean in JHU config)" }
+    },
+    "sortOptions": {
+      "sortTitle": { "metadata": "dc.title", "generatedField": "dc.title_sort" },
+      "sortDateIssued": { "metadata": "dc.date.issued", "generatedField": "dc.date.issued_dt" },
+      "sortDateAccessioned": { "metadata": "dc.date.accessioned", "generatedField": "dc.date.accessioned_dt" }
+    },
+    "moreLikeThis": {
+      "similarityMetadataFields": ["dc.title", "dc.contributor.author", "dc.creator", "dc.subject"],
+      "generatedFields": ["dc.title_mlt", "dc.contributor.author_mlt", "dc.creator_mlt", "dc.subject_mlt"],
+      "minTermFrequency": 5,
+      "maxResults": 3,
+      "minWordLength": 5
+    },
+    "fulltext": {
+      "enabled": false,
+      "reason": "Full text snippets are disabled, as snippets of embargoed/restricted bitstreams may appear in search results when the Item is public. See DS-3498."
+    }
+  },
+
+  "publicFilterExplanation": {
+    "conditions": [
+      {
+        "field": "search.resourcetype",
+        "value": "Item",
+        "reason": "MCP returns only Items, not Collections or Communities"
+      },
+      {
+        "field": "latestVersion",
+        "value": true,
+        "reason": "Only the current version is publicly discoverable"
+      },
+      {
+        "field": "withdrawn",
+        "excluded": true,
+        "reason": "Withdrawn items have been removed from public access"
+      },
+      {
+        "field": "discoverable",
+        "excluded": false,
+        "reason": "Non-discoverable items are hidden from all search interfaces"
+      },
+      {
+        "field": "database_status",
+        "value": "ARCHIVED",
+        "reason": "Only ARCHIVED items are in the live repository; WORKFLOW/WORKSPACE items are in-progress"
+      },
+      {
+        "field": "read",
+        "value": "g0",
+        "reason": "The 'read' field must contain 'g0' (Anonymous group ID 0) for the item to be publicly accessible"
+      }
+    ],
+    "excludedCombinations": [
+      "withdrawn:true — item has been withdrawn by administrator",
+      "discoverable:false — item is hidden from search/browse",
+      "latestVersion:false — superseded version",
+      "database_status:WORKFLOW — item is in approval workflow",
+      "database_status:WORKSPACE — item is being submitted",
+      "read without 'g0' — item is restricted to specific groups"
+    ]
+  }
+}

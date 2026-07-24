@@ -1,0 +1,39 @@
+{
+  "$comment": "Synthetic Solr document for a known public JScholarship item. Contains all fields the MCP will use. Passes all immutable public filters. Uses fake UUID and handle.",
+  "search.resourceid": "11111111-1111-1111-1111-111111111111",
+  "search.resourcetype": "Item",
+  "search.uniqueid": "Item-11111111-1111-1111-1111-111111111111",
+  "handle": "1774.2/99999",
+  "withdrawn": "false",
+  "discoverable": "true",
+  "latestVersion": true,
+  "database_status": "ARCHIVED",
+  "read": ["g0", "g1"],
+  "location.comm": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+  "location.coll": ["bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"],
+
+  "title": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
+  "author": ["Smith, Jane A.", "Johnson, Robert K."],
+  "subject": ["Environmental Science", "Climate Change", "Wetland Ecology", "Chesapeake Bay"],
+  "dateIssued": "2024-03-15",
+  "itemtype": "Article",
+
+  "dc.title_sort": "climate adaptation strategies for chesapeake bay wetlands",
+  "dc.date.issued_dt": "2024-03-15T00:00:00Z",
+  "dc.date.accessioned_dt": "2024-03-20T14:30:00Z",
+
+  "title_filter": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
+  "author_filter": ["Smith, Jane A.", "Johnson, Robert K."],
+  "subject_filter": ["Environmental Science", "Climate Change", "Wetland Ecology", "Chesapeake Bay"],
+  "dateIssued_filter": "2024-03-15",
+  "itemtype_filter": "Article",
+  "entityType_filter": "Publication",
+  "has_content_in_original_bundle_filter": "true",
+  "access_status_filter": "open.access",
+
+  "dc.title_mlt": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
+  "dc.contributor.author_mlt": ["Smith, Jane A.", "Johnson, Robert K."],
+  "dc.subject_mlt": ["Environmental Science", "Climate Change", "Wetland Ecology", "Chesapeake Bay"],
+
+  "dateIssued.year": 2024
+}

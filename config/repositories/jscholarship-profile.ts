@@ -1,0 +1,313 @@
+/**
+ * JScholarship Repository Profile
+ *
+ * Documents the exact Solr field mappings, immutable public filters, query fields,
+ * filter fields, facet fields, sort fields, related-record fields, and the fulltext
+ * decision for the JScholarship (DSpace) adapter.
+ *
+ * Source: DSpace Discovery configuration (discovery.xml) and Solr schema (schema.xml)
+ * from the jhu-dspace-deployment project, validated against the deployed stage environment.
+ *
+ * Requirements: 2.1, 2.2, 2.3, 9.1-9.8, 10.2, 16.1
+ */
+
+// ─── Types ───────────────────────────────────────────────────────────────────
+
+export type RepositoryId = "jscholarship" | "jhrdr";
+
+/**
+ * A weighted Solr field used for edismax query construction.
+ */
+export interface WeightedField {
+  readonly field: string;
+  readonly boost?: number;
+}
+
+/**
+ * A Solr sort directive.
+ */
+export interface SolrSort {
+  readonly field: string;
+  readonly direction: "asc" | "desc";
+}
+
+/**
+ * A factory that produces immutable Solr filter query (fq) clauses.
+ * These are appended to every search, facet, and related-record query
+ * and cannot be removed, weakened, or overridden by client input.
+ */
+export interface SolrFilterFactory {
+  readonly description: string;
+  readonly fq: string;
+}
+
+/**
+ * Repository profile defining all field mappings and access rules.
+ */
+export interface RepositoryProfile {
+  readonly id: RepositoryId;
+  readonly platform: "dspace" | "dataverse";
+  readonly version: string;
+  readonly solrCollection: string;
+
+  /** Fields that MUST exist in the Solr schema for the adapter to become ready. */
+  readonly requiredSchemaFields: readonly string[];
+
+  /** Fields that MAY exist; missing ones disable their corresponding feature. */
+  readonly optionalSchemaFields: readonly string[];
+
+  /** MCP search concepts → weighted Solr query fields (for edismax qf). */
+  readonly queryFields: Readonly<Record<string, readonly WeightedField[]>>;
+
+  /** MCP filter concepts → Solr filter fields. */
+  readonly filterFields: Readonly<Record<string, string>>;
+
+  /** MCP facet concepts → Solr facet fields. */
+  readonly facetFields: Readonly<Record<string, string>>;
+
+  /** MCP sort options → Solr sort directives. */
+  readonly sortFields: Readonly<Record<string, SolrSort>>;
+
+  /** Fields used for MoreLikeThis related-record discovery. */
+  readonly relatedFields: readonly string[];
+
+  /** Fields returned in Solr fl (field list) for candidate retrieval. */
+  readonly returnFields: readonly string[];
+
+  /** Identity fields used to resolve candidates. */
+  readonly identityFields: Readonly<{
+    uuid: string;
+    handle: string;
+    resourceType: string;
+  }>;
+
+  /** Non-overridable filter queries appended to every Solr request. */
+  readonly immutablePublicFilters: readonly SolrFilterFactory[];
+
+  /** Fulltext field decision and rationale. */
+  readonly fulltextDecision: Readonly<{
+    enabled: boolean;
+    field: string;
+    rationale: string;
+    reference: string;
+  }>;
+}
+
+// ─── JScholarship Profile ────────────────────────────────────────────────────
+
+/**
+ * The anonymous group value in DSpace's `read` field.
+ * DSpace assigns group ID 0 (rendered as "g0") to the Anonymous group.
+ * Items readable by anonymous users have "g0" in their multiValued `read` field.
+ */
+export const DSPACE_ANONYMOUS_GROUP = "g0" as const;
+
+/**
+ * The archived item state value in DSpace's `database_status` field.
+ * Only items with database_status:"ARCHIVED" are in the live archive.
+ */
+export const DSPACE_ARCHIVED_STATUS = "ARCHIVED" as const;
+
+/**
+ * JScholarship RepositoryProfile — immutable field manifest.
+ *
+ * All field names are confirmed against the deployed DSpace Discovery
+ * configuration (discovery.xml) and the Solr schema (schema.xml).
+ *
+ * Discovery generates search fields with text analysis (tokenization, ICU folding,
+ * Snowball stemming, WordDelimiter) from the raw dc.* stored fields. The MCP
+ * queries these Discovery-generated fields, never the raw stored fields.
+ */
+export const jscholarshipProfile = {
+  id: "jscholarship",
+  platform: "dspace",
+  version: "2024.1", // DSpace version deployed at JHU
+  solrCollection: "search",
+
+  // ── Required Schema Fields ─────────────────────────────────────────────────
+  // These MUST exist in the deployed Solr schema. Missing any fails readiness.
+  requiredSchemaFields: [
+    // System identity
+    "search.resourceid",
+    "search.resourcetype",
+    "search.uniqueid",
+    "handle",
+    // Public-access gate fields
+    "withdrawn",
+    "discoverable",
+    "latestVersion",
+    "database_status",
+    "read",
+    // Hierarchy
+    "location.comm",
+    "location.coll",
+  ],
+
+  // ── Optional Schema Fields ─────────────────────────────────────────────────
+  // Missing ones disable their feature but don't fail readiness.
+  optionalSchemaFields: [
+    // MoreLikeThis fields (generated by Discovery for related-record search)
+    "dc.title_mlt",
+    "dc.contributor.author_mlt",
+    "dc.creator_mlt",
+    "dc.subject_mlt",
+  ],
+
+  // ── Query Fields ───────────────────────────────────────────────────────────
+  // Maps MCP search concepts to Discovery-generated query fields.
+  // Discovery uses dynamic field patterns (*_partial for tokenized search).
+  // The `title` indexFieldName in discovery.xml maps dc.title to its search field.
+  queryFields: {
+    keyword: [
+      { field: "title", boost: 4 },
+      { field: "author", boost: 3 },
+      { field: "subject", boost: 2 },
+      // fulltext is EXCLUDED — see fulltextDecision below
+    ],
+    title: [
+      { field: "title", boost: 4 },
+    ],
+    creator: [
+      { field: "author", boost: 3 },
+    ],
+    subject: [
+      { field: "subject", boost: 2 },
+    ],
+    abstract: [
+      { field: "abstract", boost: 1 },
+    ],
+  },
+
+  // ── Filter Fields ──────────────────────────────────────────────────────────
+  // Maps MCP filter concepts to Discovery-generated filter fields (*_filter).
+  filterFields: {
+    subject: "subject_filter",
+    dateIssued: "dateIssued_filter",
+    author: "author_filter",
+    resourceType: "itemtype_filter",
+    entityType: "entityType_filter",
+    hasContent: "has_content_in_original_bundle_filter",
+    accessStatus: "access_status_filter",
+    collection: "location.coll",
+    community: "location.comm",
+  },
+
+  // ── Facet Fields ───────────────────────────────────────────────────────────
+  // Maps MCP facet concepts to Discovery-generated facet/filter fields.
+  facetFields: {
+    creator: "author_filter",
+    subject: "subject_filter",
+    year: "dateIssued.year",
+    resourceType: "itemtype_filter",
+    collection: "location.coll",
+    community: "location.comm",
+    entityType: "entityType_filter",
+    hasContent: "has_content_in_original_bundle_filter",
+  },
+
+  // ── Sort Fields ────────────────────────────────────────────────────────────
+  // Discovery generates *_sort fields for configured sort options.
+  sortFields: {
+    relevance: { field: "score", direction: "desc" },
+    date_desc: { field: "dc.date.issued_dt", direction: "desc" },
+    date_asc: { field: "dc.date.issued_dt", direction: "asc" },
+    title_asc: { field: "dc.title_sort", direction: "asc" },
+    dateAccessioned_desc: { field: "dc.date.accessioned_dt", direction: "desc" },
+  },
+
+  // ── Related Fields (MoreLikeThis) ─────────────────────────────────────────
+  // Configured in discovery.xml: similarityMetadataFields
+  // These generate *_mlt fields with term vectors enabled.
+  relatedFields: [
+    "dc.title_mlt",
+    "dc.contributor.author_mlt",
+    "dc.creator_mlt",
+    "dc.subject_mlt",
+  ],
+
+  // ── Return Fields (fl) ─────────────────────────────────────────────────────
+  // Minimum fields retrieved from Solr for candidate processing.
+  // Full metadata is always fetched from DSpace REST (Canonical_API).
+  returnFields: [
+    "search.resourceid",
+    "search.resourcetype",
+    "search.uniqueid",
+    "handle",
+    "withdrawn",
+    "discoverable",
+    "latestVersion",
+    "database_status",
+    "read",
+  ],
+
+  // ── Identity Fields ────────────────────────────────────────────────────────
+  identityFields: {
+    uuid: "search.resourceid",
+    handle: "handle",
+    resourceType: "search.resourcetype",
+  },
+
+  // ── Immutable Public Filters ───────────────────────────────────────────────
+  // These are appended to EVERY Solr query (search, facet, related).
+  // No MCP client input can remove, weaken, negate, or replace them.
+  //
+  // Derived from DSpace Discovery's default filter queries:
+  //   (search.resourcetype:Item AND latestVersion:true) OR ...
+  //   -withdrawn:true AND -discoverable:false
+  //
+  // For the MCP (Items only), plus anonymous-read and archive status:
+  immutablePublicFilters: [
+    {
+      description: "Restrict to Item resource type only",
+      fq: "search.resourcetype:Item",
+    },
+    {
+      description: "Only the latest version of each item",
+      fq: "latestVersion:true",
+    },
+    {
+      description: "Exclude withdrawn items",
+      fq: "-withdrawn:true",
+    },
+    {
+      description: "Exclude non-discoverable items",
+      fq: "-discoverable:false",
+    },
+    {
+      description: "Only archived items (live in the repository)",
+      fq: "database_status:ARCHIVED",
+    },
+    {
+      description: "Only items readable by the anonymous group (g0)",
+      fq: "read:g0",
+    },
+  ],
+
+  // ── Fulltext Decision ──────────────────────────────────────────────────────
+  // DISABLED: fulltext is NOT included in any allowlist.
+  //
+  // Rationale: The DSpace fulltext field contains indexed content from all
+  // bitstreams, including those from restricted/embargoed bundles on otherwise
+  // public items. DSpace's own discovery.xml has full-text highlighting
+  // commented out with the note:
+  //   "full text snippets are disabled, as snippets of embargoed/restricted
+  //    bitstreams may appear in search results when the Item is public. See DS-3498"
+  //
+  // Until Phase 0 demonstrates that EVERY value in the fulltext field is
+  // publicly searchable and cannot disclose non-public file content through
+  // matching, ranking, facets, highlighting, or explanations, fulltext remains
+  // excluded from all allowlists.
+  fulltextDecision: {
+    enabled: false,
+    field: "fulltext",
+    rationale:
+      "DSpace indexes bitstream content from all bundles into fulltext, including " +
+      "restricted/embargoed bitstreams on public items. The DSpace team disabled " +
+      "full-text highlighting for this reason (DS-3498). The MCP cannot use this " +
+      "field for search, ranking, facets, or any returned value until a Phase 0 " +
+      "proof demonstrates all indexed content is publicly accessible.",
+    reference: "DS-3498 / discovery.xml fulltext highlighting comment",
+  },
+} as const satisfies RepositoryProfile;
+
+export type JScholarshipProfile = typeof jscholarshipProfile;
