@@ -44,7 +44,7 @@ The v1 MCP surface is fixed:
 | --- | --- | --- |
 | Deployment shape | One MCP service per environment | Both repository deployments use the same VPC and private subnets, so a gateway plus remote adapter services would add operational complexity without a network benefit |
 | Application runtime | Pinned Bun release with strict TypeScript | Bun provides the runtime, package manager, bundler, and test runner; one pinned version keeps local, CI, and container behavior reproducible |
-| HTTP integration | Hono and the MCP Web Standard Streamable HTTP transport | The official MCP SDK supports Bun through Web Standard APIs and avoids coupling the service to the Node.js HTTP transport |
+| HTTP integration | Hono with the MCP SDK's Web Standard Streamable HTTP transport | The official MCP SDK supports Bun through Web Standard Request/Response APIs; Hono provides the HTTP framework without coupling to the Node.js HTTP transport |
 | Repository integration | Two platform-specific adapters behind one interface | JScholarship is DSpace and JHRDR is Dataverse; canonical APIs and access semantics cannot safely be collapsed below the adapter boundary |
 | Search path | Direct private Solr for candidates, Canonical_API for every returned record | Solr supplies fast search, facets, and related signals; the repository API remains the public-access authority |
 | Transport | Stateless MCP Streamable HTTP with JSON responses | Enables multiple Fargate tasks without sticky sessions, Redis, or session routing |
@@ -202,7 +202,7 @@ sequenceDiagram
         A->>API: Anonymous canonical lookup
         alt Public record
             API-->>A: Canonical metadata
-            A-->>H: Canonical_Record
+            A-->>H: ItemDetail
             H-->>C: record + resource link
         else Non-public or nonexistent
             API-->>A: unavailable to anonymous user
@@ -224,7 +224,7 @@ A Hono application running on Bun hosts:
 - <code>GET /health/ready</code>, which reports whether configuration and startup schema validation succeeded.
 - <code>GET /version</code>, available only through the internal target path or included in health metadata.
 
-The MCP integration uses <code>@modelcontextprotocol/server</code>, <code>@modelcontextprotocol/hono</code>, and <code>WebStandardStreamableHTTPServerTransport</code>. It does not use the Node.js-specific <code>@modelcontextprotocol/node</code> transport. The transport uses stateless JSON response mode. A transport instance and MCP server are created for each request when required by the SDK's stateless pattern. No MCP session identifier is issued and no task stores conversational state. The server handles SIGTERM by stopping new requests, draining Bun's HTTP server, and exiting before the ECS stop timeout. (Requirements 12.1-12.8, 13.9)
+The MCP integration uses `@modelcontextprotocol/sdk` and `WebStandardStreamableHTTPServerTransport`, wired into Hono's Web Standard Request/Response interface. It does not use the Node.js-specific `@modelcontextprotocol/node` transport. If an official `@modelcontextprotocol/hono` adapter package exists and is stable, it may be used; otherwise the integration layer is built directly against Hono's `c.req.raw` and `Response`. The transport uses stateless JSON response mode. A transport instance and MCP server are created for each request when required by the SDK's stateless pattern. No MCP session identifier is issued and no task stores conversational state. The server handles SIGTERM by stopping new requests, draining Bun's HTTP server, and exiting before the ECS stop timeout. (Requirements 12.1-12.8, 13.9)
 
 The HTTP layer enforces:
 
@@ -257,9 +257,9 @@ interface RepositoryAdapter {
 
   validateSchema(): Promise<SchemaValidationResult>;
   search(request: RepositorySearchRequest): Promise<RepositoryPage>;
-  get(identifier: RepositoryIdentifier): Promise<CanonicalRecord | null>;
+  get(identifier: RepositoryIdentifier): Promise<ItemDetail | null>;
   facets(request: RepositoryFacetRequest): Promise<RepositoryFacets>;
-  related(source: CanonicalRecord, request: RelatedRequest): Promise<RepositoryPage>;
+  related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage>;
 }
 
 interface RepositoryPage {
@@ -299,19 +299,23 @@ Profiles are compiled with the application and parameterized only for endpoint h
 
 #### JScholarship Field Map
 
-| MCP concept | DSpace Solr field basis |
-| --- | --- |
-| keyword | <code>dc.title</code>, <code>dc.contributor.author</code>, <code>dc.creator</code>, <code>dc.subject</code>, <code>dc.description.abstract</code>; optionally <code>fulltext</code> only after the Phase 0 public-content proof |
-| title | <code>dc.title</code> |
-| creator | <code>dc.contributor.author</code>, <code>dc.creator</code> |
-| subject | <code>dc.subject</code> and its deployed filter field |
-| date | issued-year/date fields from Discovery configuration |
-| type | deployed <code>dc.type</code> filter field |
-| collection | <code>location.coll</code> |
-| community | <code>location.comm</code> |
-| system identity | <code>search.resourceid</code>, <code>search.resourcetype</code>, <code>handle</code> |
-| public gate | <code>withdrawn</code>, <code>discoverable</code>, <code>latestVersion</code>, <code>database_status</code>, <code>read</code> |
-| related | allowlisted <code>*_mlt</code> fields derived from title, creator, subject, and abstract |
+The table below maps MCP concepts to the Dublin Core metadata elements they represent. The actual Solr field names are **Discovery-generated search and filter fields** — not the raw `dc.*` stored fields. Discovery fields have proper text analysis (tokenization, stemming) configured through DSpace's search configuration. The raw stored fields lack this analysis and must not be used for search queries.
+
+Phase 0 (task 1.1) captures the exact deployed Discovery field names and records them in the JScholarship RepositoryProfile. The Dublin Core column below identifies which metadata element each Discovery field derives from, not the literal Solr field name to query.
+
+| MCP concept | Source metadata element | Discovery field type |
+| --- | --- | --- |
+| keyword | <code>dc.title</code>, <code>dc.contributor.author</code>, <code>dc.creator</code>, <code>dc.subject</code>, <code>dc.description.abstract</code>; optionally <code>fulltext</code> only after the Phase 0 public-content proof | Configured search fields with text analysis |
+| title | <code>dc.title</code> | Discovery title search field |
+| creator | <code>dc.contributor.author</code>, <code>dc.creator</code> | Discovery author/creator search field |
+| subject | <code>dc.subject</code> | Discovery subject search + filter fields |
+| date | <code>dc.date.issued</code> | Discovery date sort/filter fields |
+| type | <code>dc.type</code> | Discovery type filter field |
+| collection | <code>location.coll</code> | Discovery hierarchy field (used directly) |
+| community | <code>location.comm</code> | Discovery hierarchy field (used directly) |
+| system identity | <code>search.resourceid</code>, <code>search.resourcetype</code>, <code>handle</code> | System fields (used directly by name) |
+| public gate | <code>withdrawn</code>, <code>discoverable</code>, <code>latestVersion</code>, <code>database_status</code>, <code>read</code> | System state fields (used directly by name) |
+| related | title, creator, subject, abstract metadata | Allowlisted <code>*_mlt</code> fields configured for MoreLikeThis |
 
 Exact generated Discovery field names are confirmed against the deployed schema and known public and non-public fixtures before enabling the adapter. Full-text fields remain disabled unless Phase 0 proves all indexed values are publicly searchable and cannot reveal non-public content through matching, ranking, facets, highlighting, or explanations. Even when enabled, full text may influence rank but is never returned. (Requirements 2, 9.6-9.8)
 
@@ -396,6 +400,7 @@ The client does not send an <code>X-Dataverse-key</code> header or Bearer token.
 
 Platform payloads are mapped to normalized search summaries or full item records only after public validation. Normalization:
 
+- Never includes a field name in `matchedFields` unless the field's content is fully represented in the returned public metadata. If full-text search is enabled in a future phase, its contribution to ranking must appear as a generic indicator (e.g., "content") rather than echoing the matched terms, and must not confirm that a document's non-public body contains specific text.
 - Preserves all creators and subjects in source order.
 - Normalizes dates to ISO 8601 where available while retaining a display value when the source is less precise.
 - Preserves the repository-supplied citation when available.
@@ -424,7 +429,7 @@ interface FederatedCursorV1 {
 }
 ~~~
 
-The cursor is canonical-JSON encoded and base64url encoded. The query hash covers the normalized query, selected repositories, filters, sort, and limit. Cursor decoding validates types, version, non-negative bounded offsets, and query hash. The service is stateless because all required paging state is in the Cursor. (Requirement 11)
+The cursor is canonical-JSON encoded and base64url encoded. The query hash covers the normalized query, selected repositories, filters, sort, and limit. Query normalization (lowercasing, whitespace collapsing, trimming, and NFC Unicode normalization) is applied before both cursor hashing and search cache keying, so that trivial input variations do not produce unnecessary cursor resets or cache misses. Filter arrays are sorted and default-valued optional parameters are omitted before hashing. Cursor decoding validates types, version, non-negative bounded offsets, and query hash. When the decoded cursor's query hash does not match the current normalized request, the server resets offsets to (0, 0), returns results from the first page, and includes a `cursor_reset` warning rather than rejecting the request. The service is stateless because all required paging state is in the Cursor. (Requirement 11)
 
 If one adapter fails, federation returns the successful RepositoryPage plus a warning:
 
@@ -444,24 +449,11 @@ Each task uses bounded in-process LRU caches:
 
 | Cache | Key | Maximum TTL | Purpose |
 | --- | --- | --- | --- |
-| Search | Hash of normalized adapter request | 60 seconds | Absorb repeated AI iterations and identical client retries |
-| Canonical record | Repository plus canonical identifier | 5 minutes | Store normalized payload; revalidated before each emit |
+| Search candidates | Hash of normalized adapter request | 60 seconds | Absorb repeated AI iterations and identical client retries; cached candidates still pass through canonical validation before return |
+| Canonical record (get_item only) | Repository plus canonical identifier | 60 seconds | Reduce repeated REST/Native API calls for direct item lookups |
 | Schema validation | Repository profile version | Process lifetime | Avoid repeated schema reads |
 
-Cache entries contain public normalized data only. No user identity, raw query, token, or conversation is cached. Cache absence on another task affects performance only, not correctness.
-
-#### Revalidation on Emit
-
-The Canonical_Record cache stores the fully normalized payload to avoid repeated parsing and normalization, but it does **not** bypass access-control checks. Before returning a cached record from <code>get_item</code> or a resource read, the server performs a lightweight revalidation probe:
-
-- **DSpace:** An anonymous HEAD request to the item endpoint. HTTP 200 confirms the item is still public. Any other status (401, 403, 404, or network error) triggers eviction and a <code>not_found</code> response.
-- **Dataverse:** A minimal anonymous GET to the dataset endpoint with reduced response fields. A successful response with a published latest version confirms the dataset is still public. Any error or non-published state triggers eviction and a <code>not_found</code> response.
-
-If the probe succeeds, the cached normalized payload is returned without re-fetching or re-normalizing the full record. If the probe fails or times out, the cache entry is evicted and the caller receives the standard indistinguishable <code>not_found</code> response.
-
-The probe shares the same per-call timeout and retry policy as other Canonical_API requests. Probe failures are counted in the <code>validation_omissions</code> metric. (Requirements 9.3-9.5, 15.4, 15.9)
-
-The search cache does not require revalidation because search results are already validated through the Canonical_API during the candidate canonicalization step, and the 60-second TTL is comparable to or shorter than the Solr re-index lag after a state change.
+Cache entries contain public normalized data only. No user identity, raw query, token, or conversation is cached. The search candidate cache does NOT bypass canonical API validation — every record selected for return is validated fresh through its Canonical API regardless of cache state. The canonical record cache applies only to `get_item` direct lookups, not to search result canonicalization. Cache absence on another task affects performance only, not correctness.
 
 A per-task semaphore limits concurrent tool calls and a lower per-repository semaphore limits canonicalization fan-out. Canonical lookups use a fixed worker pool rather than unbounded <code>Promise.all</code>. (Requirements 14.6, 15.4)
 
@@ -538,7 +530,7 @@ interface RepositoryRecord {
   };
 }
 
-interface CanonicalRecord extends RepositoryRecord {
+interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
 }
 
@@ -558,7 +550,7 @@ interface PublicFileSummary {
 }
 ~~~
 
-Search and related tools return <code>RepositoryRecord</code> summaries. <code>get_item</code> and item resources return <code>CanonicalRecord</code> with the expanded <code>files</code> array. Optional values are required-but-nullable so clients receive a stable object shape. Files are capped at 100; <code>fileCount</code> records the public count reported by the canonical platform and may exceed the returned file-summary length. (Requirements 4, 5)
+Search and related tools return `RepositoryRecord` summaries (the SearchResult projection). `get_item` and item resources return `ItemDetail` with the expanded `files` array. Optional values are required-but-nullable so clients receive a stable object shape. Files are capped at 100; `fileCount` records the public count reported by the canonical platform and may exceed the returned file-summary length. (Requirements 4, 5)
 
 #### Search Response
 
@@ -593,7 +585,7 @@ Common facets are normalized by concept, not raw backend field:
 | resource type | DSpace type facet | Dataset type / metadata resource type |
 | collection | DSpace collection hierarchy | Parent Dataverse |
 
-Counts from separate repositories are returned with a per-repository breakdown and a summed total only for labels that normalize to the exact same case-folded value. The response never implies that two differently controlled vocabularies are equivalent merely because they are similar. (Requirement 6)
+Counts from separate repositories are returned with a per-repository breakdown and a summed total for labels that normalize to the same value after case-folding, whitespace collapsing, and punctuation removal (hyphens, parentheses, trailing periods). The display label uses the most frequently occurring original form. The response never implies that two differently controlled vocabularies are equivalent merely because they are similar beyond this normalization. (Requirement 6)
 
 Related-record discovery is metadata-based:
 
@@ -948,7 +940,7 @@ No production implementation proceeds until both immutable filter sets are demon
 
 The following decisions must be completed during Phase 0 and recorded in an ADR or spec update:
 
-1. Public production hostname and whether Cloudflare proxies it or provides DNS only.
+1. Public production hostname; Cloudflare provides DNS only (grey cloud) in v1 to avoid challenge-page interference with programmatic MCP clients.
 2. Exact private DSpace REST route used by the MCP.
 3. Exact deployed public-filter fields and values for DSpace and Dataverse.
 4. Approved browser Origin allowlist for HopGPT and other target hosts.

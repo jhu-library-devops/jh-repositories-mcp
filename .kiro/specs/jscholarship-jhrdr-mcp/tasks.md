@@ -22,6 +22,11 @@
     - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun ci</code> for reproducible installs.
     - Configure Bun as the runtime, package manager, bundler, and test runner while retaining <code>tsc --noEmit</code> for type-checking.
     - _Requirements: 12.1, 12.4, 12.7-12.8, 17_
+  - [ ] 2.4 Verify stateless MCP Streamable HTTP multi-task operation
+    - Run a real MCP client through initialization, tool listing, and at least one tool call against the Bun Web Standard transport.
+    - Distribute one client lifecycle across multiple server processes to confirm no session affinity is required.
+    - Validate that target clients (LibreChat in stage, HopGPT and Claude in production) handle the stateless mode without persistent initialization state.
+    - _Requirements: 12.1-12.2, 12.7-12.8_
   - [ ] 2.2 Create the source layout for adapters, federation, MCP registry, models, observability, security, configuration, and tests
     - Keep repository-specific code under its adapter boundary.
     - _Requirements: 2, 3, 10.2_
@@ -30,7 +35,7 @@
     - _Requirements: 13.2-13.9, 14.3-14.6, 15.1, 15.8_
 
 - [ ] 3. Implement normalized domain models and JSON Schemas
-  - [ ] 3.1 Implement RepositoryId, RepositoryRecord, CanonicalRecord, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models
+  - [ ] 3.1 Implement RepositoryId, RepositoryRecord (SearchResult), ItemDetail, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models
     - Require nullable optional properties and empty arrays as specified.
     - Namespace record IDs by Repository.
     - _Requirements: 4.1-4.6, 5.1-5.5_
@@ -158,7 +163,7 @@
 - [ ] 11. Implement <code>search_items</code>
   - [ ] 11.1 Orchestrate selected adapters concurrently with the normalized search request and Cursor state
     - _Requirements: 1.1-1.4, 11_
-  - [ ] 11.2 Return canonical normalized Record_Summary results, count, next Cursor, Repository status, warnings, retrieval time, and resource links
+  - [ ] 11.2 Return canonical normalized SearchResult results, count, next Cursor, Repository status, warnings, retrieval time, and resource links
     - Return both structuredContent and compact text.
     - _Requirements: 1.5-1.8, 4.1-4.7, 8.4, 12.4_
   - [ ] 11.3 Handle zero results, complete backend failure, partial failure, deadline, malformed input, and unsupported filters
@@ -167,7 +172,7 @@
 - [ ] 12. Implement <code>get_item</code>
   - [ ] 12.1 Route namespaced IDs and explicit Repository identifiers to the correct canonical client
     - _Requirements: 4.3, 5.1, 5.3_
-  - [ ] 12.2 Return stable Canonical_Record output, compact text, and a resource link
+  - [ ] 12.2 Return stable ItemDetail output, compact text, and a resource link
     - _Requirements: 4, 5.2, 8.4_
   - [ ] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
     - _Requirements: 5.4-5.5, 9.5_
@@ -187,7 +192,7 @@
   - [ ] 14.2 Derive common public metadata concepts and call one or both adapters
     - Exclude the source and enforce the clamped limit and public gates.
     - _Requirements: 7.2-7.6, 9, 10_
-  - [ ] 14.3 Return canonical Record_Summary results with sourceRank, Repository, evidence fields, and no-result messaging
+  - [ ] 14.3 Return canonical SearchResult results with sourceRank, Repository, evidence fields, and no-result messaging
     - _Requirements: 4, 7.5-7.6_
 
 - [ ] 15. Implement explanations, resources, and prompts
@@ -273,7 +278,8 @@
     - _Requirements: 14.3-14.5_
   - [ ] 21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients
     - _Requirements: 14.4_
-  - [ ] 21.4 Decide and configure Cloudflare proxy or DNS-only behavior, then test MCP responses through the complete public path
+  - [ ] 21.4 Configure Cloudflare as DNS-only (grey cloud) for the public hostname and test MCP responses through the complete public path
+    - Do not proxy through Cloudflare in v1 to avoid challenge-page interference with programmatic MCP clients.
     - _Requirements: 12.1-12.2, 14.2_
 
 - [ ] 22. Build CI/CD and supply-chain checks
@@ -288,10 +294,10 @@
     - _Requirements: 12, 13.9, 16.6_
 
 - [ ] 23. Complete protocol, security, and failure verification
-  - [ ] 23.1 Run a real MCP client through initialization, tool listing, every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown
-    - Run the suite against the Bun production container and its Web Standard transport.
+  - [ ] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container
+    - Initialization and multi-task stateless verification are covered in task 2.4; this task covers the full tool/resource/prompt surface and error handling.
     - _Requirements: 12.1-12.8, 16.2, 16.6_
-  - [ ] 23.2 Verify multi-task stateless operation by distributing one client lifecycle across multiple server processes
+  - [ ] 23.2 Confirm multi-task stateless operation at production scale with the final container image
     - _Requirements: 12.2_
   - [ ] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
     - _Requirements: 9, 16.1_
@@ -314,8 +320,10 @@
   - [ ] 25.1 Build and review at least 40 benchmark queries with JScholarship, JHRDR, and research-services staff
     - Cover known-item, Handle/DOI, topical, author, subject, date, dataset, related, cross-repository, and zero-result cases.
     - _Requirements: 16.3_
-  - [ ] 25.2 Measure known-item success, persistent-identifier success, precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate
-    - Require at least 95 percent known-item and exact-identifier success.
+  - [ ] 25.2 Measure known-item success (top 10), persistent-identifier success (must be 100%), precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate
+    - Require 100 percent success on exact Persistent_Identifier queries via <code>get_item</code>.
+    - Require at least 95 percent known-item search success (item appears in top 10 results).
+    - Track reciprocal rank as a quality metric for known-item searches.
     - _Requirements: 16.4, 16.7_
   - [ ] 25.3 Conduct the researcher/librarian pilot using privacy-safe data collection and document relevance and trust findings
     - Do not store raw private research questions.

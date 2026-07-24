@@ -19,8 +19,8 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 - **JScholarship_Adapter**: The component that queries the DSpace Solr <code>search</code> collection and resolves records through DSpace REST.
 - **JHRDR_Adapter**: The component that queries the Dataverse Solr <code>collection1</code> collection and resolves records through the Dataverse Native API.
 - **Canonical_API**: DSpace REST for JScholarship or the Dataverse Native API for JHRDR.
-- **Record_Summary**: A normalized, citation-ready search result built from a Canonical_API response after public-access validation, without an expanded file list.
-- **Canonical_Record**: A full normalized record returned by an item lookup, including bounded public file or bitstream summaries.
+- **SearchResult**: A normalized, citation-ready search result built from a Canonical_API response after public-access validation, without an expanded file list. A projection of the full item data optimized for list display.
+- **ItemDetail**: A full normalized record returned by an item lookup, including bounded public file or bitstream summaries. The complete projection of canonical data for a single record.
 - **Candidate**: A Solr search result that has not yet passed Canonical_API validation.
 - **Public_Record**: A published, discoverable record that an anonymous user may retrieve through its repository's Canonical_API.
 - **Persistent_Identifier**: A JScholarship Handle or a JHRDR DOI/Handle.
@@ -57,8 +57,8 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 2. THE JScholarship_Adapter SHALL map keyword, title, creator, author, subject, abstract, resource type, date, community, and collection concepts only through the JScholarship Field_Allowlist.
 3. THE JScholarship_Adapter SHALL append non-overridable filters for DSpace items that are non-withdrawn, discoverable, latest-version, archived, and readable by the anonymous group.
 4. WHEN a Candidate is selected for return, THE JScholarship_Adapter SHALL resolve it through DSpace REST and SHALL return it only if DSpace REST confirms it is a Public_Record.
-5. WHEN a JScholarship Record_Summary is returned, THE JScholarship_Adapter SHALL include its UUID, Handle, canonical landing-page URL, public metadata, public file count when available, and public formats when available.
-6. WHEN a full JScholarship Canonical_Record is requested, THE JScholarship_Adapter SHALL include public bitstream summaries.
+5. WHEN a JScholarship SearchResult is returned, THE JScholarship_Adapter SHALL include its UUID, Handle, canonical landing-page URL, public metadata, public file count when available, and public formats when available.
+6. WHEN a full JScholarship ItemDetail is requested, THE JScholarship_Adapter SHALL include public bitstream summaries.
 7. IF DSpace REST cannot validate a Candidate, THEN THE JScholarship_Adapter SHALL omit the Candidate and SHALL NOT return Solr-only metadata for it.
 
 ### Requirement 3: JHRDR Adapter
@@ -71,8 +71,8 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 2. THE JHRDR_Adapter SHALL map keyword, title, author, affiliation, description, subject, keyword, publication date, and Dataverse collection concepts only through the JHRDR Field_Allowlist.
 3. THE JHRDR_Adapter SHALL append non-overridable filters that restrict candidates to publicly published datasets and exclude drafts, deaccessioned versions, files, and Dataverse collection records.
 4. WHEN a Candidate is selected for return, THE JHRDR_Adapter SHALL resolve the latest published version through the anonymous Dataverse Native API and SHALL return it only if the API confirms it is a Public_Record.
-5. WHEN a JHRDR Record_Summary is returned, THE JHRDR_Adapter SHALL include its persistent identifier, DOI URL when present, canonical dataset URL, citation, license or terms, public metadata, public file count, and public formats when available.
-6. WHEN a full JHRDR Canonical_Record is requested, THE JHRDR_Adapter SHALL include public file summaries.
+5. WHEN a JHRDR SearchResult is returned, THE JHRDR_Adapter SHALL include its persistent identifier, DOI URL when present, canonical dataset URL, citation, license or terms, public metadata, public file count, and public formats when available.
+6. WHEN a full JHRDR ItemDetail is requested, THE JHRDR_Adapter SHALL include public file summaries.
 7. IF a dataset file is restricted or cannot be confirmed public, THEN THE JHRDR_Adapter SHALL omit that file from the returned file summaries.
 8. IF the Dataverse Native API cannot validate a Candidate, THEN THE JHRDR_Adapter SHALL omit the Candidate and SHALL NOT return Solr-only metadata for it.
 
@@ -82,7 +82,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 
 #### Acceptance Criteria
 
-1. THE MCP_Server SHALL represent every Record_Summary with the fields <code>id</code>, <code>repository</code>, <code>kind</code>, <code>title</code>, <code>creators</code>, <code>date</code>, <code>abstract</code>, <code>subjects</code>, <code>resourceTypes</code>, <code>persistentId</code>, <code>citation</code>, <code>landingPageUrl</code>, <code>collection</code>, <code>access</code>, <code>fileCount</code>, <code>formats</code>, <code>matchedFields</code>, <code>snippet</code>, <code>sourceRank</code>, and <code>provenance</code>.
+1. THE MCP_Server SHALL represent every SearchResult with the fields <code>id</code>, <code>repository</code>, <code>kind</code>, <code>title</code>, <code>creators</code>, <code>date</code>, <code>abstract</code>, <code>subjects</code>, <code>resourceTypes</code>, <code>persistentId</code>, <code>citation</code>, <code>landingPageUrl</code>, <code>collection</code>, <code>access</code>, <code>fileCount</code>, <code>formats</code>, <code>matchedFields</code>, <code>snippet</code>, <code>sourceRank</code>, and <code>provenance</code>.
 2. THE MCP_Server SHALL represent an unavailable optional value as <code>null</code> and an available multi-valued field with no values as an empty array.
 3. THE MCP_Server SHALL namespace record IDs by Repository so that identifiers from different platforms cannot collide.
 4. THE MCP_Server SHALL include the Canonical_API source, retrieval timestamp, platform type, and platform record identifier in <code>provenance</code>.
@@ -96,8 +96,8 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 
 #### Acceptance Criteria
 
-1. WHEN an MCP_Client invokes <code>get_item</code> with a Repository and a valid namespaced ID, UUID, Handle, DOI, or Dataverse persistent identifier, THE MCP_Server SHALL resolve a full Canonical_Record using the selected Repository's Canonical_API.
-2. WHEN the record is a Public_Record, THE MCP_Server SHALL return a Canonical_Record and no more than 100 public file or bitstream summaries.
+1. WHEN an MCP_Client invokes <code>get_item</code> with a Repository and a valid namespaced ID, UUID, Handle, DOI, or Dataverse persistent identifier, THE MCP_Server SHALL resolve a full ItemDetail using the selected Repository's Canonical_API.
+2. WHEN the record is a Public_Record, THE MCP_Server SHALL return an ItemDetail and no more than 100 public file or bitstream summaries.
 3. IF the identifier is malformed, THEN THE MCP_Server SHALL reject it before calling Solr or a Canonical_API.
 4. IF the identifier does not exist or identifies a non-public record, THEN THE MCP_Server SHALL return the same <code>not_found</code> response shape in both cases.
 5. IF the Canonical_API is unavailable, THEN THE MCP_Server SHALL return a structured <code>backend_unavailable</code> tool error without exposing internal URLs or stack traces.
@@ -110,7 +110,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 
 1. WHEN an MCP_Client invokes <code>list_facets</code>, THE MCP_Server SHALL return approved common facets for repository, creator, subject, year, resource type, and collection.
 2. WHEN a Repository has additional approved facets, THE MCP_Server MAY return them under a Repository-qualified facet name.
-3. THE MCP_Server SHALL return no more than 10 values per facet, ordered by count descending and then label ascending.
+3. THE MCP_Server SHALL return no more than 10 values per facet, ordered by count descending and then label ascending. Cross-repository facet values SHALL be merged when they normalize to the same value after case-folding, whitespace collapsing, and punctuation removal; the display label SHALL use the most frequently occurring original form.
 4. THE MCP_Server SHALL calculate each facet only from records satisfying the same immutable public filters as <code>search_items</code>.
 5. IF a requested facet is not allowlisted, THEN THE MCP_Server SHALL reject the request before querying either Solr backend.
 6. WHEN no records match, THE MCP_Server SHALL return approved facet names with empty value arrays rather than an error.
@@ -125,7 +125,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 2. FOR a JScholarship source, THE MCP_Server SHALL derive related-record terms from allowlisted DSpace MoreLikeThis fields and canonical title, creator, subject, and abstract metadata.
 3. FOR a JHRDR source, THE MCP_Server SHALL derive related-record terms from canonical title, author, subject, keyword, affiliation, and description metadata.
 4. WHEN the Repository selector is <code>all</code>, THE MCP_Server SHALL search both Repositories using the derived terms.
-5. THE MCP_Server SHALL exclude the source record, enforce all public filters, and return no more than the clamped limit of Canonical_Record results.
+5. THE MCP_Server SHALL exclude the source record, enforce all public filters, and return no more than the clamped limit of ItemDetail results.
 6. WHEN no related Public_Record is found, THE MCP_Server SHALL return an empty result array and a non-error message.
 
 ### Requirement 8: Search Explanation, Resources, and Prompts
@@ -180,7 +180,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 2. WHEN merging two result lists, THE MCP_Server SHALL use a deterministic balanced reciprocal-rank method with equal default Repository weights.
 3. THE MCP_Server SHALL include <code>sourceRank</code> and <code>repository</code> on every result and SHALL NOT label Federated_Rank as a probability or confidence.
 4. THE Cursor SHALL contain a version, normalized query hash, and independent next positions for JScholarship and JHRDR.
-5. IF a Cursor is malformed, has an unsupported version, or does not match the normalized query and filters, THEN THE MCP_Server SHALL reject it as invalid input.
+5. IF a Cursor is malformed or has an unsupported version, THEN THE MCP_Server SHALL reject it as invalid input. IF a Cursor does not match the normalized query and filters, THEN THE MCP_Server SHALL reset pagination to the first page and include a <code>cursor_reset</code> warning.
 6. FOR equivalent inputs and unchanged indexes, THE MCP_Server SHALL produce deterministic ordering and Cursor progression.
 7. EACH adapter SHALL request no more than three times the requested limit from Solr per page attempt and SHALL advance its Solr offset only past the candidates it consumed, not the entire fetched window.
 8. IF the over-fetch ceiling is exhausted before accumulating the requested limit of validated results, THEN the adapter SHALL return a short page with a non-null next offset and the federation layer SHALL include a <code>validation_attrition</code> warning identifying the affected Repository.
@@ -240,7 +240,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 1. THE MCP_Server SHALL impose configurable per-call timeouts on each Solr and Canonical_API request and an overall tool deadline no greater than 10 seconds.
 2. THE MCP_Server SHALL retry only idempotent transient failures, use exponential backoff with jitter, and make no more than two total attempts per backend call.
 3. WHEN one Repository fails during an <code>all</code> search, THE MCP_Server SHALL return available results with a Repository-qualified warning.
-4. THE MCP_Server MAY cache public search responses for up to 60 seconds and normalized Canonical_Record payloads for up to 5 minutes using bounded in-process caches, provided that cached Canonical_Records are revalidated before being returned.
+4. THE MCP_Server MAY cache Solr search candidates for up to 60 seconds and <code>get_item</code> canonical record responses for up to 60 seconds using bounded in-process caches. Cached search candidates SHALL still pass through canonical API validation before return; the search cache SHALL NOT bypass the public-access gate.
 5. THE MCP_Server SHALL log structured events containing timestamp, request ID, client name and version when supplied, tool, Repository, latency, result count, cache status, outcome, and backend status.
 6. THE MCP_Server SHALL NOT log raw search text, filter values, prompts, conversation content, record abstracts, user identity, access tokens, or response bodies.
 7. THE MCP_Server SHALL publish CloudWatch metrics for invocation count, latency, errors, zero-result searches, Partial_Result responses, backend availability, validation omissions, cache hits, and rate-limit events.
@@ -256,9 +256,9 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 1. THE test suite SHALL include known withdrawn, private, draft, deaccessioned, and restricted fixtures and SHALL demonstrate that none are returned by any tool or resource.
 2. THE test suite SHALL verify that every tool output conforms to its advertised JSON Schema.
 3. THE stage evaluation SHALL include at least 40 benchmark queries covering known-item lookup, topical discovery, author search, subject refinement, dataset discovery, exact Persistent_Identifier lookup, and cross-repository exploration.
-4. THE benchmark SHALL achieve at least 95 percent success on known-item and exact Persistent_Identifier queries.
+4. THE benchmark SHALL achieve 100 percent success on exact Persistent_Identifier queries via <code>get_item</code> and at least 95 percent success on known-item search queries (item appears in top 10 results), with reciprocal rank tracked as a quality metric.
 5. UNDER the agreed pilot load, THE federated search p95 SHALL be no greater than 3 seconds when both repositories are healthy.
-6. THE compatibility suite SHALL complete initialization, tool listing, tool calls, resource reads, prompt retrieval, and shutdown using the target MCP clients.
+6. THE compatibility suite SHALL complete initialization, tool listing, tool calls, resource reads, prompt retrieval, and shutdown using the target MCP clients, including LibreChat for stage validation and HopGPT for production.
 7. THE pilot SHALL record relevance judgments, citation correctness, time to a useful result, number of search iterations, zero-result rate, and user trust feedback without storing raw private research questions.
 8. Production deployment SHALL require explicit sign-off from JScholarship, JHRDR, library research-services, and platform-operation owners.
 
