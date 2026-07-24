@@ -16,6 +16,8 @@ This directory contains Architecture Decision Records (ADRs) for the JScholarshi
 | [ADR-008](./ADR-008-anonymous-read-only-v1.md) | Anonymous Read-Only v1 Access Model | Accepted | 2024-07-24 |
 | [ADR-009](./ADR-009-host-model-performs-synthesis.md) | Host Model Performs Synthesis | Accepted | 2024-07-24 |
 | [ADR-010](./ADR-010-new-cross-repository-service-stack.md) | New Cross-Repository Service Stack | Accepted | 2024-07-24 |
+| [ADR-011](./ADR-011-search-cache-never-bypasses-canonical-gate.md) | Search Cache Never Bypasses the Canonical API Gate | Accepted | 2024-07-24 |
+| [ADR-012](./ADR-012-cursor-mismatch-resets-instead-of-errors.md) | Cursor Hash Mismatch Resets Pagination Instead of Returning an Error | Accepted | 2024-07-24 |
 
 ## Source
 
