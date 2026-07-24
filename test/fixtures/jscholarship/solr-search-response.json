@@ -1,0 +1,90 @@
+{
+  "$comment": "Synthetic JScholarship Solr search response fixture. Contains 3 items: one fully public, one matching all filters, and one excluded by immutable filters (withdrawn). Uses fake UUIDs and handles. No credentials or private content.",
+  "responseHeader": {
+    "status": 0,
+    "QTime": 12,
+    "params": {
+      "q": "title:climate AND subject:environment",
+      "fq": [
+        "search.resourcetype:Item",
+        "latestVersion:true",
+        "-withdrawn:true",
+        "-discoverable:false",
+        "database_status:ARCHIVED",
+        "read:g0"
+      ],
+      "fl": "search.resourceid,search.resourcetype,search.uniqueid,handle,withdrawn,discoverable,latestVersion,database_status,read",
+      "rows": "30",
+      "start": "0",
+      "sort": "score desc",
+      "timeAllowed": "5000",
+      "wt": "json"
+    }
+  },
+  "response": {
+    "numFound": 2,
+    "start": 0,
+    "maxScore": 8.742,
+    "docs": [
+      {
+        "$comment": "Public item: passes all immutable filters. Full metadata available via DSpace REST.",
+        "search.resourceid": "11111111-1111-1111-1111-111111111111",
+        "search.resourcetype": "Item",
+        "search.uniqueid": "Item-11111111-1111-1111-1111-111111111111",
+        "handle": "1774.2/99999",
+        "withdrawn": "false",
+        "discoverable": "true",
+        "latestVersion": true,
+        "database_status": "ARCHIVED",
+        "read": ["g0", "g1"]
+      },
+      {
+        "$comment": "Second public item: also passes all immutable filters. Demonstrates multi-result pagination.",
+        "search.resourceid": "22222222-2222-2222-2222-222222222222",
+        "search.resourcetype": "Item",
+        "search.uniqueid": "Item-22222222-2222-2222-2222-222222222222",
+        "handle": "1774.2/88888",
+        "withdrawn": "false",
+        "discoverable": "true",
+        "latestVersion": true,
+        "database_status": "ARCHIVED",
+        "read": ["g0"]
+      }
+    ]
+  },
+  "facet_counts": {
+    "facet_queries": {},
+    "facet_fields": {
+      "subject_filter": [
+        "Environmental Science", 4,
+        "Climate Change", 3,
+        "Sustainability", 2,
+        "Ecology", 1
+      ],
+      "author_filter": [
+        "Smith, Jane A.", 3,
+        "Johnson, Robert K.", 2,
+        "Williams, Maria L.", 1
+      ],
+      "dateIssued.year": [
+        "2024", 2,
+        "2023", 1
+      ]
+    },
+    "facet_ranges": {},
+    "facet_intervals": {}
+  },
+  "_excluded_for_negative_testing": {
+    "$comment": "This document would appear in an unfiltered index but is EXCLUDED by immutable filters. Included here for test reference only — it must never be returned by the MCP.",
+    "search.resourceid": "33333333-3333-3333-3333-333333333333",
+    "search.resourcetype": "Item",
+    "search.uniqueid": "Item-33333333-3333-3333-3333-333333333333",
+    "handle": "1774.2/77777",
+    "withdrawn": "true",
+    "discoverable": "true",
+    "latestVersion": true,
+    "database_status": "ARCHIVED",
+    "read": ["g0"],
+    "exclusion_reason": "withdrawn:true — excluded by immutable filter '-withdrawn:true'"
+  }
+}
