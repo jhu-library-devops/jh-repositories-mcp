@@ -4,3 +4,6 @@
 .kiro/settings/*
 .claude/system-prompts/*
 .claude/settings/*
+infra/.terraform/*
+.terraform/*
+infra/.terraform.lock.hcl
