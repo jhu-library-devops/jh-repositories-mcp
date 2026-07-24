@@ -1,0 +1,435 @@
+{
+  "$comment": "Sanitized JHRDR Dataverse 6.10.1 Solr schema fixture. Extracted from jhu-dataverse-deployment config/solr/schema.xml. No credentials or private content.",
+  "collection": "collection1",
+  "platform": "dataverse",
+  "version": "6.10.1",
+  "capturedFrom": "jhu-dataverse-deployment/config/solr/schema.xml",
+  "capturedAt": "2025-01-15T00:00:00Z",
+
+  "explicitFields": {
+    "id": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "multiValued": false,
+      "description": "Solr document unique key (e.g. 'dataset_42_draft' or 'dataset_42')"
+    },
+    "entityId": {
+      "type": "plong",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "multiValued": false,
+      "description": "Dataverse database entity ID (primary key)"
+    },
+    "dvObjectType": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": true,
+      "multiValued": false,
+      "description": "Entity type: 'Dataverse', 'Dataset', or 'DataFile'. MCP filters to Dataset only."
+    },
+    "publicationStatus": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Publication lifecycle states. MultiValued — can contain 'Published', 'Draft', 'Deaccessioned'. A deaccessioned dataset may have both 'Published' and 'Deaccessioned'."
+    },
+    "identifier": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Persistent identifier string (e.g. 'doi:10.7281/T1/EXAMPLE' or 'hdl:1774.2/12345')"
+    },
+    "persistentUrl": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Full persistent URL (e.g. 'https://doi.org/10.7281/T1/EXAMPLE')"
+    },
+    "dsPersistentId": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset persistent ID (searchable text_en version of identifier)"
+    },
+    "parentId": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Parent Dataverse entity ID"
+    },
+    "parentIdentifier": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Parent Dataverse alias (used for collection filtering)"
+    },
+    "parentName": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Parent Dataverse display name"
+    },
+    "citation": {
+      "type": "string",
+      "stored": true,
+      "indexed": false,
+      "required": false,
+      "multiValued": false,
+      "description": "Formatted dataset citation string"
+    },
+    "dateSort": {
+      "type": "pdate",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Sort-optimized date field"
+    },
+    "nameSort": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Sort-optimized name field (lowercase title)"
+    },
+    "publicationDate": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset publication date string"
+    },
+    "dsPublicationDate": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset-level publication date"
+    },
+    "datasetVersionId": {
+      "type": "plong",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Database version ID for this dataset version"
+    },
+    "datasetType": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset type classification"
+    },
+    "license": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "License identifier (e.g. 'CC0 1.0', 'CC BY 4.0')"
+    },
+    "fileCount": {
+      "type": "plong",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Number of files in the dataset"
+    },
+    "title": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset title from citation metadata block"
+    },
+    "subtitle": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataset subtitle"
+    },
+    "authorName": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Author names from citation metadata block"
+    },
+    "authorAffiliation": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Author institutional affiliations"
+    },
+    "authorIdentifier": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Author identifiers (e.g. ORCID)"
+    },
+    "dsDescriptionValue": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Dataset description text (abstract equivalent)"
+    },
+    "subject": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Subject terms from citation metadata block (text_en for search)"
+    },
+    "dvSubject": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Dataverse-level subject facets (string type for exact-match faceting)"
+    },
+    "keywordValue": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Keywords from citation metadata block"
+    },
+    "topicClassValue": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Topic classifications"
+    },
+    "language": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Dataset language(s)"
+    },
+    "contributorName": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Contributor names"
+    },
+    "grantNumberAgency": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Funding agency names"
+    },
+    "kindOfData": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Kind of data classification"
+    },
+    "discoverableBy": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Group aliases with discovery permission. Contains the public/guest value for anonymous access. TODO: Verify exact anonymous value from live deployment."
+    },
+    "_text_": {
+      "type": "text_general",
+      "stored": false,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Catchall field populated by copyField from most metadata fields. Used for broad keyword search."
+    },
+    "dvName": {
+      "type": "text_en",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": false,
+      "description": "Dataverse name (for Dataverse-type documents, not datasets)"
+    },
+    "subtreePaths": {
+      "type": "string",
+      "stored": true,
+      "indexed": true,
+      "required": false,
+      "multiValued": true,
+      "description": "Hierarchy tree paths for the Dataverse collection tree"
+    }
+  },
+
+  "fieldTypes": {
+    "text_en": {
+      "class": "solr.TextField",
+      "analyzers": [
+        "StandardTokenizer",
+        "StopFilterFactory (English)",
+        "LowerCaseFilterFactory",
+        "EnglishPossessiveFilterFactory",
+        "KeywordRepeatFilterFactory",
+        "PorterStemFilterFactory",
+        "RemoveDuplicatesTokenFilterFactory",
+        "ASCIIFoldingFilterFactory"
+      ],
+      "description": "English text analysis with stemming, stop words, ASCII folding, and possessive handling."
+    },
+    "text_general": {
+      "class": "solr.TextField",
+      "analyzers": [
+        "StandardTokenizer",
+        "StopFilterFactory",
+        "LowerCaseFilterFactory"
+      ],
+      "description": "General text analysis with tokenization, stop words, and lowercase."
+    },
+    "string": {
+      "class": "solr.StrField",
+      "analyzers": [],
+      "description": "Exact-match string field. No tokenization or analysis."
+    },
+    "plong": {
+      "class": "solr.LongPointField",
+      "analyzers": [],
+      "description": "64-bit integer field with point-based indexing."
+    },
+    "pdate": {
+      "class": "solr.DatePointField",
+      "analyzers": [],
+      "description": "Date field with point-based indexing for range queries and sorting."
+    }
+  },
+
+  "copyFields": [
+    {
+      "source": "title",
+      "dest": "_text_",
+      "description": "Title copied to catchall for keyword search"
+    },
+    {
+      "source": "authorName",
+      "dest": "_text_",
+      "description": "Author names copied to catchall"
+    },
+    {
+      "source": "subject",
+      "dest": "_text_",
+      "description": "Subjects copied to catchall"
+    },
+    {
+      "source": "keywordValue",
+      "dest": "_text_",
+      "description": "Keywords copied to catchall"
+    },
+    {
+      "source": "dsDescriptionValue",
+      "dest": "_text_",
+      "description": "Descriptions copied to catchall"
+    },
+    {
+      "source": "topicClassValue",
+      "dest": "_text_",
+      "description": "Topic classifications copied to catchall"
+    },
+    {
+      "source": "contributorName",
+      "dest": "_text_",
+      "description": "Contributors copied to catchall"
+    }
+  ],
+
+  "excludedFileLevelFields": {
+    "$comment": "These fields exist in the schema but are excluded from the MCP because the dvObjectType:Dataset filter means file documents are never returned.",
+    "fields": [
+      "fileName",
+      "fileType",
+      "fileAccess",
+      "fileSizeInBytes",
+      "fileRestricted",
+      "fileMd5",
+      "fileContentType",
+      "fileTypeGroupFacet"
+    ]
+  },
+
+  "publicFilterExplanation": {
+    "conditions": [
+      {
+        "field": "dvObjectType",
+        "value": "Dataset",
+        "reason": "MCP returns only Datasets, not Dataverse collections or DataFiles"
+      },
+      {
+        "field": "publicationStatus",
+        "value": "Published",
+        "multiValued": true,
+        "reason": "Only published dataset versions are publicly accessible"
+      },
+      {
+        "field": "publicationStatus",
+        "excluded": "Deaccessioned",
+        "reason": "Deaccessioned datasets must be excluded even if they also contain 'Published' in their multiValued status"
+      }
+    ],
+    "todoConditions": [
+      {
+        "field": "discoverableBy",
+        "value": "Anonymous (TODO: verify exact value)",
+        "reason": "May need to filter for anonymous discoverability. Exact group alias value requires live verification."
+      }
+    ],
+    "excludedCombinations": [
+      "dvObjectType:Dataverse — collection-level metadata, not a dataset",
+      "dvObjectType:DataFile — individual file metadata, not a dataset",
+      "publicationStatus:Draft — unpublished dataset version",
+      "publicationStatus:Deaccessioned — removed from public access",
+      "publicationStatus without 'Published' — never been publicly released"
+    ]
+  }
+}
