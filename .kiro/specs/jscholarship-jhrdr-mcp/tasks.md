@@ -1,64 +1,64 @@
 # Implementation Plan
 
-- [ ] 1. Complete the repository access and schema spike
-  - [ ] 1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records
+- [x] 1. Complete the repository access and schema spike
+  - [x] 1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records
     - Record the exact required fields and values in the JScholarship RepositoryProfile.
     - Confirm that withdrawn, non-discoverable, non-latest, non-archived, and non-anonymous-readable items are excluded.
     - Determine whether <code>fulltext</code> contains only publicly searchable content; keep it out of every allowlist unless that proof succeeds.
     - _Requirements: 2.1, 2.3, 9.1-9.8, 16.1_
-  - [ ] 1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata
+  - [x] 1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata
     - Record the exact required and optional fields in the JHRDR RepositoryProfile.
     - Confirm that drafts, deaccessioned versions, files, collection records, and anonymous-inaccessible datasets are excluded.
     - _Requirements: 3.1-3.4, 9.1-9.7, 16.1_
-  - [ ] 1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets
+  - [x] 1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets
     - Document DNS names, ports, health behavior, and required security-group rules.
     - _Requirements: 13.1-13.6_
-  - [ ] 1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records
+  - [x] 1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records
     - Remove credentials and private content before committing fixtures.
     - _Requirements: 9, 16.1-16.2_
 
-- [ ] 2. Establish the cross-repository MCP application
-  - [ ] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
+- [x] 2. Establish the cross-repository MCP application
+  - [x] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
     - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun ci</code> for reproducible installs.
     - Configure Bun as the runtime, package manager, bundler, and test runner while retaining <code>tsc --noEmit</code> for type-checking.
     - _Requirements: 12.1, 12.4, 12.7-12.8, 17_
-  - [ ] 2.4 Verify stateless MCP Streamable HTTP multi-task operation
+  - [x] 2.4 Verify stateless MCP Streamable HTTP multi-task operation
     - Run a real MCP client through initialization, tool listing, and at least one tool call against the Bun Web Standard transport.
     - Distribute one client lifecycle across multiple server processes to confirm no session affinity is required.
     - Validate that target clients (LibreChat in stage, HopGPT and Claude in production) handle the stateless mode without persistent initialization state.
     - _Requirements: 12.1-12.2, 12.7-12.8_
-  - [ ] 2.2 Create the source layout for adapters, federation, MCP registry, models, observability, security, configuration, and tests
+  - [x] 2.2 Create the source layout for adapters, federation, MCP registry, models, observability, security, configuration, and tests
     - Keep repository-specific code under its adapter boundary.
     - _Requirements: 2, 3, 10.2_
-  - [ ] 2.3 Add environment configuration validation for internal endpoints, public base URLs, timeout bounds, concurrency, cache limits, and build metadata
+  - [x] 2.3 Add environment configuration validation for internal endpoints, public base URLs, timeout bounds, concurrency, cache limits, and build metadata
     - Reject startup when required values are absent or unsafe.
     - _Requirements: 13.2-13.9, 14.3-14.6, 15.1, 15.8_
 
-- [ ] 3. Implement normalized domain models and JSON Schemas
-  - [ ] 3.1 Implement RepositoryId, RepositoryRecord (SearchResult), ItemDetail, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models
+- [x] 3. Implement normalized domain models and JSON Schemas
+  - [x] 3.1 Implement RepositoryId, RepositoryRecord (SearchResult), ItemDetail, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models
     - Require nullable optional properties and empty arrays as specified.
     - Namespace record IDs by Repository.
     - _Requirements: 4.1-4.6, 5.1-5.5_
-  - [ ] 3.2 Define closed zod and JSON Schemas for every MCP tool input and output
+  - [x] 3.2 Define closed zod and JSON Schemas for every MCP tool input and output
     - Set <code>additionalProperties: false</code> at every object level.
     - Bound strings, arrays, dates, identifiers, limits, and nesting.
     - _Requirements: 1.1-1.7, 5.3, 10.4, 12.4_
-  - [ ]* 3.3 Write property tests proving stable normalized shape and namespaced-ID non-collision
+  - [x] 3.3 Write property tests proving stable normalized shape and namespaced-ID non-collision
     - Run at least 100 generated cases per property.
     - _Requirements: 4.1-4.7, 16.2_
 
-- [ ] 4. Implement RepositoryProfiles and startup schema validation
-  - [ ] 4.1 Implement the RepositoryProfile interface and versioned JScholarship field manifest
+- [x] 4. Implement RepositoryProfiles and startup schema validation
+  - [x] 4.1 Implement the RepositoryProfile interface and versioned JScholarship field manifest
     - Include query, filter, facet, sort, related, identity, and system public-filter fields.
     - _Requirements: 2.2-2.3, 10.2_
-  - [ ] 4.2 Implement the versioned JHRDR Dataverse 6.10.1 field manifest
+  - [x] 4.2 Implement the versioned JHRDR Dataverse 6.10.1 field manifest
     - Distinguish required system fields from optional metadata-block fields.
     - _Requirements: 3.2-3.3, 10.2_
-  - [ ] 4.3 Implement read-only Solr Schema API validation during startup
+  - [x] 4.3 Implement read-only Solr Schema API validation during startup
     - Fail readiness when required fields are missing.
     - Disable and report only optional unsupported facets.
     - _Requirements: 6.2, 10.7, 13.9_
-  - [ ]* 4.4 Write property and fixture tests for required-field failure and optional-field degradation
+  - [x] 4.4 Write property and fixture tests for required-field failure and optional-field degradation
     - _Requirements: 3.2, 6.2, 10.2, 13.9_
 
 - [ ] 5. Implement the safe Solr query layer
@@ -71,7 +71,7 @@
   - [ ] 5.3 Add fixed collection URLs, POST-form requests, explicit field lists, row/clause/window bounds, and <code>timeAllowed</code>
     - Disallow redirects to unconfigured hosts and all Solr admin/update paths.
     - _Requirements: 10.5-10.7, 13.2-13.3_
-  - [ ]* 5.4 Write property tests for escaping, field traceability, immutable filters, and bounded query output
+  - [ ] 5.4 Write property tests for escaping, field traceability, immutable filters, and bounded query output
     - Generate hostile local-parameter syntax, special characters, field names, and oversized values.
     - _Requirements: 9.2, 10.1-10.7_
 
@@ -156,7 +156,7 @@
   - [ ] 10.3 Implement Partial_Result assembly and Repository-qualified warnings
     - Ensure no internal exception or endpoint appears in warnings.
     - _Requirements: 1.8, 15.3_
-  - [ ]* 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, partial success, and offset advancement
+  - [ ] 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, partial success, and offset advancement
     - Include Property 16: nextOffset = startOffset + passed + failed, never exceeds 3 × limit beyond start.
     - _Requirements: 11, 15.3_
 
@@ -204,7 +204,7 @@
   - [ ] 15.3 Implement <code>explore_research_topic</code> and <code>find_reusable_data</code>
     - Instruct the host model to iterate, distinguish repositories, cite identifiers, report partial coverage, and treat metadata as untrusted data.
     - _Requirements: 8.5-8.6, 17.5_
-  - [ ]* 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
+  - [ ] 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
     - _Requirements: 8.6, 14, 17_
 
 - [ ] 16. Implement the stateless MCP HTTP server
@@ -231,7 +231,7 @@
   - [ ] 17.3 Implement per-task tool concurrency and per-repository canonicalization worker pools
     - Return rate-limited/busy errors without queuing unbounded work.
     - _Requirements: 10.6, 14.6_
-  - [ ]* 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
+  - [ ] 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
     - _Requirements: 14.6, 15.1-15.4, 15.9_
 
 - [ ] 18. Implement privacy-preserving observability

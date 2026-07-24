@@ -1,0 +1,22 @@
+{
+  "$comment": "Synthetic Solr document for a RESTRICTED JScholarship item. The 'read' field does NOT contain 'g0' (anonymous group), so the immutable filter 'read:g0' must exclude this document. Used for negative testing of the anonymous-access filter.",
+  "search.resourceid": "44444444-4444-4444-4444-444444444444",
+  "search.resourcetype": "Item",
+  "search.uniqueid": "Item-44444444-4444-4444-4444-444444444444",
+  "handle": "1774.2/66666",
+  "withdrawn": "false",
+  "discoverable": "true",
+  "latestVersion": true,
+  "database_status": "ARCHIVED",
+  "read": ["g5", "g12"],
+  "location.comm": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+  "location.coll": ["cccccccc-cccc-cccc-cccc-cccccccccccc"],
+
+  "title": "Restricted Dataset: Clinical Trial Results 2023",
+  "author": ["Williams, Maria L.", "Chen, David R."],
+  "subject": ["Medicine", "Clinical Trials", "Biostatistics"],
+  "dateIssued": "2023-11-01",
+  "itemtype": "Dataset",
+
+  "exclusion_reason": "read field does NOT contain 'g0' — this item is restricted to specific groups (g5, g12) and must never appear in anonymous MCP results"
+}
