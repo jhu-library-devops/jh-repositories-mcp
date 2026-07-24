@@ -1,0 +1,228 @@
+{
+  "pbtResults": {},
+  "executionHistory": {
+    "1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records": [
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784919965782
+      },
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784920551289
+      }
+    ],
+    "1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata": [
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784920836688
+      },
+      {
+        "executionId": "c6a18805-4fc3-4b5c-8902-1334d05206f0",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784926209321
+      },
+      {
+        "executionId": "c6a18805-4fc3-4b5c-8902-1334d05206f0",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784926430781
+      }
+    ],
+    "1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets": [
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784920842098
+      },
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784920989506
+      }
+    ],
+    "1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records": [
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784920994736
+      },
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784921232446
+      }
+    ],
+    "1. Complete the repository access and schema spike": [
+      {
+        "executionId": "18018432-3363-4421-87a0-5c61643877ea",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784921232496
+      }
+    ],
+    "2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting": [
+      {
+        "executionId": "a25f19fa-ae22-4b9f-9385-a125e9f900ab",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784921313028
+      },
+      {
+        "executionId": "a25f19fa-ae22-4b9f-9385-a125e9f900ab",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784921567818
+      }
+    ],
+    "2.2 Create the source layout for adapters, federation, MCP registry, models, observability, security, configuration, and tests": [
+      {
+        "executionId": "10c161ee-9b42-4f32-81e1-0f28d6065bb5",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784922397389
+      },
+      {
+        "executionId": "10c161ee-9b42-4f32-81e1-0f28d6065bb5",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784922694597
+      }
+    ],
+    "2.3 Add environment configuration validation for internal endpoints, public base URLs, timeout bounds, concurrency, cache limits, and build metadata": [
+      {
+        "executionId": "87f9032a-4b77-4402-b5ab-eecfaae3a4d9",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784922741402
+      },
+      {
+        "executionId": "87f9032a-4b77-4402-b5ab-eecfaae3a4d9",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784922954639
+      }
+    ],
+    "2.4 Verify stateless MCP Streamable HTTP multi-task operation": [
+      {
+        "executionId": "e5d242d2-a746-4b0c-bbfe-f507262f48d6",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784923012705
+      },
+      {
+        "executionId": "e5d242d2-a746-4b0c-bbfe-f507262f48d6",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784923205214
+      }
+    ],
+    "2. Establish the cross-repository MCP application": [
+      {
+        "executionId": "e5d242d2-a746-4b0c-bbfe-f507262f48d6",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784923205270
+      }
+    ],
+    "3.1 Implement RepositoryId, RepositoryRecord (SearchResult), ItemDetail, Creator, PublicFileSummary, SearchRequest, SearchResponse, RepositoryPage, Facet, Warning, and ToolError models": [
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784923342735
+      },
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784924787494
+      }
+    ],
+    "3.2 Define closed zod and JSON Schemas for every MCP tool input and output": [
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784924792742
+      },
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784924999196
+      }
+    ],
+    "3.3 Write property tests proving stable normalized shape and namespaced-ID non-collision": [
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925004635
+      },
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925196155
+      }
+    ],
+    "3. Implement normalized domain models and JSON Schemas": [
+      {
+        "executionId": "38268230-23e5-4fd5-965b-2bed80b157ae",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925196246
+      }
+    ],
+    "4.1 Implement the RepositoryProfile interface and versioned JScholarship field manifest": [
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925224773
+      },
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925245324
+      }
+    ],
+    "4.2 Implement the versioned JHRDR Dataverse 6.10.1 field manifest": [
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925251157
+      },
+      {
+        "executionId": "20c341df-6420-4281-a994-1c17079588ed",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925954769
+      },
+      {
+        "executionId": "5e0e877d-4d80-4e36-83ca-cf16e62f770e",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784926467164
+      },
+      {
+        "executionId": "5e0e877d-4d80-4e36-83ca-cf16e62f770e",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784926602131
+      }
+    ],
+    "4.3 Implement read-only Solr Schema API validation during startup": [
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925256222
+      },
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925550326
+      }
+    ],
+    "4.4 Write property and fixture tests for required-field failure and optional-field degradation": [
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925556738
+      },
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925680844
+      }
+    ],
+    "4. Implement RepositoryProfiles and startup schema validation": [
+      {
+        "executionId": "c616f586-394b-48cd-97f2-190448b80ecd",
+        "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
+        "timestamp": 1784925680897
+      }
+    ]
+  }
+}
