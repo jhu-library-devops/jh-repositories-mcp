@@ -1,24 +1,24 @@
 # Implementation Plan
 
-- [ ] 1. Complete the repository access and schema spike
-  - [ ] 1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records
+- [x] 1. Complete the repository access and schema spike
+  - [x] 1.1 Verify the deployed JScholarship Solr fields, anonymous-group read value, archived-item state, and immutable public filter against known public and non-public records
     - Record the exact required fields and values in the JScholarship RepositoryProfile.
     - Confirm that withdrawn, non-discoverable, non-latest, non-archived, and non-anonymous-readable items are excluded.
     - Determine whether <code>fulltext</code> contains only publicly searchable content; keep it out of every allowlist unless that proof succeeds.
     - _Requirements: 2.1, 2.3, 9.1-9.8, 16.1_
-  - [ ] 1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata
+  - [x] 1.2 Verify the deployed Dataverse 6.10.1 Solr fields for record type, publication status, version state, persistent identifiers, and citation metadata
     - Record the exact required and optional fields in the JHRDR RepositoryProfile.
     - Confirm that drafts, deaccessioned versions, files, collection records, and anonymous-inaccessible datasets are excluded.
     - _Requirements: 3.1-3.4, 9.1-9.7, 16.1_
-  - [ ] 1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets
+  - [x] 1.3 Select and test the private DSpace REST route and the Dataverse HTTP route from the shared private subnets
     - Document DNS names, ports, health behavior, and required security-group rules.
     - _Requirements: 13.1-13.6_
-  - [ ] 1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records
+  - [x] 1.4 Capture reviewed fixture payloads for both Solr schemas, search responses, canonical APIs, and public/non-public records
     - Remove credentials and private content before committing fixtures.
     - _Requirements: 9, 16.1-16.2_
 
 - [ ] 2. Establish the cross-repository MCP application
-  - [ ] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
+  - [x] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
     - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun ci</code> for reproducible installs.
     - Configure Bun as the runtime, package manager, bundler, and test runner while retaining <code>tsc --noEmit</code> for type-checking.
     - _Requirements: 12.1, 12.4, 12.7-12.8, 17_
