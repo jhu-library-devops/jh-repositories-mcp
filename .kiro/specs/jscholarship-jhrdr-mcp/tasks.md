@@ -61,17 +61,17 @@
   - [x] 4.4 Write property and fixture tests for required-field failure and optional-field degradation
     - _Requirements: 3.2, 6.2, 10.2, 13.9_
 
-- [ ] 5. Implement the safe Solr query layer
-  - [ ] 5.1 Implement a Lucene/Solr value encoder and structured query builder parameterized by RepositoryProfile
+- [x] 5. Implement the safe Solr query layer
+  - [x] 5.1 Implement a Lucene/Solr value encoder and structured query builder parameterized by RepositoryProfile
     - Support approved query fields, filters, sorts, facets, return fields, and related-record operations.
     - _Requirements: 1.4, 6.1-6.5, 7.2-7.4, 10.1-10.5_
-  - [ ] 5.2 Append immutable public filters in a non-client-accessible query-builder step
+  - [x] 5.2 Append immutable public filters in a non-client-accessible query-builder step
     - Ensure all search, facet, and related paths call this step.
     - _Requirements: 2.3, 3.3, 9.1-9.4_
-  - [ ] 5.3 Add fixed collection URLs, POST-form requests, explicit field lists, row/clause/window bounds, and <code>timeAllowed</code>
+  - [x] 5.3 Add fixed collection URLs, POST-form requests, explicit field lists, row/clause/window bounds, and <code>timeAllowed</code>
     - Disallow redirects to unconfigured hosts and all Solr admin/update paths.
     - _Requirements: 10.5-10.7, 13.2-13.3_
-  - [ ] 5.4 Write property tests for escaping, field traceability, immutable filters, and bounded query output
+  - [x] 5.4 Write property tests for escaping, field traceability, immutable filters, and bounded query output
     - Generate hostile local-parameter syntax, special characters, field names, and oversized values.
     - _Requirements: 9.2, 10.1-10.7_
 
