@@ -1,0 +1,1 @@
+Implement the DSpace canonical REST client: anonymous UUID/Handle resolution with pre-I/O identifier validation, the Public_Record gate with indistinguishable not-found behavior, HEAD-based cache revalidation probe, canonical metadata normalization with bounded ORIGINAL bitstream summaries, and fixture-driven contract tests

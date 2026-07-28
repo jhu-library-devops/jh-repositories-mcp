@@ -75,20 +75,20 @@
     - Generate hostile local-parameter syntax, special characters, field names, and oversized values.
     - _Requirements: 9.2, 10.1-10.7_
 
-- [ ] 6. Implement the DSpace canonical client
-  - [ ] 6.1 Implement anonymous item resolution by UUID and Handle through the selected private DSpace REST route
+- [x] 6. Implement the DSpace canonical client
+  - [x] 6.1 Implement anonymous item resolution by UUID and Handle through the selected private DSpace REST route
     - Validate identifier syntax before network I/O.
     - _Requirements: 2.4-2.5, 5.1, 5.3_
-  - [ ] 6.2 Implement the DSpace Public_Record gate
+  - [x] 6.2 Implement the DSpace Public_Record gate
     - Confirm anonymous retrieval, item state, discoverability, latest version, and archive status.
     - Return identical not-found behavior for non-public and nonexistent records.
     - Implement a lightweight HEAD-based revalidation probe for cache-emit checks.
     - _Requirements: 2.4-2.6, 5.4, 9.3-9.5, 15.9_
-  - [ ] 6.3 Implement DSpace summary and full-record normalization
+  - [x] 6.3 Implement DSpace summary and full-record normalization
     - Keep search summaries to metadata, public file count/formats when available, hierarchy, Handle URL, and thumbnail.
     - Expand public ORIGINAL bitstream summaries only for full item lookup, cap them at 100, and never fetch file bytes.
     - _Requirements: 2.5, 4, 5.2, 9.7, 17.3_
-  - [ ] 6.4 Add DSpace contract tests for public, withdrawn, non-discoverable, restricted, malformed, missing, timeout, and 5xx fixtures
+  - [x] 6.4 Add DSpace contract tests for public, withdrawn, non-discoverable, restricted, malformed, missing, timeout, and 5xx fixtures
     - _Requirements: 2, 5, 9, 15.1-15.3, 16.1-16.2_
 
 - [ ] 7. Implement the JScholarship adapter
