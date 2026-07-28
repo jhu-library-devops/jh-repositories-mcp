@@ -35,6 +35,7 @@ import type {
   SchemaValidationResult,
 } from "../../models/index";
 import { parseRecordId } from "../../models/index";
+import { canonicalizeInOrder } from "../canonicalize";
 import type { RepositoryAdapter } from "../index";
 import { SolrClient } from "../solr-client";
 import { buildFacetQuery, buildRelatedQuery, buildSearchQuery } from "../solr-query";
@@ -127,7 +128,7 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     const docs = parseDocs(body);
     const rowsRequested = Number(query.params.get("rows"));
 
-    const { records, consumed, omissions } = await this.canonicalizeInOrder(
+    const { records, consumed, omissions } = await this.canonicalize(
       docs,
       request.limit,
       request.offset,
@@ -221,7 +222,7 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     const body = (await this.solr.execute(query)) as SolrSearchBody;
     const docs = parseDocs(body).filter((doc) => doc.uuid !== sourceUuid);
 
-    const { records, omissions } = await this.canonicalizeInOrder(docs, request.limit, 0);
+    const { records, omissions } = await this.canonicalize(docs, request.limit, 0);
     return {
       repository: this.id,
       results: records,
@@ -234,65 +235,26 @@ export class JScholarshipAdapter implements RepositoryAdapter {
 
   // ─── Internals ─────────────────────────────────────────────────────────────
 
-  /**
-   * Validates candidates in rank order with a fixed look-ahead window.
-   * Launches at most `canonicalConcurrency` validations ahead of the
-   * in-order consumer and stops consuming once the page is filled, so the
-   * consumed count is always an unambiguous rank-order prefix. Individual
-   * backend faults count as omissions (fail closed); they never surface
-   * Solr-only metadata.
-   */
-  private async canonicalizeInOrder(
+  private canonicalize(
     docs: SolrDoc[],
     limit: number,
     startOffset: number,
-  ): Promise<{ records: RepositoryRecord[]; consumed: number; omissions: number }> {
-    const records: RepositoryRecord[] = [];
-    let consumed = 0;
-    let omissions = 0;
-
-    const pending = new Map<number, Promise<ItemDetail | null>>();
-    let nextToLaunch = 0;
-
-    const launchUpTo = (bound: number): void => {
-      while (nextToLaunch < Math.min(bound, docs.length)) {
-        const index = nextToLaunch;
-        const doc = docs[index];
-        if (doc === undefined) {
-          break;
-        }
-        pending.set(
-          index,
-          this.dspace
-            .resolveItem({ type: "uuid", value: doc.uuid }, { expandFiles: false })
-            .catch((cause) => {
-              if (cause instanceof DSpaceRequestError) {
-                return null;
-              }
-              throw cause;
-            }),
-        );
-        nextToLaunch += 1;
-      }
-    };
-
-    for (let index = 0; index < docs.length && records.length < limit; index += 1) {
-      launchUpTo(index + this.canonicalConcurrency);
-      const validation = pending.get(index);
-      if (validation === undefined) {
-        break;
-      }
-      pending.delete(index);
-      const item = await validation;
-      consumed += 1;
-      if (item === null) {
-        omissions += 1;
-        continue;
-      }
-      records.push({ ...item, sourceRank: startOffset + index + 1 });
-    }
-
-    return { records, consumed, omissions };
+  ): ReturnType<typeof canonicalizeInOrder<SolrDoc>> {
+    return canonicalizeInOrder({
+      candidates: docs,
+      limit,
+      startOffset,
+      concurrency: this.canonicalConcurrency,
+      resolve: (doc) =>
+        this.dspace
+          .resolveItem({ type: "uuid", value: doc.uuid }, { expandFiles: false })
+          .catch((cause) => {
+            if (cause instanceof DSpaceRequestError) {
+              return null;
+            }
+            throw cause;
+          }),
+    });
   }
 
   private toDspaceIdentifier(

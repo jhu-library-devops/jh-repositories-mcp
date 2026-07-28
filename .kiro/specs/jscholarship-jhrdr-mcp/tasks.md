@@ -125,11 +125,11 @@
   - [x] 8.4 Add Dataverse contract tests for public, draft, deaccessioned, restricted-file, malformed, missing, timeout, and 5xx fixtures
     - _Requirements: 3, 5, 9, 15.1-15.3, 16.1-16.2_
 
-- [ ] 9. Implement the JHRDR adapter
-  - [ ] 9.1 Implement candidate search against private Dataverse Solr <code>collection1</code>
+- [x] 9. Implement the JHRDR adapter
+  - [x] 9.1 Implement candidate search against private Dataverse Solr <code>collection1</code>
     - Map static and metadata-block concepts only through the validated JHRDR Field_Allowlist.
     - _Requirements: 3.1-3.3, 10_
-  - [ ] 9.2 Implement bounded candidate canonicalization through the Dataverse client
+  - [x] 9.2 Implement bounded candidate canonicalization through the Dataverse client
     - Query Solr with rows = 3 × limit; validate candidates sequentially in rank order using a fixed worker pool.
     - Stop when the page is filled or the fetched window is consumed.
     - Set nextOffset = startOffset + candidatesConsumed (passed + failed + timed-out).
@@ -137,10 +137,10 @@
     - Emit a validation_attrition warning when the ceiling is exhausted before filling the page.
     - Drop every candidate that cannot pass the Public_Record gate.
     - _Requirements: 3.4-3.8, 9.3-9.4, 11.7-11.9, 14.6_
-  - [ ] 9.3 Implement JHRDR facets and metadata-based related search
+  - [x] 9.3 Implement JHRDR facets and metadata-based related search
     - Use title, author, affiliation, subject, keyword, and description fields only.
     - _Requirements: 6.1-6.6, 7.1, 7.3-7.6, 17.2_
-  - [ ] 9.4 Add adapter integration tests with paired Solr and Native API fixtures
+  - [x] 9.4 Add adapter integration tests with paired Solr and Native API fixtures
     - _Requirements: 3, 6, 7, 9, 16.1-16.2_
 
 - [ ] 10. Implement federated ranking and pagination

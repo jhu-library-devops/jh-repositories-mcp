@@ -143,7 +143,7 @@ function translateFilters(
   }
 
   if (filters.dateFrom !== undefined || filters.dateTo !== undefined) {
-    const field = profile.filterFields.dateIssued;
+    const field = profile.filterFields.dateIssued ?? profile.filterFields.publicationDate;
     if (!field) {
       unsupported.push("date");
     } else {

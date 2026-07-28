@@ -9,6 +9,7 @@
  */
 
 import { Hono } from "hono";
+import { JhrdrAdapter } from "./adapters/jhrdr/index";
 import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import { loadConfig } from "./config/env";
 import type { AppConfig } from "./config/index";
@@ -136,7 +137,34 @@ async function performSchemaValidation(): Promise<void> {
       }
     }
 
-    // TODO: Validate JHRDR schema when profile is implemented (task 4.4)
+    // Validate JHRDR schema (optional deployment: skipped when unconfigured)
+    if (config.jhrdr.solrCollectionUrl && config.jhrdr.apiBaseUrl && config.jhrdr.publicBaseUrl) {
+      const dvAdapter = new JhrdrAdapter({
+        solrCollectionUrl: config.jhrdr.solrCollectionUrl,
+        dataverseApiUrl: config.jhrdr.apiBaseUrl,
+        publicBaseUrl: config.jhrdr.publicBaseUrl,
+        schemaTimeoutMs: config.timeouts.solrMs,
+      });
+
+      const dvResult = await dvAdapter.validateSchema();
+      results.push(dvResult);
+
+      if (!dvResult.valid) {
+        console.error(
+          "[startup] JHRDR schema validation failed. Missing required fields:",
+          dvResult.missingRequired,
+        );
+      }
+
+      if (dvResult.missingOptional.length > 0) {
+        console.warn(
+          "[startup] JHRDR optional fields missing (features disabled):",
+          dvResult.missingOptional,
+          "→ disabled features:",
+          dvResult.disabledFeatures,
+        );
+      }
+    }
 
     readinessState.results = results;
     readinessState.validated = true;
