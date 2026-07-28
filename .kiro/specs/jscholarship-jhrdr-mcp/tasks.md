@@ -91,12 +91,12 @@
   - [x] 6.4 Add DSpace contract tests for public, withdrawn, non-discoverable, restricted, malformed, missing, timeout, and 5xx fixtures
     - _Requirements: 2, 5, 9, 15.1-15.3, 16.1-16.2_
 
-- [ ] 7. Implement the JScholarship adapter
-  - [ ] 7.1 Implement candidate search against the private DSpace <code>search</code> collection
+- [x] 7. Implement the JScholarship adapter
+  - [x] 7.1 Implement candidate search against the private DSpace <code>search</code> collection
     - Map search concepts through the JScholarship Field_Allowlist.
     - Use full text only if the Phase 0 public-content proof succeeds, and then only for ranking, never returned values or snippets.
     - _Requirements: 2.1-2.3, 9.6-9.8, 10_
-  - [ ] 7.2 Implement bounded candidate canonicalization through the DSpace client
+  - [x] 7.2 Implement bounded candidate canonicalization through the DSpace client
     - Query Solr with rows = 3 × limit; validate candidates sequentially in rank order using a fixed worker pool.
     - Stop when the page is filled or the fetched window is consumed.
     - Set nextOffset = startOffset + candidatesConsumed (passed + failed + timed-out).
@@ -104,9 +104,9 @@
     - Emit a validation_attrition warning when the ceiling is exhausted before filling the page.
     - Drop every candidate that cannot pass the Public_Record gate.
     - _Requirements: 2.4-2.7, 9.3-9.4, 11.7-11.9, 14.6_
-  - [ ] 7.3 Implement JScholarship facets and allowlisted MoreLikeThis related search
+  - [x] 7.3 Implement JScholarship facets and allowlisted MoreLikeThis related search
     - _Requirements: 6.1-6.6, 7.1-7.6_
-  - [ ] 7.4 Add adapter integration tests with paired Solr and DSpace fixtures
+  - [x] 7.4 Add adapter integration tests with paired Solr and DSpace fixtures
     - _Requirements: 2, 6, 7, 9, 16.1-16.2_
 
 - [ ] 8. Implement the Dataverse canonical client

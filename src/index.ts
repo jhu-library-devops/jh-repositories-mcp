@@ -9,10 +9,10 @@
  */
 
 import { Hono } from "hono";
+import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import { loadConfig } from "./config/env";
 import type { AppConfig } from "./config/index";
 import { createMcpTransport } from "./mcp/transport";
-import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import type { SchemaValidationResult } from "./models/index";
 
 // ─── Configuration ───────────────────────────────────────────────────────────
@@ -111,6 +111,8 @@ async function performSchemaValidation(): Promise<void> {
     if (config.jscholarship.solrCollectionUrl) {
       const jsAdapter = new JScholarshipAdapter({
         solrCollectionUrl: config.jscholarship.solrCollectionUrl,
+        dspaceApiUrl: config.jscholarship.apiBaseUrl,
+        publicBaseUrl: config.jscholarship.publicBaseUrl,
         schemaTimeoutMs: config.timeouts.solrMs,
       });
 
@@ -144,16 +146,13 @@ async function performSchemaValidation(): Promise<void> {
     readinessState.ready = allValid;
 
     if (!allValid) {
-      const failedRepos = results
-        .filter((r) => !r.valid)
-        .map((r) => r.repository);
+      const failedRepos = results.filter((r) => !r.valid).map((r) => r.repository);
       readinessState.error = `Schema validation failed for: ${failedRepos.join(", ")}`;
     }
   } catch (error) {
     readinessState.validated = true;
     readinessState.ready = false;
-    readinessState.error =
-      `Schema validation error: ${error instanceof Error ? error.message : String(error)}`;
+    readinessState.error = `Schema validation error: ${error instanceof Error ? error.message : String(error)}`;
     console.error("[startup] Schema validation error:", readinessState.error);
   }
 }

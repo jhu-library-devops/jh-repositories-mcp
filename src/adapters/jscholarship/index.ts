@@ -1,29 +1,45 @@
 /**
  * JScholarship Adapter — Module Entry
  *
- * Stub implementation of the RepositoryAdapter interface for JScholarship (DSpace).
- * All DSpace-specific knowledge (Solr fields, Discovery configuration, REST API
- * interaction, public-access gate logic) is encapsulated here.
+ * Implements the RepositoryAdapter contract for JScholarship (DSpace):
+ * candidate search against the private Solr `search` collection through the
+ * safe query layer, bounded rank-ordered canonicalization through the DSpace
+ * REST client, allowlisted facets, and MoreLikeThis related discovery.
  *
- * No Solr field names, DSpace URLs, or platform-specific logic may leak from
- * this module into federation, MCP, or model layers.
+ * All DSpace-specific knowledge (Solr fields, Discovery configuration, REST
+ * interaction, public-access gate logic) is encapsulated here. No Solr field
+ * names, DSpace URLs, or platform-specific logic may leak from this module
+ * into federation, MCP, or model layers.
  *
- * Requirements: 2, 9, 10.2
+ * Requirements: 2, 6, 7, 9, 10.2, 11.7-11.9, 14.6
  */
 
-import type { RepositoryAdapter } from "../index";
+import {
+  type RepositoryProfile,
+  jscholarshipProfile as jscholarshipProfileLiteral,
+} from "../../../config/repositories/jscholarship-profile";
+
+const jscholarshipProfile: RepositoryProfile = jscholarshipProfileLiteral;
 import type {
+  CommonFacet,
+  FacetResult,
   ItemDetail,
   RelatedRequest,
   RepositoryFacetRequest,
   RepositoryFacets,
   RepositoryIdentifier,
   RepositoryPage,
+  RepositoryRecord,
   RepositorySearchRequest,
+  RepositoryWarning,
   SchemaValidationResult,
 } from "../../models/index";
-import { jscholarshipProfile } from "../../../config/repositories/jscholarship-profile";
-import { validateSolrSchema, type FetchFn } from "../solr-schema-validator";
+import { parseRecordId } from "../../models/index";
+import type { RepositoryAdapter } from "../index";
+import { SolrClient } from "../solr-client";
+import { buildFacetQuery, buildRelatedQuery, buildSearchQuery } from "../solr-query";
+import { type FetchFn, validateSolrSchema } from "../solr-schema-validator";
+import { DSpaceClient, DSpaceRequestError } from "./dspace-client";
 
 /**
  * Options for constructing a JScholarshipAdapter.
@@ -31,31 +47,59 @@ import { validateSolrSchema, type FetchFn } from "../solr-schema-validator";
 export interface JScholarshipAdapterOptions {
   /** Full URL to the Solr collection (e.g. http://solr.dspace-stage.local:8983/solr/search). */
   solrCollectionUrl: string;
+  /** Private DSpace REST API base (e.g. http://dspace.internal:8080/server/api). */
+  dspaceApiUrl: string;
+  /** Public JScholarship base for landing-page and download URLs. */
+  publicBaseUrl: string;
   /** Timeout for schema validation requests in ms. */
   schemaTimeoutMs?: number;
+  /** Timeout for Solr and DSpace REST requests in ms. */
+  requestTimeoutMs?: number;
+  /** Maximum concurrent canonical validations (fixed worker window). */
+  canonicalConcurrency?: number;
   /** Injectable fetch for testing. */
   fetchFn?: FetchFn;
 }
 
+interface SolrDoc {
+  readonly uuid: string;
+  readonly handle: string | null;
+}
+
+interface SolrSearchBody {
+  response?: { numFound?: number; docs?: unknown[] };
+  facet_counts?: { facet_fields?: Record<string, unknown[]> };
+}
+
 /**
  * JScholarship (DSpace) adapter.
- *
- * Implements the RepositoryAdapter contract using:
- * - Private DSpace Solr `search` collection for candidate retrieval
- * - DSpace REST API for canonical public-access validation
- * - Discovery-generated field mappings from the JScholarship profile
  */
 export class JScholarshipAdapter implements RepositoryAdapter {
   readonly id = "jscholarship" as const;
 
   private readonly solrCollectionUrl: string;
   private readonly schemaTimeoutMs: number;
+  private readonly canonicalConcurrency: number;
   private readonly fetchFn: FetchFn;
+  private readonly solr: SolrClient;
+  private readonly dspace: DSpaceClient;
 
   constructor(options: JScholarshipAdapterOptions) {
     this.solrCollectionUrl = options.solrCollectionUrl;
     this.schemaTimeoutMs = options.schemaTimeoutMs ?? 5000;
+    this.canonicalConcurrency = options.canonicalConcurrency ?? 4;
     this.fetchFn = options.fetchFn ?? globalThis.fetch;
+    const requestTimeoutMs = options.requestTimeoutMs ?? 5000;
+    this.solr = new SolrClient(new URL(options.solrCollectionUrl), {
+      requestTimeoutMs,
+      fetchImpl: (url, init) => this.fetchFn(url, init),
+    });
+    this.dspace = new DSpaceClient({
+      apiBaseUrl: new URL(options.dspaceApiUrl),
+      publicBaseUrl: new URL(options.publicBaseUrl),
+      requestTimeoutMs,
+      fetchImpl: (url, init) => this.fetchFn(url, init),
+    });
   }
 
   async validateSchema(): Promise<SchemaValidationResult> {
@@ -68,41 +112,241 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     });
   }
 
-  async search(_request: RepositorySearchRequest): Promise<RepositoryPage> {
-    // TODO: Implement candidate search + canonicalization (tasks 7.1, 7.2)
+  /**
+   * Candidate search + bounded canonicalization (tasks 7.1-7.2).
+   *
+   * Solr supplies a 3×limit candidate window; each candidate is validated in
+   * rank order through DSpace REST with a fixed concurrency window. Cursor
+   * arithmetic: nextOffset = startOffset + candidatesConsumed, where consumed
+   * counts passed, failed, and timed-out candidates; null only when Solr
+   * returned fewer candidates than requested (the result set is exhausted).
+   */
+  async search(request: RepositorySearchRequest): Promise<RepositoryPage> {
+    const { query, unsupportedFilters } = buildSearchQuery(jscholarshipProfile, request);
+    const body = (await this.solr.execute(query)) as SolrSearchBody;
+    const docs = parseDocs(body);
+    const rowsRequested = Number(query.params.get("rows"));
+
+    const { records, consumed, omissions } = await this.canonicalizeInOrder(
+      docs,
+      request.limit,
+      request.offset,
+    );
+
+    const windowExhausted = docs.length < rowsRequested;
+    const warnings: RepositoryWarning[] = unsupportedFilters.map((concept) => ({
+      repository: this.id,
+      code: "unsupported_filter",
+      message: `Filter "${concept}" is not supported by JScholarship and was not applied.`,
+    }));
+    if (
+      records.length < request.limit &&
+      omissions > 0 &&
+      !(windowExhausted && consumed === docs.length)
+    ) {
+      warnings.push({
+        repository: this.id,
+        code: "validation_attrition",
+        message:
+          "Some matching records could not be validated as public within this page's candidate window; more results may exist on the next page.",
+      });
+    }
+
     return {
-      repository: "jscholarship",
-      results: [],
+      repository: this.id,
+      results: records,
+      nextOffset: windowExhausted && consumed === docs.length ? null : request.offset + consumed,
+      totalCandidates: typeof body.response?.numFound === "number" ? body.response.numFound : 0,
+      validationOmissions: omissions,
+      warnings,
+    };
+  }
+
+  async get(identifier: RepositoryIdentifier): Promise<ItemDetail | null> {
+    const resolved = this.toDspaceIdentifier(identifier);
+    if (resolved === null) {
+      return null;
+    }
+    return this.dspace.resolveItem(resolved, { expandFiles: true });
+  }
+
+  async facets(request: RepositoryFacetRequest): Promise<RepositoryFacets> {
+    const supported: CommonFacet[] = [];
+    const warnings: RepositoryWarning[] = [];
+    for (const concept of request.facets) {
+      if (concept === "repository" || jscholarshipProfile.facetFields[concept] === undefined) {
+        if (concept !== "repository") {
+          warnings.push({
+            repository: this.id,
+            code: "unsupported_filter",
+            message: `Facet "${concept}" is not supported by JScholarship.`,
+          });
+        }
+        continue;
+      }
+      supported.push(concept);
+    }
+    if (supported.length === 0) {
+      return { repository: this.id, facets: [], warnings };
+    }
+
+    const query = buildFacetQuery(jscholarshipProfile, {
+      query: request.query,
+      field: request.field,
+      filters: request.filters,
+      facets: supported,
+      limit: request.limit,
+      offset: request.offset,
+    });
+    const body = (await this.solr.execute(query)) as SolrSearchBody;
+    const facetFields = body.facet_counts?.facet_fields ?? {};
+
+    const facets: FacetResult[] = [];
+    for (const concept of supported) {
+      const solrField = jscholarshipProfile.facetFields[concept];
+      if (solrField === undefined) {
+        continue;
+      }
+      facets.push({ facet: concept, values: parseFacetPairs(facetFields[solrField]) });
+    }
+    return { repository: this.id, facets, warnings };
+  }
+
+  async related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage> {
+    const sourceUuid = source.provenance.platformRecordId;
+    const query = buildRelatedQuery(jscholarshipProfile, {
+      identityValue: sourceUuid,
+      limit: request.limit,
+    });
+    const body = (await this.solr.execute(query)) as SolrSearchBody;
+    const docs = parseDocs(body).filter((doc) => doc.uuid !== sourceUuid);
+
+    const { records, omissions } = await this.canonicalizeInOrder(docs, request.limit, 0);
+    return {
+      repository: this.id,
+      results: records,
       nextOffset: null,
-      totalCandidates: 0,
-      validationOmissions: 0,
+      totalCandidates: docs.length,
+      validationOmissions: omissions,
       warnings: [],
     };
   }
 
-  async get(_identifier: RepositoryIdentifier): Promise<ItemDetail | null> {
-    // TODO: Implement canonical item resolution (task 6.1)
-    return null;
+  // ─── Internals ─────────────────────────────────────────────────────────────
+
+  /**
+   * Validates candidates in rank order with a fixed look-ahead window.
+   * Launches at most `canonicalConcurrency` validations ahead of the
+   * in-order consumer and stops consuming once the page is filled, so the
+   * consumed count is always an unambiguous rank-order prefix. Individual
+   * backend faults count as omissions (fail closed); they never surface
+   * Solr-only metadata.
+   */
+  private async canonicalizeInOrder(
+    docs: SolrDoc[],
+    limit: number,
+    startOffset: number,
+  ): Promise<{ records: RepositoryRecord[]; consumed: number; omissions: number }> {
+    const records: RepositoryRecord[] = [];
+    let consumed = 0;
+    let omissions = 0;
+
+    const pending = new Map<number, Promise<ItemDetail | null>>();
+    let nextToLaunch = 0;
+
+    const launchUpTo = (bound: number): void => {
+      while (nextToLaunch < Math.min(bound, docs.length)) {
+        const index = nextToLaunch;
+        const doc = docs[index];
+        if (doc === undefined) {
+          break;
+        }
+        pending.set(
+          index,
+          this.dspace
+            .resolveItem({ type: "uuid", value: doc.uuid }, { expandFiles: false })
+            .catch((cause) => {
+              if (cause instanceof DSpaceRequestError) {
+                return null;
+              }
+              throw cause;
+            }),
+        );
+        nextToLaunch += 1;
+      }
+    };
+
+    for (let index = 0; index < docs.length && records.length < limit; index += 1) {
+      launchUpTo(index + this.canonicalConcurrency);
+      const validation = pending.get(index);
+      if (validation === undefined) {
+        break;
+      }
+      pending.delete(index);
+      const item = await validation;
+      consumed += 1;
+      if (item === null) {
+        omissions += 1;
+        continue;
+      }
+      records.push({ ...item, sourceRank: startOffset + index + 1 });
+    }
+
+    return { records, consumed, omissions };
   }
 
-  async facets(_request: RepositoryFacetRequest): Promise<RepositoryFacets> {
-    // TODO: Implement facet retrieval (task 7.3)
-    return {
-      repository: "jscholarship",
-      facets: [],
-      warnings: [],
-    };
+  private toDspaceIdentifier(
+    identifier: RepositoryIdentifier,
+  ): { type: "uuid" | "handle"; value: string } | null {
+    if (identifier.repository !== this.id) {
+      return null;
+    }
+    switch (identifier.type) {
+      case "uuid":
+        return { type: "uuid", value: identifier.value };
+      case "handle":
+        return { type: "handle", value: identifier.value };
+      case "namespaced": {
+        const parsed = parseRecordId(identifier.value);
+        if (parsed === null || parsed.repository !== this.id) {
+          return null;
+        }
+        return { type: "uuid", value: parsed.platformId };
+      }
+      default:
+        return null;
+    }
   }
+}
 
-  async related(_source: ItemDetail, _request: RelatedRequest): Promise<RepositoryPage> {
-    // TODO: Implement MoreLikeThis related search (task 7.3)
-    return {
-      repository: "jscholarship",
-      results: [],
-      nextOffset: null,
-      totalCandidates: 0,
-      validationOmissions: 0,
-      warnings: [],
-    };
+// ─── Response parsing ────────────────────────────────────────────────────────
+
+function parseDocs(body: SolrSearchBody): SolrDoc[] {
+  const rawDocs = Array.isArray(body.response?.docs) ? body.response.docs : [];
+  const docs: SolrDoc[] = [];
+  for (const raw of rawDocs) {
+    const doc = raw as Record<string, unknown>;
+    const uuid = doc[jscholarshipProfile.identityFields.uuid];
+    if (typeof uuid !== "string" || uuid.length === 0) {
+      continue;
+    }
+    const handle = doc[jscholarshipProfile.identityFields.handle];
+    docs.push({ uuid, handle: typeof handle === "string" ? handle : null });
   }
+  return docs;
+}
+
+function parseFacetPairs(pairs: unknown): FacetResult["values"] {
+  if (!Array.isArray(pairs)) {
+    return [];
+  }
+  const values: FacetResult["values"] = [];
+  for (let i = 0; i + 1 < pairs.length; i += 2) {
+    const label = pairs[i];
+    const count = pairs[i + 1];
+    if (typeof label === "string" && typeof count === "number") {
+      values.push({ label, count, repositoryBreakdown: { jscholarship: count } });
+    }
+  }
+  return values;
 }
