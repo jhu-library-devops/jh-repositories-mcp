@@ -258,23 +258,23 @@
     - _Requirements: 12.6-12.8, 13.9, 14.1_
 
 - [ ] 20. Build the OpenTofu infrastructure stack
-  - [ ] 20.1 Add or expose remote-state outputs for VPC, private subnets, repository security groups, canonical API routes, and alert topics
+  - [x] 20.1 Add or expose remote-state outputs for VPC, private subnets, repository security groups, canonical API routes, and alert topics
     - Do not introduce a reverse dependency from repository stacks to the MCP stack.
     - _Requirements: 13.1-13.6_
-  - [ ] 20.2 Create the MCP ECS cluster, ECR repository, task roles, log group, task definition inputs, service, target group, and autoscaling
+  - [x] 20.2 Create the MCP ECS cluster, ECR repository, task roles, log group, task definition inputs, service, target group, and autoscaling
     - Stage default: one task. Production default: two tasks, autoscaling two through six.
     - Default task size: 512 CPU and 1024 MiB.
     - _Requirements: 13.1, 13.7-13.9_
-  - [ ] 20.3 Create the MCP task security group and cross-stack ingress rules for both Solr services and both Canonical_API paths
+  - [x] 20.3 Create the MCP task security group and cross-stack ingress rules for both Solr services and both Canonical_API paths
     - Restrict MCP runtime egress to required DNS, repository, and AWS endpoints.
     - _Requirements: 13.2-13.6_
   - [ ] 20.4 Add OpenTofu validation and plan tests for stage and production variables
     - _Requirements: 13_
 
 - [ ] 21. Add the public edge
-  - [ ] 21.1 Create the dedicated public ALB, HTTPS listener, ACM certificate, MCP target group, health checks, and public hostname outputs
+  - [x] 21.1 Create the dedicated public ALB, HTTPS listener, ACM certificate, MCP target group, health checks, and public hostname outputs
     - _Requirements: 14.2-14.3_
-  - [ ] 21.2 Create WAF rules for exact Host, common threats, known bad inputs, request size, and endpoint-scoped IP rate limiting
+  - [x] 21.2 Create WAF rules for exact Host, common threats, known bad inputs, request size, and endpoint-scoped IP rate limiting
     - _Requirements: 14.3-14.5_
   - [ ] 21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients
     - _Requirements: 14.4_
