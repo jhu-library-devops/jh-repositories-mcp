@@ -109,20 +109,20 @@
   - [x] 7.4 Add adapter integration tests with paired Solr and DSpace fixtures
     - _Requirements: 2, 6, 7, 9, 16.1-16.2_
 
-- [ ] 8. Implement the Dataverse canonical client
-  - [ ] 8.1 Implement anonymous dataset resolution by DOI, Handle, and Dataverse persistent identifier
+- [x] 8. Implement the Dataverse canonical client
+  - [x] 8.1 Implement anonymous dataset resolution by DOI, Handle, and Dataverse persistent identifier
     - Always request the latest published version and never request draft or authenticated state.
     - _Requirements: 3.4-3.5, 5.1, 14.1_
-  - [ ] 8.2 Implement the Dataverse Public_Record gate
+  - [x] 8.2 Implement the Dataverse Public_Record gate
     - Reject draft, deaccessioned, restricted, missing, or anonymous-inaccessible datasets.
     - Return identical not-found behavior for non-public and nonexistent records.
     - Implement a lightweight minimal-GET revalidation probe for cache-emit checks.
     - _Requirements: 3.3-3.7, 5.4, 9.3-9.5, 15.9_
-  - [ ] 8.3 Implement Dataverse summary and full-record normalization
+  - [x] 8.3 Implement Dataverse summary and full-record normalization
     - Keep search summaries to citation-block metadata, DOI, canonical URL, license/terms, version, public file count, and formats when available.
     - Expand public file summaries only for full dataset lookup, exclude restricted files, cap summaries at 100, and never fetch file bytes.
     - _Requirements: 3.5-3.6, 4, 5.2, 9.7, 17.3_
-  - [ ] 8.4 Add Dataverse contract tests for public, draft, deaccessioned, restricted-file, malformed, missing, timeout, and 5xx fixtures
+  - [x] 8.4 Add Dataverse contract tests for public, draft, deaccessioned, restricted-file, malformed, missing, timeout, and 5xx fixtures
     - _Requirements: 3, 5, 9, 15.1-15.3, 16.1-16.2_
 
 - [ ] 9. Implement the JHRDR adapter

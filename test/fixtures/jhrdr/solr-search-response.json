@@ -1,0 +1,61 @@
+{
+  "$comment": "Synthetic Dataverse Solr collection1 search response. Two published public datasets; drafts/deaccessioned/file documents are excluded by the immutable public filters and therefore do not appear. Fake DOIs and metadata. No credentials or private content.",
+  "responseHeader": {
+    "status": 0,
+    "QTime": 9,
+    "params": {
+      "q": "housing",
+      "fq": [
+        "dvObjectType:Dataset",
+        "publicationStatus:Published",
+        "-publicationStatus:Deaccessioned"
+      ],
+      "rows": "30",
+      "start": "0",
+      "wt": "json"
+    }
+  },
+  "response": {
+    "numFound": 2,
+    "start": 0,
+    "maxScore": 6.31,
+    "docs": [
+      {
+        "id": "dataset_401",
+        "entityId": 401,
+        "dvObjectType": "Dataset",
+        "publicationStatus": ["Published"],
+        "identifier": "doi:10.7281/T1ABCDEF",
+        "persistentUrl": "https://doi.org/10.7281/T1ABCDEF",
+        "dateSort": "2024-06-02T15:00:00Z",
+        "nameSort": "baltimore housing vacancy survey microdata 2020-2024",
+        "title": "Baltimore Housing Vacancy Survey Microdata 2020-2024",
+        "authorName": ["Chen, Wei", "Okafor, Adaeze"],
+        "citation": "Chen, Wei; Okafor, Adaeze, 2024, \"Baltimore Housing Vacancy Survey Microdata 2020-2024\", https://doi.org/10.7281/T1ABCDEF, Johns Hopkins Research Data Repository, V2",
+        "publicationDate": "2024",
+        "parentIdentifier": "jhu",
+        "parentName": "Johns Hopkins Research Data Repository",
+        "license": "CC0 1.0",
+        "fileCount": 3
+      },
+      {
+        "id": "dataset_402",
+        "entityId": 402,
+        "dvObjectType": "Dataset",
+        "publicationStatus": ["Published"],
+        "identifier": "doi:10.7281/T1XYZ999",
+        "persistentUrl": "https://doi.org/10.7281/T1XYZ999",
+        "dateSort": "2023-11-20T12:00:00Z",
+        "nameSort": "chesapeake shoreline sensor readings 2023",
+        "title": "Chesapeake Shoreline Sensor Readings 2023",
+        "authorName": ["Smith, Jane A."],
+        "citation": "Smith, Jane A., 2023, \"Chesapeake Shoreline Sensor Readings 2023\", https://doi.org/10.7281/T1XYZ999, Johns Hopkins Research Data Repository, V1",
+        "publicationDate": "2023",
+        "parentIdentifier": "jhu",
+        "parentName": "Johns Hopkins Research Data Repository",
+        "license": "CC BY 4.0",
+        "fileCount": 5
+      }
+    ]
+  }
+}

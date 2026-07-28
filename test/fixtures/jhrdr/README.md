@@ -21,7 +21,18 @@ Contents:
 - **Excluded file-level fields** — listed but not used (filtered by `dvObjectType:Dataset`)
 - **Public filter explanation** — documents immutable filter logic
 
-### Planned Fixtures (tasks 8 and 9)
+### `dataverse-api-dataset.json`
+
+Synthetic Dataverse Native API response for `GET /api/datasets/:persistentId/versions/:latest-published`.
+Published public dataset (fake DOI `doi:10.7281/T1ABCDEF`) with two public files and one
+restricted file that clients must exclude from summaries.
+
+### `solr-search-response.json`
+
+Synthetic Dataverse Solr `collection1` search response with two published public datasets,
+carrying the immutable public filters in `responseHeader.params.fq`.
+
+### Planned Fixtures
 
 - **`solr-search-response.json`** — Synthetic Dataverse Solr search response with public, draft, and deaccessioned datasets
 - **`solr-public-dataset.json`** — Single Solr document for a published public dataset
