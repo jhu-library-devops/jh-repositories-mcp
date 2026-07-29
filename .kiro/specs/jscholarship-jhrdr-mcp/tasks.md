@@ -143,20 +143,20 @@
   - [x] 9.4 Add adapter integration tests with paired Solr and Native API fixtures
     - _Requirements: 3, 6, 7, 9, 16.1-16.2_
 
-- [ ] 10. Implement federated ranking and pagination
-  - [ ] 10.1 Implement repository-local rank preservation and balanced reciprocal-rank merging
+- [x] 10. Implement federated ranking and pagination
+  - [x] 10.1 Implement repository-local rank preservation and balanced reciprocal-rank merging
     - Use equal default weights and deterministic alternating tie handling.
     - Do not consume or expose raw scores as confidence.
     - _Requirements: 4.6, 11.1-11.3, 11.6_
-  - [ ] 10.2 Implement the versioned Cursor codec with query hash, per-repository offsets, and next tie source
+  - [x] 10.2 Implement the versioned Cursor codec with query hash, per-repository offsets, and next tie source
     - Validate type, version, bounds, and query binding.
     - Each per-repository offset represents the next unexamined Solr position (startOffset + candidatesConsumed from the previous page).
     - Propagate validation_attrition warnings from adapters to the federated response.
     - _Requirements: 1.6, 11.4-11.9_
-  - [ ] 10.3 Implement Partial_Result assembly and Repository-qualified warnings
+  - [x] 10.3 Implement Partial_Result assembly and Repository-qualified warnings
     - Ensure no internal exception or endpoint appears in warnings.
     - _Requirements: 1.8, 15.3_
-  - [ ] 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, partial success, and offset advancement
+  - [x] 10.4 Write property tests for score independence, balanced ties, cursor round-trip, query binding, determinism, partial success, and offset advancement
     - Include Property 16: nextOffset = startOffset + passed + failed, never exceeds 3 × limit beyond start.
     - _Requirements: 11, 15.3_
 
