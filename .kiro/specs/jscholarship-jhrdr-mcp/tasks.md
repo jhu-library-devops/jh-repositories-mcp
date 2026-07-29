@@ -177,22 +177,22 @@
   - [x] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
     - _Requirements: 5.4-5.5, 9.5_
 
-- [ ] 13. Implement <code>list_facets</code>
-  - [ ] 13.1 Map common facet concepts to each adapter and execute selected repositories concurrently
+- [x] 13. Implement <code>list_facets</code>
+  - [x] 13.1 Map common facet concepts to each adapter and execute selected repositories concurrently
     - _Requirements: 6.1-6.2, 6.4_
-  - [ ] 13.2 Normalize exact labels with per-repository counts, cap values at 10, and apply deterministic ordering
+  - [x] 13.2 Normalize exact labels with per-repository counts, cap values at 10, and apply deterministic ordering
     - Do not conflate merely similar controlled-vocabulary values.
     - _Requirements: 6.3, 6.6_
-  - [ ] 13.3 Reject unknown facets before I/O and support empty and partial facet responses
+  - [x] 13.3 Reject unknown facets before I/O and support empty and partial facet responses
     - _Requirements: 6.5-6.6, 15.3_
 
-- [ ] 14. Implement <code>find_related_items</code>
-  - [ ] 14.1 Resolve the source through its Canonical_API before deriving terms
+- [x] 14. Implement <code>find_related_items</code>
+  - [x] 14.1 Resolve the source through its Canonical_API before deriving terms
     - _Requirements: 7.1, 9.3_
-  - [ ] 14.2 Derive common public metadata concepts and call one or both adapters
+  - [x] 14.2 Derive common public metadata concepts and call one or both adapters
     - Exclude the source and enforce the clamped limit and public gates.
     - _Requirements: 7.2-7.6, 9, 10_
-  - [ ] 14.3 Return canonical SearchResult results with sourceRank, Repository, evidence fields, and no-result messaging
+  - [x] 14.3 Return canonical SearchResult results with sourceRank, Repository, evidence fields, and no-result messaging
     - _Requirements: 4, 7.5-7.6_
 
 - [ ] 15. Implement explanations, resources, and prompts
