@@ -160,21 +160,21 @@
     - Include Property 16: nextOffset = startOffset + passed + failed, never exceeds 3 × limit beyond start.
     - _Requirements: 11, 15.3_
 
-- [ ] 11. Implement <code>search_items</code>
-  - [ ] 11.1 Orchestrate selected adapters concurrently with the normalized search request and Cursor state
+- [x] 11. Implement <code>search_items</code>
+  - [x] 11.1 Orchestrate selected adapters concurrently with the normalized search request and Cursor state
     - _Requirements: 1.1-1.4, 11_
-  - [ ] 11.2 Return canonical normalized SearchResult results, count, next Cursor, Repository status, warnings, retrieval time, and resource links
+  - [x] 11.2 Return canonical normalized SearchResult results, count, next Cursor, Repository status, warnings, retrieval time, and resource links
     - Return both structuredContent and compact text.
     - _Requirements: 1.5-1.8, 4.1-4.7, 8.4, 12.4_
-  - [ ] 11.3 Handle zero results, complete backend failure, partial failure, deadline, malformed input, and unsupported filters
+  - [x] 11.3 Handle zero results, complete backend failure, partial failure, deadline, malformed input, and unsupported filters
     - _Requirements: 1.4, 1.7-1.8, 12.5, 15.1-15.3_
 
-- [ ] 12. Implement <code>get_item</code>
-  - [ ] 12.1 Route namespaced IDs and explicit Repository identifiers to the correct canonical client
+- [x] 12. Implement <code>get_item</code>
+  - [x] 12.1 Route namespaced IDs and explicit Repository identifiers to the correct canonical client
     - _Requirements: 4.3, 5.1, 5.3_
-  - [ ] 12.2 Return stable ItemDetail output, compact text, and a resource link
+  - [x] 12.2 Return stable ItemDetail output, compact text, and a resource link
     - _Requirements: 4, 5.2, 8.4_
-  - [ ] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
+  - [x] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
     - _Requirements: 5.4-5.5, 9.5_
 
 - [ ] 13. Implement <code>list_facets</code>
