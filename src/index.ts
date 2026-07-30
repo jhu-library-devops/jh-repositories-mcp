@@ -13,8 +13,11 @@ import { JhrdrAdapter } from "./adapters/jhrdr/index";
 import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import { loadConfig } from "./config/env";
 import type { AppConfig } from "./config/index";
+import { createRepositoryServer } from "./mcp/registry";
+import type { ToolContext } from "./mcp/tools/search-items";
 import { createMcpTransport } from "./mcp/transport";
 import type { SchemaValidationResult } from "./models/index";
+import { deadlineMiddleware, edgeMiddleware } from "./security/index";
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -93,11 +96,55 @@ app.get("/health/ready", (c) => {
   });
 });
 
-// ─── MCP Transport ───────────────────────────────────────────────────────────
+// ─── Version endpoint (task 16.3) ────────────────────────────────────────────
+
+app.get("/version", (c) => c.json({ version: config.buildVersion, commit: config.buildCommit }));
+
+// ─── Adapter Context ─────────────────────────────────────────────────────────
+
+const toolContext: ToolContext = { adapters: new Map() };
+toolContext.adapters.set(
+  "jscholarship",
+  new JScholarshipAdapter({
+    solrCollectionUrl: config.jscholarship.solrCollectionUrl,
+    dspaceApiUrl: config.jscholarship.apiBaseUrl,
+    publicBaseUrl: config.jscholarship.publicBaseUrl,
+    requestTimeoutMs: config.timeouts.solrMs,
+  }),
+);
+if (config.jhrdr.solrCollectionUrl && config.jhrdr.apiBaseUrl && config.jhrdr.publicBaseUrl) {
+  toolContext.adapters.set(
+    "jhrdr",
+    new JhrdrAdapter({
+      solrCollectionUrl: config.jhrdr.solrCollectionUrl,
+      dataverseApiUrl: config.jhrdr.apiBaseUrl,
+      publicBaseUrl: config.jhrdr.publicBaseUrl,
+      requestTimeoutMs: config.timeouts.solrMs,
+    }),
+  );
+}
+
+// ─── MCP Transport (edge middleware + per-request wired server) ──────────────
+
+app.use(
+  "/mcp/*",
+  edgeMiddleware({
+    allowedHosts: config.security.allowedHosts,
+    allowedOrigins: config.security.allowedOrigins,
+    maxBodyBytes: config.security.maxBodyBytes,
+  }),
+);
+app.use("/mcp/*", deadlineMiddleware(config.timeouts.overallDeadlineMs));
 
 const mcpTransport = createMcpTransport({
   serverName: "jhu-repository-mcp",
   serverVersion: config.buildVersion,
+  createServer: () =>
+    createRepositoryServer({
+      name: "jhu-repository-mcp",
+      version: config.buildVersion,
+      context: toolContext,
+    }),
 });
 
 app.route("/mcp", mcpTransport);
@@ -196,6 +243,15 @@ export default {
   port: config.port,
   fetch: app.fetch,
 };
+
+process.on("SIGTERM", () => {
+  // Stop advertising readiness so the load balancer drains this task, then
+  // allow in-flight requests one deadline window before exiting.
+  readinessState.ready = false;
+  readinessState.error = "Draining: SIGTERM received";
+  console.log("[shutdown] SIGTERM received; draining");
+  setTimeout(() => process.exit(0), config.timeouts.overallDeadlineMs).unref();
+});
 
 console.log(
   `jhu-repository-mcp v${config.buildVersion} (${config.buildCommit}) ` +

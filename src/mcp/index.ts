@@ -8,5 +8,5 @@
  * Requirements: 12.1-12.2, 12.3-12.5, 12.7-12.8, 17
  */
 
-export { createMcpRegistry, type McpRegistryOptions } from "./registry";
+export { createRepositoryServer, type RepositoryServerOptions } from "./registry";
 export { createMcpTransport, type McpTransportOptions } from "./transport";

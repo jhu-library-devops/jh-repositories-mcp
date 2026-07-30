@@ -207,16 +207,16 @@
   - [x] 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
     - _Requirements: 8.6, 14, 17_
 
-- [ ] 16. Implement the stateless MCP HTTP server
-  - [ ] 16.1 Register exactly the specified five tools, two resources, and two prompts with input/output schemas and read-only annotations
+- [x] 16. Implement the stateless MCP HTTP server
+  - [x] 16.1 Register exactly the specified five tools, two resources, and two prompts with input/output schemas and read-only annotations
     - _Requirements: 12.1, 12.3-12.5, 17_
-  - [ ] 16.2 Mount stateless Streamable HTTP at <code>/mcp</code> with per-request transport lifecycle
+  - [x] 16.2 Mount stateless Streamable HTTP at <code>/mcp</code> with per-request transport lifecycle
     - Use Hono, <code>@modelcontextprotocol/hono</code>, and <code>WebStandardStreamableHTTPServerTransport</code>; do not use the Node.js-specific MCP transport.
     - Verify operation across multiple Bun server processes without affinity.
     - _Requirements: 12.1-12.2, 12.7-12.8_
-  - [ ] 16.3 Add live, ready, and version endpoints and graceful SIGTERM draining
+  - [x] 16.3 Add live, ready, and version endpoints and graceful SIGTERM draining
     - _Requirements: 12.6, 13.9, 15.8_
-  - [ ] 16.4 Add Host, Origin, request-size, correlation-ID, and overall-deadline middleware
+  - [x] 16.4 Add Host, Origin, request-size, correlation-ID, and overall-deadline middleware
     - _Requirements: 14.2-14.5, 15.1_
 
 - [ ] 17. Add bounded resilience, caching, and concurrency

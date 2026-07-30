@@ -76,3 +76,81 @@ export const defaultRequestBounds: RequestBoundsConfig = {
   deadlineMs: 10_000, // 10 seconds
   maxConcurrency: 10,
 };
+
+// ─── Hono Middleware (task 16.4) ─────────────────────────────────────────────
+
+import type { MiddlewareHandler } from "hono";
+
+export interface EdgeMiddlewareConfig {
+  allowedHosts: readonly string[];
+  allowedOrigins: readonly string[];
+  maxBodyBytes: number;
+}
+
+/**
+ * Edge middleware for the MCP route: request correlation ID, exact Host
+ * allowlisting, Origin allowlisting when Origin is present (missing Origin
+ * stays valid for non-browser MCP clients), and a request-size bound via
+ * Content-Length. Rejections are structured JSON-RPC-shaped errors with no
+ * internal detail.
+ *
+ * Requirements: 14.2-14.5, 15.1
+ */
+export function edgeMiddleware(config: EdgeMiddlewareConfig): MiddlewareHandler {
+  return async (c, next) => {
+    const requestId = crypto.randomUUID();
+    c.header("x-request-id", requestId);
+    c.set("requestId" as never, requestId as never);
+
+    const host = c.req.header("host") ?? "";
+    if (
+      config.allowedHosts.length > 0 &&
+      !isHostAllowed(host, { allowedHosts: config.allowedHosts })
+    ) {
+      return c.json(
+        { jsonrpc: "2.0", error: { code: -32000, message: "Forbidden host" }, id: null },
+        403,
+      );
+    }
+
+    const origin = c.req.header("origin");
+    if (!isOriginAllowed(origin, { allowedOrigins: config.allowedOrigins })) {
+      return c.json(
+        { jsonrpc: "2.0", error: { code: -32000, message: "Forbidden origin" }, id: null },
+        403,
+      );
+    }
+
+    const contentLength = Number(c.req.header("content-length") ?? "0");
+    if (Number.isFinite(contentLength) && contentLength > config.maxBodyBytes) {
+      return c.json(
+        { jsonrpc: "2.0", error: { code: -32000, message: "Request too large" }, id: null },
+        413,
+      );
+    }
+
+    await next();
+  };
+}
+
+/**
+ * Overall request deadline: responds 504 with a structured error if the
+ * downstream handler exceeds deadlineMs (Requirement 15.1).
+ */
+export function deadlineMiddleware(deadlineMs: number): MiddlewareHandler {
+  return async (c, next) => {
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const timeout = new Promise<"timeout">((resolve) => {
+      timer = setTimeout(() => resolve("timeout"), deadlineMs);
+    });
+    const outcome = await Promise.race([next().then(() => "done" as const), timeout]);
+    clearTimeout(timer);
+    if (outcome === "timeout") {
+      return c.json(
+        { jsonrpc: "2.0", error: { code: -32000, message: "Request deadline exceeded" }, id: null },
+        504,
+      );
+    }
+    return;
+  };
+}

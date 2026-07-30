@@ -8,9 +8,9 @@
  * Requirements: 12.1-12.2, 12.7-12.8
  */
 
-import { Hono } from "hono";
 import { McpServer } from "@modelcontextprotocol/sdk/server/mcp.js";
 import { WebStandardStreamableHTTPServerTransport } from "@modelcontextprotocol/sdk/server/webStandardStreamableHttp.js";
+import { Hono } from "hono";
 import { z } from "zod";
 
 export interface McpTransportOptions {
@@ -23,6 +23,13 @@ export interface McpTransportOptions {
    * If not provided, a default `echo` tool is registered for testing.
    */
   registerTools?: (server: McpServer) => void;
+  /**
+   * Optional factory producing a fully wired server per request (used by the
+   * real registry). Takes precedence over registerTools.
+   */
+  createServer?: () => {
+    connect(transport: WebStandardStreamableHTTPServerTransport): Promise<void>;
+  };
 }
 
 /**
@@ -51,13 +58,18 @@ export function createMcpTransport(options: McpTransportOptions): Hono {
 
   // POST /mcp — handles all MCP JSON-RPC messages (initialize, tools/list, tools/call, etc.)
   mcpApp.post("/", async (c) => {
-    const server = new McpServer({
-      name: options.serverName,
-      version: options.serverVersion,
-    });
-
-    const registerTools = options.registerTools ?? registerDefaultTools;
-    registerTools(server);
+    let server: { connect(transport: WebStandardStreamableHTTPServerTransport): Promise<void> };
+    if (options.createServer) {
+      server = options.createServer();
+    } else {
+      const mcpServer = new McpServer({
+        name: options.serverName,
+        version: options.serverVersion,
+      });
+      const registerTools = options.registerTools ?? registerDefaultTools;
+      registerTools(mcpServer);
+      server = mcpServer;
+    }
 
     const transport = new WebStandardStreamableHTTPServerTransport({
       sessionIdGenerator: undefined, // Stateless mode — no session ID
@@ -76,7 +88,11 @@ export function createMcpTransport(options: McpTransportOptions): Hono {
     // In stateless mode without a session, GET for SSE is not applicable.
     // Return 405 Method Not Allowed as per the spec for stateless servers.
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32000, message: "Method not allowed in stateless mode" }, id: null },
+      {
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Method not allowed in stateless mode" },
+        id: null,
+      },
       405,
     );
   });
@@ -84,7 +100,11 @@ export function createMcpTransport(options: McpTransportOptions): Hono {
   // DELETE /mcp — session termination (not applicable in stateless mode)
   mcpApp.delete("/", async (c) => {
     return c.json(
-      { jsonrpc: "2.0", error: { code: -32000, message: "Session termination not supported in stateless mode" }, id: null },
+      {
+        jsonrpc: "2.0",
+        error: { code: -32000, message: "Session termination not supported in stateless mode" },
+        id: null,
+      },
       405,
     );
   });
