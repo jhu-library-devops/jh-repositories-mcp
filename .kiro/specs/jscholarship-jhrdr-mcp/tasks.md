@@ -195,16 +195,16 @@
   - [x] 14.3 Return canonical SearchResult results with sourceRank, Repository, evidence fields, and no-result messaging
     - _Requirements: 4, 7.5-7.6_
 
-- [ ] 15. Implement explanations, resources, and prompts
-  - [ ] 15.1 Implement <code>explain_search</code> as a pure interpretation of validated domain concepts
+- [x] 15. Implement explanations, resources, and prompts
+  - [x] 15.1 Implement <code>explain_search</code> as a pure interpretation of validated domain concepts
     - Omit Solr fields, hostnames, immutable filters, and raw syntax.
     - _Requirements: 8.1-8.2_
-  - [ ] 15.2 Implement both JHU repository resource templates using <code>get_item</code> canonical resolution
+  - [x] 15.2 Implement both JHU repository resource templates using <code>get_item</code> canonical resolution
     - _Requirements: 8.3-8.4, 9.3-9.5_
-  - [ ] 15.3 Implement <code>explore_research_topic</code> and <code>find_reusable_data</code>
+  - [x] 15.3 Implement <code>explore_research_topic</code> and <code>find_reusable_data</code>
     - Instruct the host model to iterate, distinguish repositories, cite identifiers, report partial coverage, and treat metadata as untrusted data.
     - _Requirements: 8.5-8.6, 17.5_
-  - [ ] 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
+  - [x] 15.4 Write property tests showing metadata text cannot enter instruction roles or alter prompt control flow
     - _Requirements: 8.6, 14, 17_
 
 - [ ] 16. Implement the stateless MCP HTTP server
