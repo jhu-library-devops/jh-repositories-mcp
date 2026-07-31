@@ -154,3 +154,36 @@ export function deadlineMiddleware(deadlineMs: number): MiddlewareHandler {
     return;
   };
 }
+
+// ─── Tool Concurrency Semaphore (task 17.3) ──────────────────────────────────
+
+export interface Semaphore {
+  /** Acquire a slot if one is free; returns false (never queues) otherwise. */
+  tryAcquire(): boolean;
+  release(): void;
+  readonly active: number;
+}
+
+/**
+ * Non-queuing counting semaphore: callers that cannot acquire a slot are
+ * rejected immediately with a rate-limited error rather than building an
+ * unbounded backlog (Requirements 14.6, 15.4).
+ */
+export function createSemaphore(max: number): Semaphore {
+  let active = 0;
+  return {
+    tryAcquire(): boolean {
+      if (active >= max) {
+        return false;
+      }
+      active += 1;
+      return true;
+    },
+    release(): void {
+      active = Math.max(0, active - 1);
+    },
+    get active(): number {
+      return active;
+    },
+  };
+}

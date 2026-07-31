@@ -26,6 +26,7 @@ import type {
   RepositoryFacets,
   RepositoryIdentifier,
   RepositoryPage,
+  RepositoryRecord,
   RepositorySearchRequest,
   RepositoryWarning,
   SchemaValidationResult,
@@ -158,6 +159,10 @@ export class JhrdrAdapter implements RepositoryAdapter {
       validationOmissions: omissions,
       warnings,
     };
+  }
+
+  async probePublic(record: RepositoryRecord): Promise<boolean> {
+    return this.dataverse.probeDatasetPublic(record.provenance.platformRecordId);
   }
 
   async get(identifier: RepositoryIdentifier): Promise<ItemDetail | null> {

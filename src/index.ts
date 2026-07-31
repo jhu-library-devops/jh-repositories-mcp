@@ -9,6 +9,7 @@
  */
 
 import { Hono } from "hono";
+import { withCaching } from "./adapters/caching";
 import { JhrdrAdapter } from "./adapters/jhrdr/index";
 import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import { loadConfig } from "./config/env";
@@ -17,7 +18,7 @@ import { createRepositoryServer } from "./mcp/registry";
 import type { ToolContext } from "./mcp/tools/search-items";
 import { createMcpTransport } from "./mcp/transport";
 import type { SchemaValidationResult } from "./models/index";
-import { deadlineMiddleware, edgeMiddleware } from "./security/index";
+import { createSemaphore, deadlineMiddleware, edgeMiddleware } from "./security/index";
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -102,27 +103,43 @@ app.get("/version", (c) => c.json({ version: config.buildVersion, commit: config
 
 // ─── Adapter Context ─────────────────────────────────────────────────────────
 
+const cachingOptions = {
+  searchTtlMs: config.cache.searchTtlMs,
+  canonicalRecordTtlMs: config.cache.canonicalRecordTtlMs,
+  maxEntries: config.cache.maxEntries,
+};
+
 const toolContext: ToolContext = { adapters: new Map() };
 toolContext.adapters.set(
   "jscholarship",
-  new JScholarshipAdapter({
-    solrCollectionUrl: config.jscholarship.solrCollectionUrl,
-    dspaceApiUrl: config.jscholarship.apiBaseUrl,
-    publicBaseUrl: config.jscholarship.publicBaseUrl,
-    requestTimeoutMs: config.timeouts.solrMs,
-  }),
+  withCaching(
+    new JScholarshipAdapter({
+      solrCollectionUrl: config.jscholarship.solrCollectionUrl,
+      dspaceApiUrl: config.jscholarship.apiBaseUrl,
+      publicBaseUrl: config.jscholarship.publicBaseUrl,
+      requestTimeoutMs: config.timeouts.solrMs,
+      canonicalConcurrency: config.concurrency.maxCanonicalizationWorkers,
+    }),
+    cachingOptions,
+  ),
 );
 if (config.jhrdr.solrCollectionUrl && config.jhrdr.apiBaseUrl && config.jhrdr.publicBaseUrl) {
   toolContext.adapters.set(
     "jhrdr",
-    new JhrdrAdapter({
-      solrCollectionUrl: config.jhrdr.solrCollectionUrl,
-      dataverseApiUrl: config.jhrdr.apiBaseUrl,
-      publicBaseUrl: config.jhrdr.publicBaseUrl,
-      requestTimeoutMs: config.timeouts.solrMs,
-    }),
+    withCaching(
+      new JhrdrAdapter({
+        solrCollectionUrl: config.jhrdr.solrCollectionUrl,
+        dataverseApiUrl: config.jhrdr.apiBaseUrl,
+        publicBaseUrl: config.jhrdr.publicBaseUrl,
+        requestTimeoutMs: config.timeouts.solrMs,
+        canonicalConcurrency: config.concurrency.maxCanonicalizationWorkers,
+      }),
+      cachingOptions,
+    ),
   );
 }
+
+const toolSemaphore = createSemaphore(config.concurrency.maxToolConcurrency);
 
 // ─── MCP Transport (edge middleware + per-request wired server) ──────────────
 
@@ -144,6 +161,7 @@ const mcpTransport = createMcpTransport({
       name: "jhu-repository-mcp",
       version: config.buildVersion,
       context: toolContext,
+      toolSemaphore,
     }),
 });
 

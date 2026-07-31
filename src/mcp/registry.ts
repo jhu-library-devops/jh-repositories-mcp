@@ -54,6 +54,7 @@ import {
   searchItemsInputSchema,
   searchItemsOutputSchema,
 } from "../models/index";
+import type { Semaphore } from "../security/index";
 import { ToolFailure } from "./errors";
 import {
   EXPLORE_RESEARCH_TOPIC,
@@ -77,6 +78,8 @@ export interface RepositoryServerOptions {
   name: string;
   version: string;
   context: ToolContext;
+  /** Shared per-task tool-concurrency semaphore (task 17.3). */
+  toolSemaphore?: Semaphore;
 }
 
 // ─── Compact text renderings (Requirements 1.7, 4.7) ────────────────────────
@@ -276,6 +279,18 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
     if (tool === undefined) {
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
     }
+    const semaphore = options.toolSemaphore;
+    if (semaphore !== undefined && !semaphore.tryAcquire()) {
+      return {
+        isError: true,
+        content: [
+          {
+            type: "text",
+            text: "rate_limited: The server is at its concurrency limit. Retry shortly.",
+          },
+        ],
+      };
+    }
     try {
       const { structured, text, links } = await tool.run(context, request.params.arguments ?? {});
       return {
@@ -307,6 +322,8 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
           { type: "text", text: "backend_unavailable: The request could not be completed." },
         ],
       };
+    } finally {
+      semaphore?.release();
     }
   });
 

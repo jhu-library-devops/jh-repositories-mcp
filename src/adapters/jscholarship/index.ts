@@ -163,6 +163,10 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     };
   }
 
+  async probePublic(record: RepositoryRecord): Promise<boolean> {
+    return this.dspace.probeItemPublic(record.provenance.platformRecordId);
+  }
+
   async get(identifier: RepositoryIdentifier): Promise<ItemDetail | null> {
     const resolved = this.toDspaceIdentifier(identifier);
     if (resolved === null) {

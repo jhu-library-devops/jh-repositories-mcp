@@ -219,19 +219,19 @@
   - [x] 16.4 Add Host, Origin, request-size, correlation-ID, and overall-deadline middleware
     - _Requirements: 14.2-14.5, 15.1_
 
-- [ ] 17. Add bounded resilience, caching, and concurrency
-  - [ ] 17.1 Implement backend timeouts, overall 10-second tool deadlines, and at most two attempts for idempotent transient failures
+- [x] 17. Add bounded resilience, caching, and concurrency
+  - [x] 17.1 Implement backend timeouts, overall 10-second tool deadlines, and at most two attempts for idempotent transient failures
     - Use exponential backoff with jitter.
     - _Requirements: 15.1-15.3_
-  - [ ] 17.2 Implement bounded in-process LRU caches for search, canonical records, and startup schema results
+  - [x] 17.2 Implement bounded in-process LRU caches for search, canonical records, and startup schema results
     - Cache public normalized data only.
     - Before returning a cached Canonical_Record, call the platform-specific revalidation probe; evict and return not_found on failure.
     - Search cache does not require revalidation (results were validated during canonicalization and TTL ≤ Solr re-index lag).
     - _Requirements: 15.4, 15.9_
-  - [ ] 17.3 Implement per-task tool concurrency and per-repository canonicalization worker pools
+  - [x] 17.3 Implement per-task tool concurrency and per-repository canonicalization worker pools
     - Return rate-limited/busy errors without queuing unbounded work.
     - _Requirements: 10.6, 14.6_
-  - [ ] 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
+  - [x] 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
     - _Requirements: 14.6, 15.1-15.4, 15.9_
 
 - [ ] 18. Implement privacy-preserving observability

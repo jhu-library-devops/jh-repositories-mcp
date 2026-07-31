@@ -23,6 +23,7 @@ import type {
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
+import { withRetry } from "../retry";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -235,13 +236,31 @@ export class DSpaceClient {
 
   private async request(target: URL, method: "GET" | "HEAD"): Promise<Response> {
     try {
-      return await this.fetchImpl(target, {
-        method,
-        headers: { accept: "application/json" },
-        redirect: "error",
-        signal: AbortSignal.timeout(this.requestTimeoutMs),
-      });
+      // Idempotent read: at most one retry for network faults and 5xx.
+      return await withRetry(
+        async () => {
+          const attempt = await this.fetchImpl(target, {
+            method,
+            headers: { accept: "application/json" },
+            redirect: "error",
+            signal: AbortSignal.timeout(this.requestTimeoutMs),
+          });
+          if (attempt.status >= 500) {
+            throw new DSpaceRequestError(`DSpace returned HTTP ${attempt.status}`, attempt.status);
+          }
+          return attempt;
+        },
+        {
+          isTransient: (error) =>
+            !(error instanceof DSpaceRequestError) ||
+            error.status === undefined ||
+            error.status >= 500,
+        },
+      );
     } catch (cause) {
+      if (cause instanceof DSpaceRequestError) {
+        throw cause;
+      }
       throw new DSpaceRequestError(
         cause instanceof Error ? cause.message : "DSpace request failed",
       );

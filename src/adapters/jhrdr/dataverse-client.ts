@@ -26,6 +26,7 @@ import type {
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
+import { withRetry } from "../retry";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -271,14 +272,35 @@ export class DataverseClient {
 
   private async request(target: URL, method: "GET"): Promise<Response> {
     try {
-      return await this.fetchImpl(target, {
-        method,
-        // Anonymous by design: no X-Dataverse-key, no Authorization (Req 14.1).
-        headers: { accept: "application/json" },
-        redirect: "error",
-        signal: AbortSignal.timeout(this.requestTimeoutMs),
-      });
+      // Idempotent read: at most one retry for network faults and 5xx.
+      return await withRetry(
+        async () => {
+          const attempt = await this.fetchImpl(target, {
+            method,
+            // Anonymous by design: no X-Dataverse-key, no Authorization (Req 14.1).
+            headers: { accept: "application/json" },
+            redirect: "error",
+            signal: AbortSignal.timeout(this.requestTimeoutMs),
+          });
+          if (attempt.status >= 500) {
+            throw new DataverseRequestError(
+              `Dataverse returned HTTP ${attempt.status}`,
+              attempt.status,
+            );
+          }
+          return attempt;
+        },
+        {
+          isTransient: (error) =>
+            !(error instanceof DataverseRequestError) ||
+            error.status === undefined ||
+            error.status >= 500,
+        },
+      );
     } catch (cause) {
+      if (cause instanceof DataverseRequestError) {
+        throw cause;
+      }
       throw new DataverseRequestError(
         cause instanceof Error ? cause.message : "Dataverse request failed",
       );

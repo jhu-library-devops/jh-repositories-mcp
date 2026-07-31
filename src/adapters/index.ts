@@ -16,6 +16,7 @@ import type {
   RepositoryId,
   RepositoryIdentifier,
   RepositoryPage,
+  RepositoryRecord,
   RepositorySearchRequest,
   SchemaValidationResult,
 } from "../models/index";
@@ -58,4 +59,11 @@ export interface RepositoryAdapter {
    * Find records related to a source item within this repository.
    */
   related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage>;
+
+  /**
+   * Lightweight platform-specific revalidation probe: is this record still
+   * anonymously retrievable and public? Used before emitting cached records
+   * (Requirement 15.9). Throws on backend faults so cache layers fail closed.
+   */
+  probePublic?(record: RepositoryRecord): Promise<boolean>;
 }

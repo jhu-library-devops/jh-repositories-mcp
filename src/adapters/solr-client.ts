@@ -10,6 +10,7 @@
  * Requirements: 10.5-10.7, 13.2-13.3
  */
 
+import { withRetry } from "./retry";
 import type { SafeSolrQuery } from "./solr-query";
 
 /** Fetch signature accepted by the client; injectable for tests. */
@@ -68,14 +69,32 @@ export class SolrClient {
 
     let response: Response;
     try {
-      response = await this.fetchImpl(target, {
-        method: "POST",
-        headers: { "content-type": "application/x-www-form-urlencoded" },
-        body: query.params.toString(),
-        redirect: "error",
-        signal: combined,
-      });
+      // Idempotent read: at most one retry for network faults and 5xx.
+      response = await withRetry(
+        async () => {
+          const attempt = await this.fetchImpl(target, {
+            method: "POST",
+            headers: { "content-type": "application/x-www-form-urlencoded" },
+            body: query.params.toString(),
+            redirect: "error",
+            signal: combined,
+          });
+          if (attempt.status >= 500) {
+            throw new SolrRequestError(`Solr returned HTTP ${attempt.status}`, attempt.status);
+          }
+          return attempt;
+        },
+        {
+          isTransient: (error) =>
+            !(error instanceof SolrRequestError) ||
+            error.status === undefined ||
+            error.status >= 500,
+        },
+      );
     } catch (cause) {
+      if (cause instanceof SolrRequestError) {
+        throw cause;
+      }
       throw new SolrRequestError(cause instanceof Error ? cause.message : "Solr request failed");
     }
 

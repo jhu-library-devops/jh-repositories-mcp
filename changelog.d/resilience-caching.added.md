@@ -1,0 +1,1 @@
+Add bounded resilience: single-retry exponential backoff with full jitter on all three backend clients, bounded TTL LRU caches for search and canonical records with revalidate-on-emit probes that evict withdrawn records and fail closed on probe faults, per-task tool-concurrency semaphore returning rate_limited without queuing, and canonicalization worker-pool wiring from config
