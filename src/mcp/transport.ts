@@ -27,7 +27,7 @@ export interface McpTransportOptions {
    * Optional factory producing a fully wired server per request (used by the
    * real registry). Takes precedence over registerTools.
    */
-  createServer?: () => {
+  createServer?: (requestId?: string) => {
     connect(transport: WebStandardStreamableHTTPServerTransport): Promise<void>;
   };
 }
@@ -60,7 +60,8 @@ export function createMcpTransport(options: McpTransportOptions): Hono {
   mcpApp.post("/", async (c) => {
     let server: { connect(transport: WebStandardStreamableHTTPServerTransport): Promise<void> };
     if (options.createServer) {
-      server = options.createServer();
+      const requestId = c.res.headers.get("x-request-id") ?? undefined;
+      server = options.createServer(requestId);
     } else {
       const mcpServer = new McpServer({
         name: options.serverName,

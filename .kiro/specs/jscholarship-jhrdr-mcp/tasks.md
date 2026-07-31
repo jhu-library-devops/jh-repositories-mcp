@@ -234,15 +234,15 @@
   - [x] 17.4 Test retry exhaustion, jitter bounds, cache expiry/eviction, revalidation-probe eviction on withdrawal/deaccession, aborted requests, and concurrency saturation
     - _Requirements: 14.6, 15.1-15.4, 15.9_
 
-- [ ] 18. Implement privacy-preserving observability
-  - [ ] 18.1 Emit one structured summary log per tool invocation with only approved metadata fields
+- [x] 18. Implement privacy-preserving observability
+  - [x] 18.1 Emit one structured summary log per tool invocation with only approved metadata fields
     - Include timestamp, request ID, client metadata when supplied, tool, Repository, latency, result count, partial/cache/outcome/backend state, and build.
     - _Requirements: 15.5, 15.8_
-  - [ ] 18.2 Implement a deny-by-default log serializer and tests that exclude raw research content and credentials
+  - [x] 18.2 Implement a deny-by-default log serializer and tests that exclude raw research content and credentials
     - _Requirements: 15.6_
-  - [ ] 18.3 Publish CloudWatch embedded metrics for tools, repositories, dependencies, omissions, zero results, partial results, cache, and concurrency
+  - [x] 18.3 Publish CloudWatch embedded metrics for tools, repositories, dependencies, omissions, zero results, partial results, cache, and concurrency
     - _Requirements: 15.7_
-  - [ ]* 18.4 Write property tests that generated request and metadata content cannot appear in logs
+  - [x]* 18.4 Write property tests that generated request and metadata content cannot appear in logs
     - _Requirements: 15.5-15.6_
 
 - [ ] 19. Containerize and secure the runtime

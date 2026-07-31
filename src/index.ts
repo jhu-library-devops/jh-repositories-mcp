@@ -156,12 +156,13 @@ app.use("/mcp/*", deadlineMiddleware(config.timeouts.overallDeadlineMs));
 const mcpTransport = createMcpTransport({
   serverName: "jhu-repository-mcp",
   serverVersion: config.buildVersion,
-  createServer: () =>
+  createServer: (requestId) =>
     createRepositoryServer({
       name: "jhu-repository-mcp",
       version: config.buildVersion,
       context: toolContext,
       toolSemaphore,
+      requestId,
     }),
 });
 

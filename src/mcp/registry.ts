@@ -54,6 +54,12 @@ import {
   searchItemsInputSchema,
   searchItemsOutputSchema,
 } from "../models/index";
+import {
+  type ToolInvocationLog,
+  createLogger,
+  emitToolMetrics,
+  generateRequestId,
+} from "../observability/index";
 import type { Semaphore } from "../security/index";
 import { ToolFailure } from "./errors";
 import {
@@ -80,6 +86,10 @@ export interface RepositoryServerOptions {
   context: ToolContext;
   /** Shared per-task tool-concurrency semaphore (task 17.3). */
   toolSemaphore?: Semaphore;
+  /** Correlation ID from the edge middleware. */
+  requestId?: string;
+  /** Observer for tool-invocation events; defaults to log + EMF emission. */
+  observer?: (event: ToolInvocationLog) => void;
 }
 
 // ─── Compact text renderings (Requirements 1.7, 4.7) ────────────────────────
@@ -274,11 +284,63 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
     })),
   }));
 
+  const defaultLogger = createLogger();
+  const observe =
+    options.observer ??
+    ((event: ToolInvocationLog) => {
+      defaultLogger.toolInvocation(event);
+      emitToolMetrics(event);
+    });
+
+  const emitEvent = (
+    tool: string,
+    startedAt: number,
+    outcome: ToolInvocationLog["outcome"],
+    structured?: Record<string, unknown>,
+  ): void => {
+    const repositories = structured?.repositories as
+      | { requested?: string[]; succeeded?: string[]; failed?: string[] }
+      | undefined;
+    const failed = repositories?.failed ?? [];
+    const backendStatus: ToolInvocationLog["backendStatus"] = {};
+    for (const repo of repositories?.succeeded ?? []) {
+      backendStatus[repo as keyof ToolInvocationLog["backendStatus"]] = "ok";
+    }
+    for (const repo of failed) {
+      backendStatus[repo as keyof ToolInvocationLog["backendStatus"]] = "error";
+    }
+    const results = structured?.results;
+    const clientInfo = server.getClientVersion();
+    observe({
+      timestamp: new Date().toISOString(),
+      requestId: options.requestId ?? generateRequestId(),
+      client: clientInfo
+        ? { name: String(clientInfo.name), version: String(clientInfo.version) }
+        : undefined,
+      tool,
+      repositories: (repositories?.requested ?? []) as ToolInvocationLog["repositories"],
+      latencyMs: Date.now() - startedAt,
+      resultCount: Array.isArray(results)
+        ? results.length
+        : typeof structured?.count === "number"
+          ? (structured.count as number)
+          : structured !== undefined
+            ? 1
+            : 0,
+      partial: failed.length > 0,
+      cache: "bypass",
+      backendStatus,
+      outcome: failed.length > 0 && outcome === "success" ? "partial" : outcome,
+      build: options.version,
+    });
+  };
+
   server.setRequestHandler(CallToolRequestSchema, async (request) => {
     const tool = TOOLS[request.params.name];
     if (tool === undefined) {
       throw new McpError(ErrorCode.MethodNotFound, `Unknown tool: ${request.params.name}`);
     }
+    const startedAt = Date.now();
     const semaphore = options.toolSemaphore;
     if (semaphore !== undefined && !semaphore.tryAcquire()) {
       return {
@@ -293,18 +355,21 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
     }
     try {
       const { structured, text, links } = await tool.run(context, request.params.arguments ?? {});
+      emitEvent(request.params.name, startedAt, "success", structured);
       return {
         content: [{ type: "text", text }, ...(links as never[])],
         structuredContent: structured,
       };
     } catch (error) {
       if (error instanceof ToolFailure) {
+        emitEvent(request.params.name, startedAt, "error");
         return {
           isError: true,
           content: [{ type: "text", text: `${error.toolError.code}: ${error.toolError.message}` }],
         };
       }
       if (isZodError(error)) {
+        emitEvent(request.params.name, startedAt, "error");
         return {
           isError: true,
           content: [
@@ -316,6 +381,7 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
         };
       }
       // Unexpected faults never leak internals (Requirement 15.3).
+      emitEvent(request.params.name, startedAt, "error");
       return {
         isError: true,
         content: [
