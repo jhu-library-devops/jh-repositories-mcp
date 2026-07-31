@@ -80,9 +80,9 @@ const envSchema = z.object({
   ALLOWED_HOSTS: commaSeparatedList.refine((arr) => arr.length > 0, {
     message: "ALLOWED_HOSTS must contain at least one host",
   }),
-  ALLOWED_ORIGINS: commaSeparatedList.refine((arr) => arr.length > 0, {
-    message: "ALLOWED_ORIGINS must contain at least one origin",
-  }).default(""),
+  // Empty is the safe default: browser Origins are all rejected until an
+  // allowlist is configured; non-browser MCP clients send no Origin header.
+  ALLOWED_ORIGINS: commaSeparatedList.default(""),
 
   // Timeouts
   TIMEOUT_SOLR_MS: positiveNumber("TIMEOUT_SOLR_MS").default("5000"),

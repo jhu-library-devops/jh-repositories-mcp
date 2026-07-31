@@ -245,7 +245,7 @@
   - [x]* 18.4 Write property tests that generated request and metadata content cannot appear in logs
     - _Requirements: 15.5-15.6_
 
-- [ ] 19. Containerize and secure the runtime
+- [~] 19. Containerize and secure the runtime
   - [ ] 19.1 Create a multi-stage Docker build that uses the same pinned Bun version for install, type-check, test, build, and runtime
     - Install with <code>bun ci</code>, run <code>tsc --noEmit</code> and <code>bun test</code>, and produce a Bun-targeted production bundle.
     - Pin the official <code>oven/bun</code> base image by version and digest; run the final image as the non-root <code>bun</code> user.
