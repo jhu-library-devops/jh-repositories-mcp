@@ -245,16 +245,17 @@
   - [x]* 18.4 Write property tests that generated request and metadata content cannot appear in logs
     - _Requirements: 15.5-15.6_
 
-- [~] 19. Containerize and secure the runtime
-  - [ ] 19.1 Create a multi-stage Docker build that uses the same pinned Bun version for install, type-check, test, build, and runtime
+- [x] 19. Containerize and secure the runtime
+  - [x] 19.1 Create a multi-stage Docker build that uses the same pinned Bun version for install, type-check, test, build, and runtime
     - Install with <code>bun ci</code>, run <code>tsc --noEmit</code> and <code>bun test</code>, and produce a Bun-targeted production bundle.
     - Pin the official <code>oven/bun</code> base image by version and digest; run the final image as the non-root <code>bun</code> user.
     - Include OCI labels, build version, health check, and an appropriate stop timeout.
     - _Requirements: 12.6-12.8, 13.8-13.9, 15.8_
-  - [ ] 19.2 Configure a read-only filesystem and minimal writable temporary storage where compatible with the MCP SDK
+  - [x] 19.2 Configure a read-only filesystem and minimal writable temporary storage where compatible with the MCP SDK
     - _Requirements: 14, 17_
   - [ ] 19.3 Verify the image starts, becomes ready after schema validation, drains gracefully, and contains no development dependencies or repository credentials
     - Confirm that it runs under Bun and contains no Node.js runtime.
+    - NOTE (2026-07-31): partially verified without a local Docker daemon — the production bundle was smoke-run under Bun directly (liveness/version OK, readiness fails closed without backends, all five tools served over MCP HTTP, SIGTERM drain works). Full image verification needs Docker/CI.
     - _Requirements: 12.6-12.8, 13.9, 14.1_
 
 - [ ] 20. Build the OpenTofu infrastructure stack
