@@ -1,9 +1,14 @@
 # OpenTofu backend configuration for the Repository MCP stack.
 #
-# Single state file covers both shared infrastructure and all environment
-# services (stage + prod live in the same VPC and share one ECS cluster).
+# Each environment uses its own state file, selected at init time:
 #
-#   tofu init -backend-config=backend.hcl
+#   tofu init -backend-config=backend-stage.hcl   # stage state
+#   tofu init -backend-config=backend-prod.hcl    # prod state
+#
+# Then plan/apply with the matching var file:
+#
+#   tofu plan  -var-file=stage.tfvars
+#   tofu apply -var-file=stage.tfvars
 #
 # Prerequisites:
 # 1. S3 bucket: jhu-drcc-tf-state-bucket (shared with other JHU stacks)

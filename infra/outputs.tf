@@ -23,34 +23,18 @@ output "alb_zone_id" {
   value       = module.shared.alb_zone_id
 }
 
-# Stage
-output "stage_endpoint" {
-  description = "Stage MCP public endpoint."
-  value       = module.stage.public_endpoint
+# Environment service
+output "service_endpoint" {
+  description = "MCP public endpoint for this environment."
+  value       = module.service.public_endpoint
 }
 
-output "stage_service_name" {
-  description = "Stage ECS service name."
-  value       = module.stage.ecs_service_name
+output "ecs_service_name" {
+  description = "ECS service name for this environment."
+  value       = module.service.ecs_service_name
 }
 
-output "stage_task_sg_id" {
-  description = "Stage task security group ID."
-  value       = module.stage.task_security_group_id
-}
-
-# Production
-output "prod_endpoint" {
-  description = "Production MCP public endpoint."
-  value       = module.prod.public_endpoint
-}
-
-output "prod_service_name" {
-  description = "Production ECS service name."
-  value       = module.prod.ecs_service_name
-}
-
-output "prod_task_sg_id" {
-  description = "Production task security group ID."
-  value       = module.prod.task_security_group_id
+output "task_sg_id" {
+  description = "Task security group ID for this environment."
+  value       = module.service.task_security_group_id
 }

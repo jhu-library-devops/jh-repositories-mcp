@@ -8,6 +8,16 @@ variable "aws_region" {
   default     = "us-east-1"
 }
 
+variable "environment" {
+  description = "Deployment environment: stage or prod."
+  type        = string
+
+  validation {
+    condition     = contains(["stage", "prod"], var.environment)
+    error_message = "environment must be \"stage\" or \"prod\"."
+  }
+}
+
 # -----------------------------------------------------------------------------
 # Networking (single VPC shared by DSpace, Dataverse, and MCP)
 # -----------------------------------------------------------------------------
@@ -37,7 +47,7 @@ variable "certificate_arn" {
 }
 
 # -----------------------------------------------------------------------------
-# Hostnames
+# Hostnames (both needed for ALB allowed-hostnames list)
 # -----------------------------------------------------------------------------
 
 variable "stage_hostname" {
@@ -61,43 +71,36 @@ variable "route53_zone_id" {
 }
 
 # -----------------------------------------------------------------------------
-# Container images (per environment)
+# Container image (for the deployed environment)
 # -----------------------------------------------------------------------------
 
-variable "stage_container_image" {
-  description = "Container image URI for the stage MCP service."
+variable "container_image" {
+  description = "Container image URI for the MCP service."
   type        = string
 }
 
-variable "prod_container_image" {
-  description = "Container image URI for the production MCP service."
+# -----------------------------------------------------------------------------
+# Capacity provider
+# -----------------------------------------------------------------------------
+
+variable "capacity_provider" {
+  description = "Fargate capacity provider: FARGATE or FARGATE_SPOT."
   type        = string
+  default     = "FARGATE"
 }
 
 # -----------------------------------------------------------------------------
 # ECS sizing
 # -----------------------------------------------------------------------------
 
-variable "stage_task_cpu" {
-  description = "Fargate task CPU for stage."
+variable "task_cpu" {
+  description = "Fargate task CPU units."
   type        = number
   default     = 512
 }
 
-variable "stage_task_memory" {
-  description = "Fargate task memory (MiB) for stage."
-  type        = number
-  default     = 1024
-}
-
-variable "prod_task_cpu" {
-  description = "Fargate task CPU for production."
-  type        = number
-  default     = 512
-}
-
-variable "prod_task_memory" {
-  description = "Fargate task memory (MiB) for production."
+variable "task_memory" {
+  description = "Fargate task memory (MiB)."
   type        = number
   default     = 1024
 }
@@ -106,40 +109,22 @@ variable "prod_task_memory" {
 # ECS scaling
 # -----------------------------------------------------------------------------
 
-variable "stage_desired_count" {
-  description = "Initial task count for stage."
+variable "service_desired_count" {
+  description = "Initial task count."
   type        = number
   default     = 1
 }
 
-variable "stage_min_count" {
-  description = "Min task count for stage autoscaling."
+variable "service_min_count" {
+  description = "Min task count for autoscaling."
   type        = number
   default     = 1
 }
 
-variable "stage_max_count" {
-  description = "Max task count for stage autoscaling."
+variable "service_max_count" {
+  description = "Max task count for autoscaling."
   type        = number
   default     = 2
-}
-
-variable "prod_desired_count" {
-  description = "Initial task count for production."
-  type        = number
-  default     = 2
-}
-
-variable "prod_min_count" {
-  description = "Min task count for production autoscaling."
-  type        = number
-  default     = 2
-}
-
-variable "prod_max_count" {
-  description = "Max task count for production autoscaling."
-  type        = number
-  default     = 6
 }
 
 # -----------------------------------------------------------------------------
@@ -153,127 +138,64 @@ variable "waf_rate_limit" {
 }
 
 # -----------------------------------------------------------------------------
-# Cross-stack security group IDs — Stage
+# Cross-stack security group IDs
 # -----------------------------------------------------------------------------
 
-variable "stage_dspace_solr_sg_id" {
-  description = "Stage DSpace Solr security group ID."
+variable "dspace_solr_sg_id" {
+  description = "DSpace Solr security group ID for this environment."
   type        = string
 }
 
-variable "stage_dspace_api_sg_id" {
-  description = "Stage DSpace API (ECS service) security group ID."
+variable "dspace_api_sg_id" {
+  description = "DSpace API (ECS service) security group ID for this environment."
   type        = string
 }
 
-variable "stage_dataverse_solr_sg_id" {
-  description = "Stage Dataverse Solr security group ID. Null disables Dataverse SG rules."
+variable "dataverse_solr_sg_id" {
+  description = "Dataverse Solr security group ID. Null disables Dataverse SG rules."
   type        = string
   default     = null
 }
 
-variable "stage_dataverse_api_sg_id" {
-  description = "Stage Dataverse API security group ID. Null disables Dataverse SG rules."
-  type        = string
-  default     = null
-}
-
-# -----------------------------------------------------------------------------
-# Cross-stack security group IDs — Production
-# -----------------------------------------------------------------------------
-
-variable "prod_dspace_solr_sg_id" {
-  description = "Prod DSpace Solr security group ID."
-  type        = string
-}
-
-variable "prod_dspace_api_sg_id" {
-  description = "Prod DSpace API (ECS service) security group ID."
-  type        = string
-}
-
-variable "prod_dataverse_solr_sg_id" {
-  description = "Prod Dataverse Solr security group ID. Null disables Dataverse SG rules."
-  type        = string
-  default     = null
-}
-
-variable "prod_dataverse_api_sg_id" {
-  description = "Prod Dataverse API security group ID. Null disables Dataverse SG rules."
+variable "dataverse_api_sg_id" {
+  description = "Dataverse API security group ID. Null disables Dataverse SG rules."
   type        = string
   default     = null
 }
 
 # -----------------------------------------------------------------------------
-# Application endpoints — Stage
+# Application endpoints
 # -----------------------------------------------------------------------------
 
-variable "stage_jscholarship_solr_url" {
-  description = "Stage JScholarship Solr URL."
+variable "jscholarship_solr_url" {
+  description = "JScholarship Solr URL."
   type        = string
 }
 
-variable "stage_jscholarship_api_url" {
-  description = "Stage DSpace REST API URL."
+variable "jscholarship_api_url" {
+  description = "DSpace REST API URL."
   type        = string
 }
 
-variable "stage_jscholarship_public_url" {
-  description = "Stage JScholarship public base URL."
+variable "jscholarship_public_url" {
+  description = "JScholarship public base URL."
   type        = string
 }
 
-variable "stage_jhrdr_solr_url" {
-  description = "Stage JHRDR Solr URL. Empty string disables."
-  type        = string
-  default     = ""
-}
-
-variable "stage_jhrdr_api_url" {
-  description = "Stage Dataverse API URL. Empty string disables."
+variable "jhrdr_solr_url" {
+  description = "JHRDR Solr URL. Empty string disables."
   type        = string
   default     = ""
 }
 
-variable "stage_jhrdr_public_url" {
-  description = "Stage JHRDR public base URL. Empty string disables."
+variable "jhrdr_api_url" {
+  description = "Dataverse API URL. Empty string disables."
   type        = string
   default     = ""
 }
 
-# -----------------------------------------------------------------------------
-# Application endpoints — Production
-# -----------------------------------------------------------------------------
-
-variable "prod_jscholarship_solr_url" {
-  description = "Prod JScholarship Solr URL."
-  type        = string
-}
-
-variable "prod_jscholarship_api_url" {
-  description = "Prod DSpace REST API URL."
-  type        = string
-}
-
-variable "prod_jscholarship_public_url" {
-  description = "Prod JScholarship public base URL."
-  type        = string
-}
-
-variable "prod_jhrdr_solr_url" {
-  description = "Prod JHRDR Solr URL. Empty string disables."
-  type        = string
-  default     = ""
-}
-
-variable "prod_jhrdr_api_url" {
-  description = "Prod Dataverse API URL. Empty string disables."
-  type        = string
-  default     = ""
-}
-
-variable "prod_jhrdr_public_url" {
-  description = "Prod JHRDR public base URL. Empty string disables."
+variable "jhrdr_public_url" {
+  description = "JHRDR public base URL. Empty string disables."
   type        = string
   default     = ""
 }
