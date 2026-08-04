@@ -19,35 +19,7 @@ variable "environment" {
 }
 
 # -----------------------------------------------------------------------------
-# Networking (single VPC shared by DSpace, Dataverse, and MCP)
-# -----------------------------------------------------------------------------
-
-variable "vpc_id" {
-  description = "VPC ID shared by all repository clusters."
-  type        = string
-}
-
-variable "public_subnet_ids" {
-  description = "Public subnet IDs for the shared ALB."
-  type        = list(string)
-}
-
-variable "private_subnet_ids" {
-  description = "Private subnet IDs for MCP Fargate tasks."
-  type        = list(string)
-}
-
-# -----------------------------------------------------------------------------
-# TLS
-# -----------------------------------------------------------------------------
-
-variable "certificate_arn" {
-  description = "ACM certificate ARN covering both MCP hostnames (wildcard or SAN)."
-  type        = string
-}
-
-# -----------------------------------------------------------------------------
-# Hostnames (both needed for ALB allowed-hostnames list)
+# Hostnames
 # -----------------------------------------------------------------------------
 
 variable "stage_hostname" {
@@ -57,25 +29,6 @@ variable "stage_hostname" {
 
 variable "prod_hostname" {
   description = "Public hostname for the production MCP endpoint."
-  type        = string
-}
-
-# -----------------------------------------------------------------------------
-# DNS (optional)
-# -----------------------------------------------------------------------------
-
-variable "route53_zone_id" {
-  description = "Route 53 hosted zone ID for creating DNS records. Null skips."
-  type        = string
-  default     = null
-}
-
-# -----------------------------------------------------------------------------
-# Container image (for the deployed environment)
-# -----------------------------------------------------------------------------
-
-variable "container_image" {
-  description = "Container image URI for the MCP service."
   type        = string
 }
 
@@ -138,18 +91,8 @@ variable "waf_rate_limit" {
 }
 
 # -----------------------------------------------------------------------------
-# Cross-stack security group IDs
+# Cross-stack security group IDs — Dataverse (not yet deployed)
 # -----------------------------------------------------------------------------
-
-variable "dspace_solr_sg_id" {
-  description = "DSpace Solr security group ID for this environment."
-  type        = string
-}
-
-variable "dspace_api_sg_id" {
-  description = "DSpace API (ECS service) security group ID for this environment."
-  type        = string
-}
 
 variable "dataverse_solr_sg_id" {
   description = "Dataverse Solr security group ID. Null disables Dataverse SG rules."
@@ -164,23 +107,17 @@ variable "dataverse_api_sg_id" {
 }
 
 # -----------------------------------------------------------------------------
-# Application endpoints
+# Application endpoints — JScholarship public URL (env-specific)
 # -----------------------------------------------------------------------------
 
-variable "jscholarship_solr_url" {
-  description = "JScholarship Solr URL."
-  type        = string
-}
-
-variable "jscholarship_api_url" {
-  description = "DSpace REST API URL."
-  type        = string
-}
-
 variable "jscholarship_public_url" {
-  description = "JScholarship public base URL."
+  description = "JScholarship public base URL for this environment."
   type        = string
 }
+
+# -----------------------------------------------------------------------------
+# Application endpoints — JHRDR / Dataverse (not yet deployed)
+# -----------------------------------------------------------------------------
 
 variable "jhrdr_solr_url" {
   description = "JHRDR Solr URL. Empty string disables."
@@ -208,12 +145,6 @@ variable "log_retention_days" {
   description = "CloudWatch log retention in days."
   type        = number
   default     = 90
-}
-
-variable "alarm_sns_topic_arn" {
-  description = "SNS topic ARN for alarms. Null disables."
-  type        = string
-  default     = null
 }
 
 # -----------------------------------------------------------------------------
