@@ -283,15 +283,15 @@
     - Do not proxy through Cloudflare in v1 to avoid challenge-page interference with programmatic MCP clients.
     - _Requirements: 12.1-12.2, 14.2_
 
-- [ ] 22. Build CI/CD and supply-chain checks
-  - [ ] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
+- [x] 22. Build CI/CD and supply-chain checks
+  - [x] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
     - Install the pinned Bun version with the official setup action, use <code>bun ci</code>, retain <code>tsc --noEmit</code>, and run tests with <code>bun test</code>.
     - _Requirements: 12.7, 16.1-16.2_
-  - [ ] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
+  - [x] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
     - _Requirements: 13, 16_
-  - [ ] 22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions
+  - [x] 22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions
     - _Requirements: 13, 16.8_
-  - [ ] 22.4 Add post-deployment smoke tests and target-health rollback behavior
+  - [x] 22.4 Add post-deployment smoke tests and target-health rollback behavior
     - _Requirements: 12, 13.9, 16.6_
 
 - [x] 23. Complete protocol, security, and failure verification
