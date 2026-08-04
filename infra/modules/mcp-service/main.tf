@@ -161,11 +161,17 @@ resource "aws_lb_listener_rule" "mcp" {
 # -----------------------------------------------------------------------------
 
 resource "aws_ecs_service" "mcp" {
-  name             = "${var.name_prefix}-service"
-  cluster          = var.ecs_cluster_id
-  task_definition  = aws_ecs_task_definition.mcp.arn
-  desired_count    = var.service_desired_count
-  launch_type      = "FARGATE"
+  name            = "${var.name_prefix}-service"
+  cluster         = var.ecs_cluster_id
+  task_definition = aws_ecs_task_definition.mcp.arn
+  desired_count   = var.service_desired_count
+
+  capacity_provider_strategy {
+    capacity_provider = var.capacity_provider
+    weight            = 1
+    base              = var.service_min_count
+  }
+
   platform_version = "LATEST"
 
   enable_execute_command             = true

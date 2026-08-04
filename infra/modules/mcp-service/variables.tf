@@ -124,6 +124,21 @@ variable "task_memory" {
 }
 
 # -----------------------------------------------------------------------------
+# Capacity provider
+# -----------------------------------------------------------------------------
+
+variable "capacity_provider" {
+  description = "Fargate capacity provider: FARGATE or FARGATE_SPOT."
+  type        = string
+  default     = "FARGATE"
+
+  validation {
+    condition     = contains(["FARGATE", "FARGATE_SPOT"], var.capacity_provider)
+    error_message = "capacity_provider must be \"FARGATE\" or \"FARGATE_SPOT\"."
+  }
+}
+
+# -----------------------------------------------------------------------------
 # ECS service scaling
 # -----------------------------------------------------------------------------
 
