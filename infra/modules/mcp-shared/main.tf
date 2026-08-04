@@ -20,17 +20,18 @@ locals {
 
 resource "aws_ecr_repository" "mcp" {
   name                 = "jhu/repository-mcp"
-  image_tag_mutability = "IMMUTABLE"
+  image_tag_mutability = "MUTABLE"
 
   image_scanning_configuration {
-    scan_on_push = true
+    scan_on_push = false
   }
 
   encryption_configuration {
     encryption_type = "AES256"
   }
 
-  tags = local.common_tags
+  # No tags — matches existing resource created outside Tofu.
+  # Add tags in a follow-up if desired.
 }
 
 resource "aws_ecr_lifecycle_policy" "mcp" {
