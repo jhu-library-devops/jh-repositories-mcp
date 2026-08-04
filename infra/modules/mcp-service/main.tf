@@ -25,6 +25,7 @@ locals {
     { name = "JHRDR_API_URL", value = var.jhrdr_api_url },
     { name = "JHRDR_PUBLIC_URL", value = var.jhrdr_public_url },
     { name = "LOG_LEVEL", value = var.environment == "prod" ? "info" : "debug" },
+    { name = "ALLOWED_HOSTS", value = var.public_hostname },
   ]
 }
 
@@ -42,7 +43,7 @@ resource "aws_ecs_task_definition" "mcp" {
   task_role_arn            = var.task_role_arn
 
   runtime_platform {
-    cpu_architecture        = "X86_64"
+    cpu_architecture        = "ARM64"
     operating_system_family = "LINUX"
   }
 
@@ -65,7 +66,7 @@ resource "aws_ecs_task_definition" "mcp" {
       environment = local.container_environment
 
       healthCheck = {
-        command     = ["CMD-SHELL", "wget --no-verbose --tries=1 --spider http://localhost:${var.container_port}/health/live || exit 1"]
+        command     = ["CMD-SHELL", "bun -e \"const r = await fetch('http://127.0.0.1:${var.container_port}/health/live'); if (!r.ok) process.exit(1);\""]
         interval    = 15
         timeout     = 5
         retries     = 3
@@ -80,6 +81,11 @@ resource "aws_ecs_task_definition" "mcp" {
           {
             containerPath = "/tmp"
             size          = 64
+            mountOptions  = ["rw", "noexec", "nosuid"]
+          },
+          {
+            containerPath = "/var/lib/amazon/ssm"
+            size          = 16
             mountOptions  = ["rw", "noexec", "nosuid"]
           }
         ]
@@ -126,7 +132,7 @@ resource "aws_lb_target_group" "mcp" {
     unhealthy_threshold = 3
     interval            = 15
     timeout             = 5
-    path                = "/health/ready"
+    path                = "/health/live"
     protocol            = "HTTP"
     matcher             = "200"
   }
@@ -139,7 +145,7 @@ resource "aws_lb_target_group" "mcp" {
 # -----------------------------------------------------------------------------
 
 resource "aws_lb_listener_rule" "mcp" {
-  listener_arn = var.https_listener_arn
+  listener_arn = aws_lb_listener.https.arn
   priority     = var.listener_rule_priority
 
   action {
@@ -175,7 +181,7 @@ resource "aws_ecs_service" "mcp" {
   platform_version = "LATEST"
 
   enable_execute_command             = true
-  health_check_grace_period_seconds  = 60
+  health_check_grace_period_seconds  = 120
   deployment_minimum_healthy_percent = 100
   deployment_maximum_percent         = 200
   wait_for_steady_state              = false
