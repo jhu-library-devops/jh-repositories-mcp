@@ -1,0 +1,98 @@
+# =============================================================================
+# Post-Deployment Smoke Tests
+#
+# Reusable workflow that validates a deployed MCP service is healthy and
+# responds correctly to MCP protocol operations.
+#
+# Called by the deploy workflow after deployment completes. Can also be
+# triggered manually for ad-hoc validation.
+#
+# Rollback Behavior:
+# -----------------
+# The ECS service is configured with deployment_circuit_breaker { enable = true, rollback = true }.
+# If the new task fails target group health checks (unhealthy threshold = 3 checks at 15s interval),
+# ECS automatically rolls back to the previous task definition revision.
+# The deployment_minimum_healthy_percent = 100 ensures old tasks remain running until new ones pass
+# health checks, providing zero-downtime deployments.
+#
+# This smoke test runs AFTER ECS considers the deployment healthy (tasks registered in
+# target group and passing /health/live). It validates higher-level MCP protocol correctness
+# that the ALB health check alone cannot verify. If smoke tests fail, manual intervention
+# or a revert of the task definition is required — the ECS circuit breaker only catches
+# tasks that fail to start or fail basic health checks.
+# =============================================================================
+
+name: Smoke Test
+
+on:
+  workflow_call:
+    inputs:
+      environment:
+        description: "Target environment (stage or prod)"
+        required: true
+        type: string
+      endpoint:
+        description: "Base URL of the deployed service"
+        required: true
+        type: string
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: "Target environment (stage or prod)"
+        required: true
+        type: choice
+        options:
+          - stage
+          - prod
+      endpoint:
+        description: "Base URL of the deployed service"
+        required: true
+        type: string
+
+permissions:
+  contents: read
+
+jobs:
+  smoke-test:
+    name: "Smoke Test (${{ inputs.environment }})"
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    environment: ${{ inputs.environment }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Run smoke tests
+        id: smoke
+        env:
+          SMOKE_TIMEOUT: "60"
+          REQUEST_TIMEOUT: "10"
+        run: |
+          chmod +x scripts/smoke-test.sh
+          ./scripts/smoke-test.sh "${{ inputs.endpoint }}"
+
+      - name: Report results
+        if: always()
+        run: |
+          if [[ "${{ steps.smoke.outcome }}" == "success" ]]; then
+            echo "## Smoke Test Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Environment** | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Endpoint** | \`${{ inputs.endpoint }}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Status** | :white_check_mark: All checks passed |" >> "$GITHUB_STEP_SUMMARY"
+          else
+            echo "## Smoke Test Results" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+            echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Environment** | \`${{ inputs.environment }}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Endpoint** | \`${{ inputs.endpoint }}\` |" >> "$GITHUB_STEP_SUMMARY"
+            echo "| **Status** | :x: One or more checks failed |" >> "$GITHUB_STEP_SUMMARY"
+            echo "" >> "$GITHUB_STEP_SUMMARY"
+            echo "> **Note:** The ECS deployment circuit breaker handles task-level health failures automatically." >> "$GITHUB_STEP_SUMMARY"
+            echo "> If smoke tests fail after ECS considers the deployment healthy, review the MCP protocol" >> "$GITHUB_STEP_SUMMARY"
+            echo "> behavior and consider reverting the task definition revision." >> "$GITHUB_STEP_SUMMARY"
+          fi
