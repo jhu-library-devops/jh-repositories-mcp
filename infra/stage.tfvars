@@ -7,11 +7,11 @@ environment = "stage"
 aws_region  = "us-east-1"
 
 # -----------------------------------------------------------------------------
-# Networking (shared VPC used by DSpace and Dataverse clusters)
+# Networking (DSpace stage VPC)
 # -----------------------------------------------------------------------------
-vpc_id             = "vpc-099e345c3ac73dd47"
-public_subnet_ids  = ["subnet-0aff695440ed9d90b", "subnet-00e51cb88bd793e6f"]
-private_subnet_ids = ["subnet-022e837a0764b1822", "subnet-08d7b2cd3c6540d88"]
+vpc_id             = "vpc-07a15b94194398091"
+public_subnet_ids  = ["subnet-02949f2d89b1ea2ef", "subnet-09bc7fa38848fb6ba"]
+private_subnet_ids = ["subnet-00ff7878ce3580b9f", "subnet-0c094410fcd2b5e97"]
 
 # -----------------------------------------------------------------------------
 # TLS (wildcard or SAN cert covering both hostnames)
@@ -51,22 +51,22 @@ waf_rate_limit = 300
 
 # -----------------------------------------------------------------------------
 # Cross-Stack Security Group IDs
-# Stage MCP connects to prod DSpace services within the shared VPC.
+# Stage MCP connects to DSpace stage services.
 # Dataverse not yet deployed — set to null.
 # -----------------------------------------------------------------------------
-dspace_solr_sg_id    = "sg-0f04633bb3d7098bf"
-dspace_api_sg_id     = "sg-050c77fd4bd1d2123"
+dspace_solr_sg_id    = "sg-0b6c16eeac34e071d"
+dspace_api_sg_id     = "sg-016e167e731de03cb"
 dataverse_solr_sg_id = null
 dataverse_api_sg_id  = null
 
 # -----------------------------------------------------------------------------
 # Application Endpoints
-# Internal service-discovery DNS within the shared VPC.
+# Internal DSpace stage ALB and service discovery.
 # Dataverse not yet deployed.
 # -----------------------------------------------------------------------------
-jscholarship_solr_url   = "http://solr.dspace-prod.local:8983/solr/search"
-jscholarship_api_url    = "http://internal-private-dspace-prod-alb-1152535037.us-east-1.elb.amazonaws.com/server/api"
-jscholarship_public_url = "https://jscholarship.library.jhu.edu"
+jscholarship_solr_url   = "http://solr.dspace-stage.local:8983/solr/search"
+jscholarship_api_url    = "http://internal-private-dspace-stage-alb-1049626423.us-east-1.elb.amazonaws.com/server/api"
+jscholarship_public_url = "https://jscholarship-stage.library.jhu.edu"
 
 jhrdr_solr_url   = ""
 jhrdr_api_url    = ""
