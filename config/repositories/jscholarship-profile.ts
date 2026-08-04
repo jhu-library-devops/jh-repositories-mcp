@@ -100,7 +100,7 @@ export interface RepositoryProfile {
  * DSpace assigns group ID 0 (rendered as "g0") to the Anonymous group.
  * Items readable by anonymous users have "g0" in their multiValued `read` field.
  */
-export const DSPACE_ANONYMOUS_GROUP = "g0" as const;
+export const DSPACE_ANONYMOUS_GROUP = "gafbf5aff-3555-46eb-859a-328aa5cf10c9" as const;
 
 /**
  * The archived item state value in DSpace's `database_status` field.
@@ -274,12 +274,8 @@ export const jscholarshipProfile = {
       fq: "-discoverable:false",
     },
     {
-      description: "Only archived items (live in the repository)",
-      fq: "database_status:ARCHIVED",
-    },
-    {
-      description: "Only items readable by the anonymous group (g0)",
-      fq: "read:g0",
+      description: "Only items readable by the anonymous group (DSpace 9 UUID)",
+      fq: "read:gafbf5aff-3555-46eb-859a-328aa5cf10c9",
     },
   ],
 
