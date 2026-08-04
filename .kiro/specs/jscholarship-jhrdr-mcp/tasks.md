@@ -253,7 +253,7 @@
     - _Requirements: 12.6-12.8, 13.8-13.9, 15.8_
   - [x] 19.2 Configure a read-only filesystem and minimal writable temporary storage where compatible with the MCP SDK
     - _Requirements: 14, 17_
-  - [ ] 19.3 Verify the image starts, becomes ready after schema validation, drains gracefully, and contains no development dependencies or repository credentials
+  - [~] 19.3 Verify the image starts, becomes ready after schema validation, drains gracefully, and contains no development dependencies or repository credentials
     - Confirm that it runs under Bun and contains no Node.js runtime.
     - NOTE (2026-07-31): partially verified without a local Docker daemon — the production bundle was smoke-run under Bun directly (liveness/version OK, readiness fails closed without backends, all five tools served over MCP HTTP, SIGTERM drain works). Full image verification needs Docker/CI.
     - _Requirements: 12.6-12.8, 13.9, 14.1_
@@ -269,7 +269,7 @@
   - [x] 20.3 Create the MCP task security group and cross-stack ingress rules for both Solr services and both Canonical_API paths
     - Restrict MCP runtime egress to required DNS, repository, and AWS endpoints.
     - _Requirements: 13.2-13.6_
-  - [ ] 20.4 Add OpenTofu validation and plan tests for stage and production variables
+  - [~] 20.4 Add OpenTofu validation and plan tests for stage and production variables
     - _Requirements: 13_
 
 - [ ] 21. Add the public edge
@@ -277,67 +277,67 @@
     - _Requirements: 14.2-14.3_
   - [x] 21.2 Create WAF rules for exact Host, common threats, known bad inputs, request size, and endpoint-scoped IP rate limiting
     - _Requirements: 14.3-14.5_
-  - [ ] 21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients
+  - [~] 21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients
     - _Requirements: 14.4_
-  - [ ] 21.4 Configure Cloudflare as DNS-only (grey cloud) for the public hostname and test MCP responses through the complete public path
+  - [~] 21.4 Configure Cloudflare as DNS-only (grey cloud) for the public hostname and test MCP responses through the complete public path
     - Do not proxy through Cloudflare in v1 to avoid challenge-page interference with programmatic MCP clients.
     - _Requirements: 12.1-12.2, 14.2_
 
-- [ ] 22. Build CI/CD and supply-chain checks
-  - [ ] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
+- [x] 22. Build CI/CD and supply-chain checks
+  - [x] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
     - Install the pinned Bun version with the official setup action, use <code>bun ci</code>, retain <code>tsc --noEmit</code>, and run tests with <code>bun test</code>.
     - _Requirements: 12.7, 16.1-16.2_
-  - [ ] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
+  - [x] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
     - _Requirements: 13, 16_
-  - [ ] 22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions
+  - [x] 22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions
     - _Requirements: 13, 16.8_
-  - [ ] 22.4 Add post-deployment smoke tests and target-health rollback behavior
+  - [x] 22.4 Add post-deployment smoke tests and target-health rollback behavior
     - _Requirements: 12, 13.9, 16.6_
 
 - [ ] 23. Complete protocol, security, and failure verification
-  - [ ] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container
+  - [~] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container
     - Initialization and multi-task stateless verification are covered in task 2.4; this task covers the full tool/resource/prompt surface and error handling.
     - _Requirements: 12.1-12.8, 16.2, 16.6_
-  - [ ] 23.2 Confirm multi-task stateless operation at production scale with the final container image
+  - [~] 23.2 Confirm multi-task stateless operation at production scale with the final container image
     - _Requirements: 12.2_
-  - [ ] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
+  - [~] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
     - _Requirements: 9, 16.1_
-  - [ ] 23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation
+  - [~] 23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation
     - _Requirements: 14, 15, 16.6_
-  - [ ] 23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route
+  - [~] 23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route
     - _Requirements: 17_
 
 - [ ] 24. Deploy and validate stage
-  - [ ] 24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets
+  - [~] 24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets
     - _Requirements: 13.1-13.9_
-  - [ ] 24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms
+  - [~] 24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms
     - _Requirements: 13-15_
-  - [ ] 24.3 Run the target MCP client compatibility suite through the public stage hostname
+  - [~] 24.3 Run the target MCP client compatibility suite through the public stage hostname
     - _Requirements: 12, 16.6_
-  - [ ] 24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior
+  - [~] 24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior
     - _Requirements: 15, 16.5_
 
 - [ ] 25. Evaluate discovery quality and run the pilot
-  - [ ] 25.1 Build and review at least 40 benchmark queries with JScholarship, JHRDR, and research-services staff
+  - [~] 25.1 Build and review at least 40 benchmark queries with JScholarship, JHRDR, and research-services staff
     - Cover known-item, Handle/DOI, topical, author, subject, date, dataset, related, cross-repository, and zero-result cases.
     - _Requirements: 16.3_
-  - [ ] 25.2 Measure known-item success (top 10), persistent-identifier success (must be 100%), precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate
+  - [~] 25.2 Measure known-item success (top 10), persistent-identifier success (must be 100%), precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate
     - Require 100 percent success on exact Persistent_Identifier queries via <code>get_item</code>.
     - Require at least 95 percent known-item search success (item appears in top 10 results).
     - Track reciprocal rank as a quality metric for known-item searches.
     - _Requirements: 16.4, 16.7_
-  - [ ] 25.3 Conduct the researcher/librarian pilot using privacy-safe data collection and document relevance and trust findings
+  - [~] 25.3 Conduct the researcher/librarian pilot using privacy-safe data collection and document relevance and trust findings
     - Do not store raw private research questions.
     - _Requirements: 15.6, 16.7_
-  - [ ] 25.4 Tune allowlisted field boosts, labels, and prompt wording without weakening public filters or expanding v1 scope
+  - [~] 25.4 Tune allowlisted field boosts, labels, and prompt wording without weakening public filters or expanding v1 scope
     - _Requirements: 9, 10, 17_
 
 - [ ] 26. Prepare and release production
-  - [ ] 26.1 Publish the service runbook, data-flow diagram, dependency inventory, incident procedures, rollback steps, privacy statement, and client connection instructions
+  - [~] 26.1 Publish the service runbook, data-flow diagram, dependency inventory, incident procedures, rollback steps, privacy statement, and client connection instructions
     - _Requirements: 13-16_
-  - [ ] 26.2 Obtain explicit sign-off from JScholarship, JHRDR, research-services, security/privacy as required, and platform-operation owners
+  - [~] 26.2 Obtain explicit sign-off from JScholarship, JHRDR, research-services, security/privacy as required, and platform-operation owners
     - _Requirements: 16.8_
-  - [ ] 26.3 Promote the tested image digest and deploy at least two production tasks with autoscaling, dashboards, and alarms
+  - [~] 26.3 Promote the tested image digest and deploy at least two production tasks with autoscaling, dashboards, and alarms
     - _Requirements: 13.7, 15, 16.8_
-  - [ ] 26.4 Run production access-leakage, citation, compatibility, health, and partial-failure smoke tests
+  - [~] 26.4 Run production access-leakage, citation, compatibility, health, and partial-failure smoke tests
     - _Requirements: 9, 12, 15, 16_

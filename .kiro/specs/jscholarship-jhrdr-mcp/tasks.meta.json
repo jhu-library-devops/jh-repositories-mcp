@@ -223,6 +223,348 @@
         "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",
         "timestamp": 1784925680897
       }
+    ],
+    "19.3 Verify the image starts, becomes ready after schema validation, drains gracefully, and contains no development dependencies or repository credentials": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252118
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854508866
+      }
+    ],
+    "20.4 Add OpenTofu validation and plan tests for stage and production variables": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252195
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854508929
+      }
+    ],
+    "21.3 Configure the approved Origin allowlist and verify missing-Origin support for non-browser MCP clients": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252229
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854508966
+      }
+    ],
+    "21.4 Configure Cloudflare as DNS-only (grey cloud) for the public hostname and test MCP responses through the complete public path": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252259
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854508998
+      }
+    ],
+    "22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252296
+      },
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854295101
+      },
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854393373
+      }
+    ],
+    "22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252345
+      },
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854397879
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509042
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854515268
+      }
+    ],
+    "22.3 Implement stage deployment and production digest promotion using the existing JHU repository deployment conventions": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252378
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509073
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854666345
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854896936
+      }
+    ],
+    "22.4 Add post-deployment smoke tests and target-health rollback behavior": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252416
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509112
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854670210
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854897291
+      }
+    ],
+    "23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252459
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509182
+      }
+    ],
+    "23.2 Confirm multi-task stateless operation at production scale with the final container image": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252491
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509215
+      }
+    ],
+    "23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252524
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509247
+      }
+    ],
+    "23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252552
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509279
+      }
+    ],
+    "23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252584
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509320
+      }
+    ],
+    "24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252618
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509362
+      }
+    ],
+    "24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252652
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509389
+      }
+    ],
+    "24.3 Run the target MCP client compatibility suite through the public stage hostname": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252697
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509423
+      }
+    ],
+    "24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252730
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509456
+      }
+    ],
+    "25.1 Build and review at least 40 benchmark queries with JScholarship, JHRDR, and research-services staff": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252759
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509490
+      }
+    ],
+    "25.2 Measure known-item success (top 10), persistent-identifier success (must be 100%), precision at 10, reciprocal rank, citation correctness, useful-result time, iterations, source balance, and zero-result rate": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252792
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509522
+      }
+    ],
+    "25.3 Conduct the researcher/librarian pilot using privacy-safe data collection and document relevance and trust findings": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252827
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509556
+      }
+    ],
+    "25.4 Tune allowlisted field boosts, labels, and prompt wording without weakening public filters or expanding v1 scope": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252862
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509595
+      }
+    ],
+    "26.1 Publish the service runbook, data-flow diagram, dependency inventory, incident procedures, rollback steps, privacy statement, and client connection instructions": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252894
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509626
+      }
+    ],
+    "26.2 Obtain explicit sign-off from JScholarship, JHRDR, research-services, security/privacy as required, and platform-operation owners": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252926
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509655
+      }
+    ],
+    "26.3 Promote the tested image digest and deploy at least two production tasks with autoscaling, dashboards, and alarms": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854252978
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509689
+      }
+    ],
+    "26.4 Run production access-leakage, citation, compatibility, health, and partial-failure smoke tests": [
+      {
+        "executionId": "733e4c3f-2780-492b-89fb-fd4e301cd646",
+        "chatSessionId": "sess_08d40a61-9851-49c0-ad19-17cc78b5523a",
+        "timestamp": 1785854253011
+      },
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854509723
+      }
+    ],
+    "22. Build CI/CD and supply-chain checks": [
+      {
+        "executionId": "22b2ed82-ff8d-430d-ba2c-1967f41017e1",
+        "chatSessionId": "sess_8eb0dd86-81dd-4c16-b8fb-a79a93aa9bdb",
+        "timestamp": 1785854897341
+      }
     ]
   }
 }
