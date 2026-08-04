@@ -329,7 +329,14 @@ function normalizeItem(
     subjects: allValues(metadata, "dc.subject"),
     resourceTypes: allValues(metadata, "dc.type"),
     persistentId: handle
-      ? { type: "handle", value: handle, url: `https://hdl.handle.net/${handle}` }
+      ? {
+          type: "handle",
+          value: handle,
+          // JHU's 1774.2 prefix is not registered in the global Handle.net
+          // registry (verified 2026-08-04), so the citation-ready URL is the
+          // repository's own landing page, which is the persistent public URL.
+          url: new URL(`handle/${handle}`, context.publicBaseUrl).toString(),
+        }
       : null,
     citation: firstValue(metadata, "dc.identifier.citation"),
     access,
