@@ -1,0 +1,142 @@
+name: Build, Scan & Push
+
+on:
+  workflow_run:
+    workflows: ["CI"]
+    types: [completed]
+    branches: [main]
+  push:
+    tags: ["v*"]
+
+permissions:
+  id-token: write
+  contents: read
+  packages: write
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: jhu/repository-mcp
+  IMAGE_PLATFORM: linux/arm64
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build-scan-push:
+    name: Build, Scan & Push
+    runs-on: ubuntu-latest
+    # Only run if CI passed (workflow_run trigger) or on tag push
+    if: >
+      github.event_name == 'push' ||
+      (github.event_name == 'workflow_run' && github.event.workflow_run.conclusion == 'success')
+    outputs:
+      image-digest: ${{ steps.push.outputs.digest }}
+      image-uri: ${{ steps.meta.outputs.image-uri }}
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          # For workflow_run, check out the commit that triggered CI
+          ref: ${{ github.event.workflow_run.head_sha || github.sha }}
+
+      - name: Compute build metadata
+        id: meta
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha || github.sha }}" | cut -c1-7)
+          if [[ "${{ github.ref_type }}" == "tag" ]]; then
+            BUILD_VERSION="${{ github.ref_name }}"
+          else
+            BUILD_VERSION="0.0.0-sha.${SHORT_SHA}"
+          fi
+          BUILD_COMMIT="${{ github.event.workflow_run.head_sha || github.sha }}"
+          ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+
+          echo "short-sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+          echo "build-version=${BUILD_VERSION}" >> "$GITHUB_OUTPUT"
+          echo "build-commit=${BUILD_COMMIT}" >> "$GITHUB_OUTPUT"
+          echo "ecr-uri=${ECR_URI}" >> "$GITHUB_OUTPUT"
+          echo "image-uri=${ECR_URI}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-jhu-repo-mcp
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Set up QEMU (for ARM64 cross-build)
+        uses: docker/setup-qemu-action@v3
+        with:
+          platforms: arm64
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Build image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          platforms: ${{ env.IMAGE_PLATFORM }}
+          push: false
+          load: true
+          tags: |
+            ${{ steps.meta.outputs.ecr-uri }}:sha-${{ steps.meta.outputs.short-sha }}
+            ${{ steps.meta.outputs.ecr-uri }}:latest
+          build-args: |
+            BUILD_VERSION=${{ steps.meta.outputs.build-version }}
+            BUILD_COMMIT=${{ steps.meta.outputs.build-commit }}
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+      - name: Generate SBOM
+        uses: anchore/sbom-action@v0
+        with:
+          image: ${{ steps.meta.outputs.ecr-uri }}:sha-${{ steps.meta.outputs.short-sha }}
+          format: spdx-json
+          output-file: sbom.spdx.json
+
+      - name: Upload SBOM artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: sbom-${{ steps.meta.outputs.short-sha }}
+          path: sbom.spdx.json
+          retention-days: 90
+
+      - name: Scan image for vulnerabilities
+        uses: aquasecurity/trivy-action@0.28.0
+        with:
+          image-ref: ${{ steps.meta.outputs.ecr-uri }}:sha-${{ steps.meta.outputs.short-sha }}
+          format: table
+          exit-code: "1"
+          severity: CRITICAL
+          ignore-unfixed: true
+
+      - name: Push image to ECR
+        id: push
+        run: |
+          docker push "${{ steps.meta.outputs.ecr-uri }}:sha-${{ steps.meta.outputs.short-sha }}"
+          docker push "${{ steps.meta.outputs.ecr-uri }}:latest"
+
+          # Retrieve and record the image digest
+          DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' \
+            "${{ steps.meta.outputs.ecr-uri }}:sha-${{ steps.meta.outputs.short-sha }}" \
+            | cut -d@ -f2)
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+
+      - name: Record image digest in step summary
+        run: |
+          echo "## Container Image Published" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Repository** | \`${{ env.ECR_REPOSITORY }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Tag** | \`sha-${{ steps.meta.outputs.short-sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Digest** | \`${{ steps.push.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Version** | \`${{ steps.meta.outputs.build-version }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit** | \`${{ steps.meta.outputs.build-commit }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Platform** | \`${{ env.IMAGE_PLATFORM }}\` |" >> "$GITHUB_STEP_SUMMARY"
