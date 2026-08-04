@@ -22,6 +22,16 @@ output "target_group_arn" {
   value       = aws_lb_target_group.mcp.arn
 }
 
+output "alb_dns_name" {
+  description = "ALB DNS name (for CNAME or Cloudflare proxy)."
+  value       = aws_lb.mcp.dns_name
+}
+
+output "alb_zone_id" {
+  description = "ALB Route 53 zone ID."
+  value       = aws_lb.mcp.zone_id
+}
+
 output "public_endpoint" {
   description = "Public MCP endpoint URL for this environment."
   value       = "https://${var.public_hostname}/mcp"

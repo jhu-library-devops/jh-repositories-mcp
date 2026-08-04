@@ -18,11 +18,11 @@ resource "aws_security_group" "task" {
   }
 }
 
-# Ingress: shared ALB -> task (application port)
+# Ingress: ALB -> task (application port)
 resource "aws_vpc_security_group_ingress_rule" "task_from_alb" {
   security_group_id            = aws_security_group.task.id
-  referenced_security_group_id = var.alb_security_group_id
-  description                  = "Application traffic from the shared ALB"
+  referenced_security_group_id = aws_security_group.alb.id
+  description                  = "Application traffic from the ALB"
   from_port                    = var.container_port
   to_port                      = var.container_port
   ip_protocol                  = "tcp"

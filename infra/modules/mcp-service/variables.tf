@@ -26,21 +26,6 @@ variable "ecs_cluster_name" {
   type        = string
 }
 
-variable "https_listener_arn" {
-  description = "HTTPS listener ARN from the shared ALB."
-  type        = string
-}
-
-variable "alb_arn_suffix" {
-  description = "ALB ARN suffix for CloudWatch metric dimensions."
-  type        = string
-}
-
-variable "alb_security_group_id" {
-  description = "ALB security group ID (for task ingress rule)."
-  type        = string
-}
-
 variable "execution_role_arn" {
   description = "ECS task execution role ARN from the shared module."
   type        = string
@@ -57,17 +42,41 @@ variable "log_group_name" {
 }
 
 # -----------------------------------------------------------------------------
-# Networking (from the DSpace VPC for this environment)
+# Networking
 # -----------------------------------------------------------------------------
 
 variable "vpc_id" {
-  description = "VPC ID of the DSpace environment this service connects to."
+  description = "VPC ID for this environment's resources (ALB, tasks)."
   type        = string
+}
+
+variable "public_subnet_ids" {
+  description = "Public subnet IDs for the internet-facing ALB."
+  type        = list(string)
 }
 
 variable "private_subnet_ids" {
   description = "Private subnet IDs where Fargate tasks attach ENIs."
   type        = list(string)
+}
+
+# -----------------------------------------------------------------------------
+# TLS
+# -----------------------------------------------------------------------------
+
+variable "certificate_arn" {
+  description = "ACM certificate ARN for the HTTPS listener."
+  type        = string
+}
+
+# -----------------------------------------------------------------------------
+# WAF
+# -----------------------------------------------------------------------------
+
+variable "waf_rate_limit" {
+  description = "Maximum requests per 5-minute window per IP before WAF blocks."
+  type        = number
+  default     = 300
 }
 
 # -----------------------------------------------------------------------------

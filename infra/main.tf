@@ -7,36 +7,28 @@ locals {
   service_prefix  = "${local.name_prefix}-${var.environment}"
   public_hostname = var.environment == "prod" ? var.prod_hostname : var.stage_hostname
 
-  # Listener rule priority: stage=100, prod=200 (matches original layout)
+  # Listener rule priority: stage=100, prod=200
   listener_rule_priority = var.environment == "prod" ? 200 : 100
 }
 
 # =============================================================================
 # SHARED INFRASTRUCTURE
-# Single ECS cluster, ECR, ALB, WAF, IAM roles, and log group.
+# ECS cluster, ECR, IAM roles, and log group.
 # =============================================================================
 
 module "shared" {
   source = "./modules/mcp-shared"
 
-  name_prefix = local.name_prefix
-  aws_region  = var.aws_region
-
-  vpc_id            = var.vpc_id
-  public_subnet_ids = var.public_subnet_ids
-
-  certificate_arn   = var.certificate_arn
-  allowed_hostnames = [var.stage_hostname, var.prod_hostname]
-
-  waf_rate_limit      = var.waf_rate_limit
-  log_retention_days  = var.log_retention_days
-  alarm_sns_topic_arn = var.alarm_sns_topic_arn
+  name_prefix        = local.name_prefix
+  aws_region         = var.aws_region
+  log_retention_days = var.log_retention_days
 
   tags = var.tags
 }
 
 # =============================================================================
 # ENVIRONMENT SERVICE (stage OR prod, selected by var.environment)
+# Includes ALB, WAF, ECS service, and networking.
 # =============================================================================
 
 module "service" {
@@ -46,18 +38,22 @@ module "service" {
   name_prefix = local.service_prefix
 
   # Shared infra
-  ecs_cluster_id        = module.shared.ecs_cluster_id
-  ecs_cluster_name      = module.shared.ecs_cluster_name
-  https_listener_arn    = module.shared.https_listener_arn
-  alb_arn_suffix        = module.shared.alb_arn_suffix
-  alb_security_group_id = module.shared.alb_security_group_id
-  execution_role_arn    = module.shared.execution_role_arn
-  task_role_arn         = module.shared.task_role_arn
-  log_group_name        = module.shared.log_group_name
+  ecs_cluster_id   = module.shared.ecs_cluster_id
+  ecs_cluster_name = module.shared.ecs_cluster_name
+  execution_role_arn = module.shared.execution_role_arn
+  task_role_arn      = module.shared.task_role_arn
+  log_group_name     = module.shared.log_group_name
 
-  # Networking (same VPC)
+  # Networking
   vpc_id             = var.vpc_id
+  public_subnet_ids  = var.public_subnet_ids
   private_subnet_ids = var.private_subnet_ids
+
+  # TLS
+  certificate_arn = var.certificate_arn
+
+  # WAF
+  waf_rate_limit = var.waf_rate_limit
 
   # Cross-stack security groups
   dspace_solr_security_group_id    = var.dspace_solr_sg_id

@@ -21,7 +21,7 @@ resource "aws_cloudwatch_metric_alarm" "target_5xx" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = var.alb_arn_suffix
+    LoadBalancer = aws_lb.mcp.arn_suffix
     TargetGroup  = aws_lb_target_group.mcp.arn_suffix
   }
 
@@ -46,7 +46,7 @@ resource "aws_cloudwatch_metric_alarm" "unhealthy_tasks" {
   treat_missing_data  = "breaching"
 
   dimensions = {
-    LoadBalancer = var.alb_arn_suffix
+    LoadBalancer = aws_lb.mcp.arn_suffix
     TargetGroup  = aws_lb_target_group.mcp.arn_suffix
   }
 
@@ -71,7 +71,7 @@ resource "aws_cloudwatch_metric_alarm" "high_latency" {
   treat_missing_data  = "notBreaching"
 
   dimensions = {
-    LoadBalancer = var.alb_arn_suffix
+    LoadBalancer = aws_lb.mcp.arn_suffix
     TargetGroup  = aws_lb_target_group.mcp.arn_suffix
   }
 
@@ -150,7 +150,7 @@ resource "aws_appautoscaling_policy" "requests" {
 
     predefined_metric_specification {
       predefined_metric_type = "ALBRequestCountPerTarget"
-      resource_label         = "${var.alb_arn_suffix}/${aws_lb_target_group.mcp.arn_suffix}"
+      resource_label         = "${aws_lb.mcp.arn_suffix}/${aws_lb_target_group.mcp.arn_suffix}"
     }
   }
 }

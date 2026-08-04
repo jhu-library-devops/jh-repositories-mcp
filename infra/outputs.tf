@@ -13,17 +13,17 @@ output "ecr_repository_url" {
   value       = module.shared.ecr_repository_url
 }
 
+# Environment service
 output "alb_dns_name" {
-  description = "Shared ALB DNS name (for CNAME or Cloudflare proxy)."
-  value       = module.shared.alb_dns_name
+  description = "ALB DNS name (for CNAME or Cloudflare proxy)."
+  value       = module.service.alb_dns_name
 }
 
 output "alb_zone_id" {
-  description = "Shared ALB Route 53 zone ID."
-  value       = module.shared.alb_zone_id
+  description = "ALB Route 53 zone ID."
+  value       = module.service.alb_zone_id
 }
 
-# Environment service
 output "service_endpoint" {
   description = "MCP public endpoint for this environment."
   value       = module.service.public_endpoint
