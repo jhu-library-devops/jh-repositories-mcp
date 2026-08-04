@@ -16,7 +16,7 @@ private_subnet_ids = ["subnet-022e837a0764b1822", "subnet-08d7b2cd3c6540d88"]
 # -----------------------------------------------------------------------------
 # TLS (wildcard or SAN cert covering both hostnames)
 # -----------------------------------------------------------------------------
-certificate_arn = "arn:aws:acm:us-east-1:390157243417:certificate/f6e78a6b-837a-4b94-a84f-912fed7bcb35"
+certificate_arn = "arn:aws:acm:us-east-1:390157243417:certificate/421e6e6e-9259-4270-9c11-020022c6f259"
 
 # -----------------------------------------------------------------------------
 # Public Hostnames (both needed for ALB allowed-hostnames list)
