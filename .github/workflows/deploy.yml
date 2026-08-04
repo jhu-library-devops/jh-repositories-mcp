@@ -1,0 +1,231 @@
+name: Deploy
+
+on:
+  # Stage: auto-deploy after successful build on main
+  workflow_run:
+    workflows: ["Build, Scan & Push"]
+    types: [completed]
+    branches: [main]
+
+  # Production: manual promotion with required inputs
+  workflow_dispatch:
+    inputs:
+      image-digest:
+        description: "Image digest from stage deployment to promote (sha256:...)"
+        required: true
+        type: string
+      approver:
+        description: "Who authorized this production promotion"
+        required: true
+        type: string
+
+permissions:
+  id-token: write
+  contents: read
+
+env:
+  AWS_REGION: us-east-1
+  ECR_REPOSITORY: jhu/repository-mcp
+  ECS_CLUSTER: jhu-repo-mcp-cluster
+
+concurrency:
+  group: deploy-${{ github.event_name == 'workflow_dispatch' && 'prod' || 'stage' }}
+  cancel-in-progress: false
+
+jobs:
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Stage Deployment — triggered automatically after Build, Scan & Push
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-stage:
+    name: Deploy to Stage
+    runs-on: ubuntu-latest
+    if: >
+      github.event_name == 'workflow_run' &&
+      github.event.workflow_run.conclusion == 'success'
+    environment: stage
+
+    steps:
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-jhu-repo-mcp
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Resolve image from build workflow
+        id: image
+        run: |
+          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+          SOURCE_TAG="sha-${SHORT_SHA}"
+
+          # Get the digest for the source image
+          DIGEST=$(aws ecr batch-get-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageTag="${SOURCE_TAG}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text)
+
+          if [ "$DIGEST" = "None" ] || [ -z "$DIGEST" ]; then
+            echo "::error::Image with tag ${SOURCE_TAG} not found in ECR"
+            exit 1
+          fi
+
+          echo "ecr-uri=${ECR_URI}" >> "$GITHUB_OUTPUT"
+          echo "source-tag=${SOURCE_TAG}" >> "$GITHUB_OUTPUT"
+          echo "digest=${DIGEST}" >> "$GITHUB_OUTPUT"
+          echo "short-sha=${SHORT_SHA}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag image for stage environment
+        run: |
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageDigest="${{ steps.image.outputs.digest }}" \
+            --query 'images[0].imageManifest' \
+            --output text)
+
+          aws ecr put-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-tag "stage" \
+            --image-manifest "$MANIFEST" || true
+
+      - name: Deploy to ECS stage service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "jhu-repo-mcp-stage-service" \
+            --force-new-deployment \
+            --no-cli-pager
+
+      - name: Wait for service stability
+        run: |
+          echo "Waiting for stage service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "jhu-repo-mcp-stage-service"
+
+      - name: Record deployment metadata
+        run: |
+          echo "## Stage Deployment Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Environment** | \`stage\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Cluster** | \`${{ env.ECS_CLUSTER }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Service** | \`jhu-repo-mcp-stage-service\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Image Tag** | \`stage\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Source Tag** | \`${{ steps.image.outputs.source-tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Digest** | \`${{ steps.image.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit** | \`${{ github.event.workflow_run.head_sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Deployed by** | \`github-actions\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Timestamp** | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" >> "$GITHUB_STEP_SUMMARY"
+
+  # ─────────────────────────────────────────────────────────────────────────────
+  # Production Promotion — manual workflow_dispatch with sign-off
+  # ─────────────────────────────────────────────────────────────────────────────
+  deploy-prod:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch'
+    environment: production
+
+    steps:
+      - name: Validate inputs
+        run: |
+          DIGEST="${{ inputs.image-digest }}"
+          if [[ ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            echo "::error::Invalid image digest format. Expected sha256:<64 hex chars>"
+            exit 1
+          fi
+
+          APPROVER="${{ inputs.approver }}"
+          if [ -z "$APPROVER" ]; then
+            echo "::error::Approver is required for production deployments"
+            exit 1
+          fi
+
+      - name: Configure AWS credentials (OIDC)
+        uses: aws-actions/configure-aws-credentials@v4
+        with:
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/github-actions-jhu-repo-mcp
+          aws-region: ${{ env.AWS_REGION }}
+
+      - name: Login to Amazon ECR
+        id: ecr-login
+        uses: aws-actions/amazon-ecr-login@v2
+
+      - name: Verify image exists in ECR
+        id: image
+        run: |
+          ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
+
+          # Verify the digest exists
+          RESULT=$(aws ecr batch-get-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageDigest="${{ inputs.image-digest }}" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text)
+
+          if [ "$RESULT" = "None" ] || [ -z "$RESULT" ]; then
+            echo "::error::Image with digest ${{ inputs.image-digest }} not found in ECR"
+            exit 1
+          fi
+
+          # Check that this digest has been deployed to stage (has the stage tag)
+          STAGE_DIGEST=$(aws ecr batch-get-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageTag="stage" \
+            --query 'images[0].imageId.imageDigest' \
+            --output text)
+
+          if [ "$STAGE_DIGEST" != "${{ inputs.image-digest }}" ]; then
+            echo "::warning::Promoted digest does not match current stage tag. Ensure this image was tested in stage."
+          fi
+
+          echo "ecr-uri=${ECR_URI}" >> "$GITHUB_OUTPUT"
+
+      - name: Tag image for production environment
+        run: |
+          MANIFEST=$(aws ecr batch-get-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-ids imageDigest="${{ inputs.image-digest }}" \
+            --query 'images[0].imageManifest' \
+            --output text)
+
+          aws ecr put-image \
+            --repository-name "${{ env.ECR_REPOSITORY }}" \
+            --image-tag "prod" \
+            --image-manifest "$MANIFEST" || true
+
+      - name: Deploy to ECS production service
+        run: |
+          aws ecs update-service \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --service "jhu-repo-mcp-prod-service" \
+            --force-new-deployment \
+            --no-cli-pager
+
+      - name: Wait for service stability
+        run: |
+          echo "Waiting for production service to stabilize..."
+          aws ecs wait services-stable \
+            --cluster "${{ env.ECS_CLUSTER }}" \
+            --services "jhu-repo-mcp-prod-service"
+
+      - name: Record deployment metadata
+        run: |
+          echo "## Production Deployment Complete" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "| Property | Value |" >> "$GITHUB_STEP_SUMMARY"
+          echo "|----------|-------|" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Environment** | \`production\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Cluster** | \`${{ env.ECS_CLUSTER }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Service** | \`jhu-repo-mcp-prod-service\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Image Tag** | \`prod\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Digest** | \`${{ inputs.image-digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Approver** | \`${{ inputs.approver }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Deployed by** | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Timestamp** | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" >> "$GITHUB_STEP_SUMMARY"
