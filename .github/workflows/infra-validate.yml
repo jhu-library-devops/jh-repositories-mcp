@@ -1,0 +1,43 @@
+name: Infrastructure Validation
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "infra/**"
+  pull_request:
+    branches: [main]
+    paths:
+      - "infra/**"
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  tofu-validate:
+    name: OpenTofu Validate
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: infra
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install OpenTofu
+        uses: opentofu/setup-opentofu@v1
+        with:
+          tofu-version: "1.8"
+
+      - name: Format check
+        run: tofu fmt -check -recursive
+
+      - name: Initialize (no backend)
+        run: tofu init -backend=false
+
+      - name: Validate
+        run: tofu validate
