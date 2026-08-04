@@ -294,27 +294,27 @@
   - [ ] 22.4 Add post-deployment smoke tests and target-health rollback behavior
     - _Requirements: 12, 13.9, 16.6_
 
-- [ ] 23. Complete protocol, security, and failure verification
-  - [ ] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container
+- [x] 23. Complete protocol, security, and failure verification
+  - [x] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container
     - Initialization and multi-task stateless verification are covered in task 2.4; this task covers the full tool/resource/prompt surface and error handling.
     - _Requirements: 12.1-12.8, 16.2, 16.6_
-  - [ ] 23.2 Confirm multi-task stateless operation at production scale with the final container image
+  - [x] 23.2 Confirm multi-task stateless operation at production scale with the final container image
     - _Requirements: 12.2_
-  - [ ] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
+  - [x] 23.3 Run the complete non-public fixture suite through every tool and resource and confirm zero disclosure
     - _Requirements: 9, 16.1_
-  - [ ] 23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation
+  - [x] 23.4 Test Solr/API timeout, 4xx, 5xx, malformed response, partial failure, retry exhaustion, WAF rate limiting, Origin rejection, and concurrency saturation
     - _Requirements: 14, 15, 16.6_
-  - [ ] 23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route
+  - [x] 23.5 Confirm excluded capabilities are absent from MCP discovery and inaccessible by guessed method or route
     - _Requirements: 17_
 
-- [ ] 24. Deploy and validate stage
-  - [ ] 24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets
+- [x] 24. Deploy and validate stage
+  - [x] 24.1 Apply the stage infrastructure and deploy one MCP task in the shared private subnets
     - _Requirements: 13.1-13.9_
-  - [ ] 24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms
+  - [x] 24.2 Verify DNS, security groups, startup schema validation, Canonical_API access, health checks, WAF, logs, metrics, and alarms
     - _Requirements: 13-15_
-  - [ ] 24.3 Run the target MCP client compatibility suite through the public stage hostname
+  - [x] 24.3 Run the target MCP client compatibility suite through the public stage hostname
     - _Requirements: 12, 16.6_
-  - [ ] 24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior
+  - [x] 24.4 Run the agreed pilot load and confirm p95 latency, deadlines, memory stability, bounded fan-out, and partial-result behavior
     - _Requirements: 15, 16.5_
 
 - [ ] 25. Evaluate discovery quality and run the pilot
