@@ -14,7 +14,6 @@
 import { describe, expect, test } from "bun:test";
 import {
   DSPACE_ANONYMOUS_GROUP,
-  DSPACE_ARCHIVED_STATUS,
   jscholarshipProfile,
 } from "../../config/repositories/jscholarship-profile";
 import solrSchema from "../fixtures/jscholarship/solr-schema.json";
@@ -163,16 +162,12 @@ describe("JScholarship RepositoryProfile", () => {
       expect(allFq).toContain("-discoverable:false");
     });
 
-    test("requires archived status", () => {
-      expect(allFq).toContain(`database_status:${DSPACE_ARCHIVED_STATUS}`);
-    });
-
     test("requires anonymous group read access", () => {
       expect(allFq).toContain(`read:${DSPACE_ANONYMOUS_GROUP}`);
     });
 
-    test("has exactly 6 filter conditions (no gaps)", () => {
-      expect(filters.length).toBe(6);
+    test("has exactly 5 filter conditions (no gaps)", () => {
+      expect(filters.length).toBe(5);
     });
 
     test("every filter references a field that exists in the schema", () => {
@@ -285,12 +280,8 @@ describe("JScholarship RepositoryProfile", () => {
   });
 
   describe("Constants are correct", () => {
-    test("anonymous group value is 'g0'", () => {
-      expect(DSPACE_ANONYMOUS_GROUP).toBe("g0");
-    });
-
-    test("archived status value is 'ARCHIVED'", () => {
-      expect(DSPACE_ARCHIVED_STATUS).toBe("ARCHIVED");
+    test("anonymous group value is the DSpace 9 Anonymous group UUID", () => {
+      expect(DSPACE_ANONYMOUS_GROUP).toBe("gafbf5aff-3555-46eb-859a-328aa5cf10c9");
     });
   });
 });
