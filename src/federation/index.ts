@@ -207,7 +207,7 @@ export function mergePages(input: MergeInput): MergeResult {
 
   while (merged.length < limit) {
     let best: { repository: RepositoryId; record: RepositoryRecord; score: number } | null = null;
-    let tie = false;
+    let shouldFlipPreferred = false;
 
     for (const [repository, queue] of queues) {
       const record = queue.records[queue.index];
@@ -218,21 +218,21 @@ export function mergePages(input: MergeInput): MergeResult {
       const score = DEFAULT_WEIGHT / (RRF_K + rank);
       if (best === null || score > best.score) {
         best = { repository, record, score };
-        tie = false;
+        shouldFlipPreferred = false;
       } else if (score === best.score) {
-        tie = true;
         const preferThis =
           repository === preferred || (best.repository !== preferred && record.id < best.record.id);
         if (preferThis) {
           best = { repository, record, score };
         }
+        shouldFlipPreferred = true;
       }
     }
 
     if (best === null) {
       break;
     }
-    if (tie) {
+    if (shouldFlipPreferred) {
       preferred = otherRepository(preferred);
     }
     merged.push(best.record);
