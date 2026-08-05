@@ -10,14 +10,14 @@
  * Property 5: Dynamic field patterns cover any matching field name
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
+import type { RepositoryProfile } from "../../config/repositories/jscholarship-profile";
 import {
-  validateSolrSchema,
   type FetchFn,
   type SolrSchemaValidatorOptions,
+  validateSolrSchema,
 } from "../../src/adapters/solr-schema-validator";
-import type { RepositoryProfile } from "../../config/repositories/jscholarship-profile";
 
 // Run 150 cases per property (exceeds the minimum 100 requirement)
 const NUM_RUNS = 150;
@@ -62,7 +62,11 @@ function createTestProfile(overrides: Partial<RepositoryProfile> = {}): Reposito
     sortFields: {},
     relatedFields: [],
     returnFields: [],
-    identityFields: { uuid: "search.resourceid", handle: "handle", resourceType: "search.resourcetype" },
+    identityFields: {
+      uuid: "search.resourceid",
+      handle: "handle",
+      resourceType: "search.resourcetype",
+    },
     immutablePublicFilters: [],
     fulltextDecision: { enabled: false, field: "fulltext", rationale: "test", reference: "test" },
     ...overrides,
@@ -70,12 +74,10 @@ function createTestProfile(overrides: Partial<RepositoryProfile> = {}): Reposito
 }
 
 /** Create a mock fetch that returns specified static and dynamic fields */
-function createMockFetch(
-  staticFields: string[],
-  dynamicFields: string[] = [],
-): FetchFn {
+function createMockFetch(staticFields: string[], dynamicFields: string[] = []): FetchFn {
   return async (input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
     if (url.endsWith("/dynamicfields")) {
       return new Response(
@@ -95,10 +97,7 @@ function createMockFetch(
   };
 }
 
-function createOptions(
-  profile: RepositoryProfile,
-  fetchFn: FetchFn,
-): SolrSchemaValidatorOptions {
+function createOptions(profile: RepositoryProfile, fetchFn: FetchFn): SolrSchemaValidatorOptions {
   return {
     schemaUrl: "http://solr.test:8983/solr/search/schema",
     profile,
@@ -111,23 +110,22 @@ function createOptions(
 
 /** Generate a non-empty subset of indices to remove from an array */
 function subsetIndicesArb(arrayLength: number): fc.Arbitrary<number[]> {
-  return fc
-    .subarray(
-      Array.from({ length: arrayLength }, (_, i) => i),
-      { minLength: 1, maxLength: arrayLength },
-    );
+  return fc.subarray(
+    Array.from({ length: arrayLength }, (_, i) => i),
+    { minLength: 1, maxLength: arrayLength },
+  );
 }
 
 /** Generate random extra field names that won't collide with required/optional fields */
-const extraFieldNameArb = fc.string({ minLength: 1, maxLength: 50 })
-  .filter((s) =>
-    !BASE_REQUIRED_FIELDS.includes(s as typeof BASE_REQUIRED_FIELDS[number]) &&
-    !BASE_OPTIONAL_FIELDS.includes(s as typeof BASE_OPTIONAL_FIELDS[number]) &&
+const extraFieldNameArb = fc.string({ minLength: 1, maxLength: 50 }).filter(
+  (s) =>
+    !BASE_REQUIRED_FIELDS.includes(s as (typeof BASE_REQUIRED_FIELDS)[number]) &&
+    !BASE_OPTIONAL_FIELDS.includes(s as (typeof BASE_OPTIONAL_FIELDS)[number]) &&
     // Avoid patterns that match dynamic fields
     !s.endsWith("_mlt") &&
     !s.endsWith("_filter") &&
     !s.endsWith("_sort"),
-  );
+);
 
 // ─── Property 1: Removing any required field causes validation failure ───────
 
@@ -137,31 +135,29 @@ describe("Property 1: Removing any single required field always causes validatio
      * **Validates: Requirements 3.2, 6.2, 10.2, 13.9**
      */
     await fc.assert(
-      fc.asyncProperty(
-        subsetIndicesArb(BASE_REQUIRED_FIELDS.length),
-        async (indicesToRemove) => {
-          const profile = createTestProfile();
+      fc.asyncProperty(subsetIndicesArb(BASE_REQUIRED_FIELDS.length), async (indicesToRemove) => {
+        const profile = createTestProfile();
 
-          // All fields present EXCEPT the removed ones
-          const removedFields = indicesToRemove.map((i) => BASE_REQUIRED_FIELDS[i]);
-          const presentFields = [...BASE_REQUIRED_FIELDS, ...BASE_OPTIONAL_FIELDS]
-            .filter((f) => !removedFields.includes(f as typeof BASE_REQUIRED_FIELDS[number]));
+        // All fields present EXCEPT the removed ones
+        const removedFields = indicesToRemove.map((i) => BASE_REQUIRED_FIELDS[i]);
+        const presentFields = [...BASE_REQUIRED_FIELDS, ...BASE_OPTIONAL_FIELDS].filter(
+          (f) => !removedFields.includes(f as (typeof BASE_REQUIRED_FIELDS)[number]),
+        );
 
-          const mockFetch = createMockFetch(presentFields);
-          const result = await validateSolrSchema(createOptions(profile, mockFetch));
+        const mockFetch = createMockFetch(presentFields);
+        const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
-          // Must be invalid
-          expect(result.valid).toBe(false);
+        // Must be invalid
+        expect(result.valid).toBe(false);
 
-          // Every removed required field must appear in missingRequired
-          for (const removed of removedFields) {
-            expect(result.missingRequired).toContain(removed);
-          }
+        // Every removed required field must appear in missingRequired
+        for (const removed of removedFields) {
+          expect(result.missingRequired).toContain(removed);
+        }
 
-          // missingRequired length matches removal count
-          expect(result.missingRequired).toHaveLength(removedFields.length);
-        },
-      ),
+        // missingRequired length matches removal count
+        expect(result.missingRequired).toHaveLength(removedFields.length);
+      }),
       { numRuns: NUM_RUNS },
     );
   });
@@ -181,11 +177,7 @@ describe("Property 2: Adding extra fields never causes validation failure", () =
           const profile = createTestProfile();
 
           // All required + optional fields present, plus random extras
-          const allFields = [
-            ...BASE_REQUIRED_FIELDS,
-            ...BASE_OPTIONAL_FIELDS,
-            ...extraFields,
-          ];
+          const allFields = [...BASE_REQUIRED_FIELDS, ...BASE_OPTIONAL_FIELDS, ...extraFields];
 
           const mockFetch = createMockFetch(allFields);
           const result = await validateSolrSchema(createOptions(profile, mockFetch));
@@ -209,35 +201,32 @@ describe("Property 3: Removing any optional field never causes validation failur
      * **Validates: Requirements 3.2, 6.2, 10.2, 13.9**
      */
     await fc.assert(
-      fc.asyncProperty(
-        subsetIndicesArb(BASE_OPTIONAL_FIELDS.length),
-        async (indicesToRemove) => {
-          const profile = createTestProfile();
+      fc.asyncProperty(subsetIndicesArb(BASE_OPTIONAL_FIELDS.length), async (indicesToRemove) => {
+        const profile = createTestProfile();
 
-          const removedOptionalFields = indicesToRemove.map((i) => BASE_OPTIONAL_FIELDS[i]);
-          const presentFields = [
-            ...BASE_REQUIRED_FIELDS,
-            ...BASE_OPTIONAL_FIELDS.filter(
-              (f) => !removedOptionalFields.includes(f as typeof BASE_OPTIONAL_FIELDS[number]),
-            ),
-          ];
+        const removedOptionalFields = indicesToRemove.map((i) => BASE_OPTIONAL_FIELDS[i]);
+        const presentFields = [
+          ...BASE_REQUIRED_FIELDS,
+          ...BASE_OPTIONAL_FIELDS.filter(
+            (f) => !removedOptionalFields.includes(f as (typeof BASE_OPTIONAL_FIELDS)[number]),
+          ),
+        ];
 
-          const mockFetch = createMockFetch(presentFields);
-          const result = await validateSolrSchema(createOptions(profile, mockFetch));
+        const mockFetch = createMockFetch(presentFields);
+        const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
-          // Must remain valid
-          expect(result.valid).toBe(true);
-          expect(result.missingRequired).toEqual([]);
+        // Must remain valid
+        expect(result.valid).toBe(true);
+        expect(result.missingRequired).toEqual([]);
 
-          // missingOptional must contain the omitted fields
-          for (const removed of removedOptionalFields) {
-            expect(result.missingOptional).toContain(removed);
-          }
+        // missingOptional must contain the omitted fields
+        for (const removed of removedOptionalFields) {
+          expect(result.missingOptional).toContain(removed);
+        }
 
-          // missingOptional length matches what we removed
-          expect(result.missingOptional).toHaveLength(removedOptionalFields.length);
-        },
-      ),
+        // missingOptional length matches what we removed
+        expect(result.missingOptional).toHaveLength(removedOptionalFields.length);
+      }),
       { numRuns: NUM_RUNS },
     );
   });
@@ -252,14 +241,14 @@ describe("Property 4: disabledFeatures length equals missingOptional length", ()
      */
     await fc.assert(
       fc.asyncProperty(
-        fc.subarray([...BASE_OPTIONAL_FIELDS], { minLength: 0, maxLength: BASE_OPTIONAL_FIELDS.length }),
+        fc.subarray([...BASE_OPTIONAL_FIELDS], {
+          minLength: 0,
+          maxLength: BASE_OPTIONAL_FIELDS.length,
+        }),
         async (optionalFieldsToKeep) => {
           const profile = createTestProfile();
 
-          const presentFields = [
-            ...BASE_REQUIRED_FIELDS,
-            ...optionalFieldsToKeep,
-          ];
+          const presentFields = [...BASE_REQUIRED_FIELDS, ...optionalFieldsToKeep];
 
           const mockFetch = createMockFetch(presentFields);
           const result = await validateSolrSchema(createOptions(profile, mockFetch));
@@ -280,17 +269,20 @@ describe("Property 4: disabledFeatures length equals missingOptional length", ()
 
 describe("Property 5: Dynamic field patterns cover any matching field name", () => {
   /** Generate field names ending with _mlt */
-  const mltFieldArb = fc.string({ minLength: 1, maxLength: 30 })
+  const mltFieldArb = fc
+    .string({ minLength: 1, maxLength: 30 })
     .filter((s) => /^[a-z][a-z0-9.]*$/.test(s))
     .map((s) => `${s}_mlt`);
 
   /** Generate field names ending with _filter */
-  const filterFieldArb = fc.string({ minLength: 1, maxLength: 30 })
+  const filterFieldArb = fc
+    .string({ minLength: 1, maxLength: 30 })
     .filter((s) => /^[a-z][a-z0-9.]*$/.test(s))
     .map((s) => `${s}_filter`);
 
   /** Generate field names ending with _sort */
-  const sortFieldArb = fc.string({ minLength: 1, maxLength: 30 })
+  const sortFieldArb = fc
+    .string({ minLength: 1, maxLength: 30 })
     .filter((s) => /^[a-z][a-z0-9.]*$/.test(s))
     .map((s) => `${s}_sort`);
 
@@ -299,28 +291,22 @@ describe("Property 5: Dynamic field patterns cover any matching field name", () 
      * **Validates: Requirements 3.2, 6.2, 10.2, 13.9**
      */
     await fc.assert(
-      fc.asyncProperty(
-        fc.array(mltFieldArb, { minLength: 1, maxLength: 5 }),
-        async (mltFields) => {
-          // Use the generated _mlt fields as the optional schema fields
-          const profile = createTestProfile({
-            optionalSchemaFields: mltFields,
-          });
+      fc.asyncProperty(fc.array(mltFieldArb, { minLength: 1, maxLength: 5 }), async (mltFields) => {
+        // Use the generated _mlt fields as the optional schema fields
+        const profile = createTestProfile({
+          optionalSchemaFields: mltFields,
+        });
 
-          // Static fields only have required fields (no _mlt fields present)
-          // But dynamic pattern *_mlt exists
-          const mockFetch = createMockFetch(
-            [...BASE_REQUIRED_FIELDS],
-            ["*_mlt"],
-          );
+        // Static fields only have required fields (no _mlt fields present)
+        // But dynamic pattern *_mlt exists
+        const mockFetch = createMockFetch([...BASE_REQUIRED_FIELDS], ["*_mlt"]);
 
-          const result = await validateSolrSchema(createOptions(profile, mockFetch));
+        const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
-          // Must be valid — dynamic pattern covers all _mlt fields
-          expect(result.valid).toBe(true);
-          expect(result.missingOptional).toEqual([]);
-        },
-      ),
+        // Must be valid — dynamic pattern covers all _mlt fields
+        expect(result.valid).toBe(true);
+        expect(result.missingOptional).toEqual([]);
+      }),
       { numRuns: NUM_RUNS },
     );
   });
@@ -339,10 +325,7 @@ describe("Property 5: Dynamic field patterns cover any matching field name", () 
           });
 
           // Dynamic pattern *_filter covers all generated filter fields
-          const mockFetch = createMockFetch(
-            [...BASE_REQUIRED_FIELDS],
-            ["*_filter"],
-          );
+          const mockFetch = createMockFetch([...BASE_REQUIRED_FIELDS], ["*_filter"]);
 
           const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
@@ -368,10 +351,7 @@ describe("Property 5: Dynamic field patterns cover any matching field name", () 
           });
 
           // Dynamic pattern *_sort covers all generated sort fields
-          const mockFetch = createMockFetch(
-            [...BASE_REQUIRED_FIELDS],
-            ["*_sort"],
-          );
+          const mockFetch = createMockFetch([...BASE_REQUIRED_FIELDS], ["*_sort"]);
 
           const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
@@ -388,31 +368,28 @@ describe("Property 5: Dynamic field patterns cover any matching field name", () 
      * **Validates: Requirements 3.2, 6.2, 10.2, 13.9**
      */
     await fc.assert(
-      fc.asyncProperty(
-        fc.array(mltFieldArb, { minLength: 1, maxLength: 3 }),
-        async (mltFields) => {
-          const profile = createTestProfile({
-            optionalSchemaFields: mltFields,
-          });
+      fc.asyncProperty(fc.array(mltFieldArb, { minLength: 1, maxLength: 3 }), async (mltFields) => {
+        const profile = createTestProfile({
+          optionalSchemaFields: mltFields,
+        });
 
-          // No dynamic patterns defined — _mlt fields won't be matched
-          const mockFetch = createMockFetch(
-            [...BASE_REQUIRED_FIELDS],
-            [], // no dynamic patterns
-          );
+        // No dynamic patterns defined — _mlt fields won't be matched
+        const mockFetch = createMockFetch(
+          [...BASE_REQUIRED_FIELDS],
+          [], // no dynamic patterns
+        );
 
-          const result = await validateSolrSchema(createOptions(profile, mockFetch));
+        const result = await validateSolrSchema(createOptions(profile, mockFetch));
 
-          // Still valid (optional fields missing don't fail validation)
-          expect(result.valid).toBe(true);
+        // Still valid (optional fields missing don't fail validation)
+        expect(result.valid).toBe(true);
 
-          // But they must be reported as missing
-          for (const field of mltFields) {
-            expect(result.missingOptional).toContain(field);
-          }
-          expect(result.missingOptional).toHaveLength(mltFields.length);
-        },
-      ),
+        // But they must be reported as missing
+        for (const field of mltFields) {
+          expect(result.missingOptional).toContain(field);
+        }
+        expect(result.missingOptional).toHaveLength(mltFields.length);
+      }),
       { numRuns: NUM_RUNS },
     );
   });

@@ -9,6 +9,7 @@
  * Requirements: 4.1-4.6, 5.1-5.5
  */
 
+import { createRecordId } from "./identifiers";
 import type {
   AccessInfo,
   CollectionContext,
@@ -21,7 +22,6 @@ import type {
   RepositoryId,
   RepositoryRecord,
 } from "./index";
-import { createRecordId } from "./identifiers";
 
 /**
  * Input for creating a RepositoryRecord. Adapters provide these fields.
@@ -84,9 +84,7 @@ const DEFAULT_ACCESS: AccessInfo = {
  * @param input - The adapter-provided fields.
  * @returns A complete RepositoryRecord with no omitted fields.
  */
-export function createRepositoryRecord(
-  input: RepositoryRecordInput,
-): RepositoryRecord {
+export function createRepositoryRecord(input: RepositoryRecordInput): RepositoryRecord {
   return {
     id: createRecordId(input.repository, input.platformId),
     repository: input.repository,
@@ -118,10 +116,7 @@ export function createRepositoryRecord(
  * @param files - The public file summaries to attach.
  * @returns A complete ItemDetail.
  */
-export function createItemDetail(
-  record: RepositoryRecord,
-  files: PublicFileSummary[],
-): ItemDetail {
+export function createItemDetail(record: RepositoryRecord, files: PublicFileSummary[]): ItemDetail {
   return {
     ...record,
     files,

@@ -164,18 +164,10 @@ export const jscholarshipProfile = {
       { field: "subject", boost: 2 },
       // fulltext is EXCLUDED — see fulltextDecision below
     ],
-    title: [
-      { field: "title", boost: 4 },
-    ],
-    creator: [
-      { field: "author", boost: 3 },
-    ],
-    subject: [
-      { field: "subject", boost: 2 },
-    ],
-    abstract: [
-      { field: "abstract", boost: 1 },
-    ],
+    title: [{ field: "title", boost: 4 }],
+    creator: [{ field: "author", boost: 3 }],
+    subject: [{ field: "subject", boost: 2 }],
+    abstract: [{ field: "abstract", boost: 1 }],
   },
 
   // ── Filter Fields ──────────────────────────────────────────────────────────
@@ -218,12 +210,7 @@ export const jscholarshipProfile = {
   // ── Related Fields (MoreLikeThis) ─────────────────────────────────────────
   // Configured in discovery.xml: similarityMetadataFields
   // These generate *_mlt fields with term vectors enabled.
-  relatedFields: [
-    "dc.title_mlt",
-    "dc.contributor.author_mlt",
-    "dc.creator_mlt",
-    "dc.subject_mlt",
-  ],
+  relatedFields: ["dc.title_mlt", "dc.contributor.author_mlt", "dc.creator_mlt", "dc.subject_mlt"],
 
   // ── Return Fields (fl) ─────────────────────────────────────────────────────
   // Minimum fields retrieved from Solr for candidate processing.

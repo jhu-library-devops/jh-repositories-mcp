@@ -14,14 +14,12 @@ import type { AppConfig } from "./index";
 // ─── Transforms ──────────────────────────────────────────────────────────────
 
 /** Split a comma-separated string into a trimmed array, filtering empty entries. */
-const commaSeparatedList = z
-  .string()
-  .transform((val) =>
-    val
-      .split(",")
-      .map((s) => s.trim())
-      .filter((s) => s.length > 0),
-  );
+const commaSeparatedList = z.string().transform((val) =>
+  val
+    .split(",")
+    .map((s) => s.trim())
+    .filter((s) => s.length > 0),
+);
 
 /** Validate a string looks like a URL (has a protocol and host). */
 const urlString = z.string().refine(
@@ -91,9 +89,7 @@ const envSchema = z.object({
 
   // Concurrency
   MAX_TOOL_CONCURRENCY: positiveNumber("MAX_TOOL_CONCURRENCY").default("10"),
-  MAX_CANONICALIZATION_WORKERS: positiveNumber(
-    "MAX_CANONICALIZATION_WORKERS",
-  ).default("5"),
+  MAX_CANONICALIZATION_WORKERS: positiveNumber("MAX_CANONICALIZATION_WORKERS").default("5"),
 
   // Cache
   CACHE_SEARCH_TTL_MS: positiveNumber("CACHE_SEARCH_TTL_MS").default("60000"),
@@ -158,9 +154,7 @@ export function loadConfig(): AppConfig {
       const path = issue.path.join(".");
       return `  - ${path}: ${issue.message}`;
     });
-    throw new Error(
-      `Environment configuration validation failed:\n${issues.join("\n")}`,
-    );
+    throw new Error(`Environment configuration validation failed:\n${issues.join("\n")}`);
   }
 
   const env = result.data;
@@ -175,8 +169,7 @@ export function loadConfig(): AppConfig {
   }
   if (jhrdrWarnings.length > 0) {
     console.warn(
-      `[config] JHRDR/Dataverse endpoints not configured (${jhrdrWarnings.join(", ")}). ` +
-        "JHRDR adapter will be unavailable until Dataverse infrastructure is ready.",
+      `[config] JHRDR/Dataverse endpoints not configured (${jhrdrWarnings.join(", ")}). JHRDR adapter will be unavailable until Dataverse infrastructure is ready.`,
     );
   }
 

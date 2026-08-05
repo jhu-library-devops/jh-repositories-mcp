@@ -5,11 +5,11 @@
  * Requirements: 13.2-13.9, 14.3-14.6, 15.1, 15.8
  */
 
-import { describe, test, expect, beforeEach, afterEach, spyOn } from "bun:test";
+import { afterEach, beforeEach, describe, expect, spyOn, test } from "bun:test";
 import { loadConfig } from "../../src/config/env";
 
 /** Minimal valid environment for JScholarship startup. */
-function validEnv(): Record<string, string> {
+function validEnv(): Record<string, string | undefined> {
   return {
     PORT: "3000",
     ENVIRONMENT: "stage",
@@ -56,15 +56,13 @@ describe("loadConfig()", () => {
     expect(config.jscholarship.apiBaseUrl).toBe(
       "http://internal-private-dspace-stage-alb.us-east-1.elb.amazonaws.com",
     );
-    expect(config.jscholarship.publicBaseUrl).toBe(
-      "https://jscholarship.library.jhu.edu",
-    );
+    expect(config.jscholarship.publicBaseUrl).toBe("https://jscholarship.library.jhu.edu");
     expect(config.security.allowedHosts).toEqual(["mcp.library.jhu.edu"]);
   });
 
   test("throws when JSCHOLARSHIP_SOLR_URL is missing", () => {
     const env = validEnv();
-    delete env.JSCHOLARSHIP_SOLR_URL;
+    env.JSCHOLARSHIP_SOLR_URL = undefined;
     Object.assign(process.env, env);
 
     expect(() => loadConfig()).toThrow(/JSCHOLARSHIP_SOLR_URL/);
@@ -182,7 +180,7 @@ describe("loadConfig()", () => {
 
   test("uses default PORT when not set", () => {
     const env = validEnv();
-    delete env.PORT;
+    env.PORT = undefined;
     Object.assign(process.env, env);
 
     const config = loadConfig();
@@ -197,9 +195,6 @@ describe("loadConfig()", () => {
 
     const config = loadConfig();
 
-    expect(config.security.allowedHosts).toEqual([
-      "host1.example.com",
-      "host2.example.com",
-    ]);
+    expect(config.security.allowedHosts).toEqual(["host1.example.com", "host2.example.com"]);
   });
 });

@@ -62,14 +62,8 @@ export const filtersSchema = z
       .array(z.string().min(1).max(MAX_STRING_SHORT))
       .max(MAX_RESOURCE_TYPE_ITEMS)
       .optional(),
-    creators: z
-      .array(z.string().min(1).max(MAX_STRING_MEDIUM))
-      .max(MAX_CREATOR_ITEMS)
-      .optional(),
-    subjects: z
-      .array(z.string().min(1).max(MAX_STRING_MEDIUM))
-      .max(MAX_SUBJECT_ITEMS)
-      .optional(),
+    creators: z.array(z.string().min(1).max(MAX_STRING_MEDIUM)).max(MAX_CREATOR_ITEMS).optional(),
+    subjects: z.array(z.string().min(1).max(MAX_STRING_MEDIUM)).max(MAX_SUBJECT_ITEMS).optional(),
     collections: z
       .array(z.string().min(1).max(MAX_STRING_SHORT))
       .max(MAX_COLLECTION_ITEMS)
@@ -105,11 +99,7 @@ export const listFacetsInputSchema = z
     repositories: repositorySelectorSchema.default("all"),
     field: searchFieldSchema.optional(),
     filters: filtersSchema.optional(),
-    facets: z
-      .array(commonFacetSchema)
-      .min(1)
-      .max(6)
-      .optional(),
+    facets: z.array(commonFacetSchema).min(1).max(6).optional(),
   })
   .strict();
 
@@ -219,9 +209,11 @@ const publicFileSummarySchema = z
   })
   .strict();
 
-export const itemDetailSchema = repositoryRecordSchema.extend({
-  files: z.array(publicFileSummarySchema).max(100),
-}).strict();
+export const itemDetailSchema = repositoryRecordSchema
+  .extend({
+    files: z.array(publicFileSummarySchema).max(100),
+  })
+  .strict();
 
 // ─── Tool Output Schemas ─────────────────────────────────────────────────────
 

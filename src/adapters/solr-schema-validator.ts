@@ -20,10 +20,7 @@ import type { RepositoryId, SchemaValidationResult } from "../models/index";
  * This type is used instead of `typeof fetch` to allow easy mocking in tests
  * without requiring platform-specific extensions (e.g. Bun's `preconnect`).
  */
-export type FetchFn = (
-  input: string | URL | Request,
-  init?: RequestInit,
-) => Promise<Response>;
+export type FetchFn = (input: string | URL | Request, init?: RequestInit) => Promise<Response>;
 
 export interface SolrSchemaValidatorOptions {
   /** Full URL to the Solr schema/fields endpoint (without the /fields suffix). */
@@ -65,10 +62,7 @@ function featureForOptionalField(fieldName: string): string {
  * Check if a field name matches any dynamic field pattern.
  * Solr dynamic fields use patterns like `*_mlt`, `*_filter`, `*_sort`.
  */
-function matchesDynamicPattern(
-  fieldName: string,
-  dynamicPatterns: string[],
-): boolean {
+function matchesDynamicPattern(fieldName: string, dynamicPatterns: string[]): boolean {
   for (const pattern of dynamicPatterns) {
     if (pattern.startsWith("*")) {
       const suffix = pattern.slice(1);
@@ -97,12 +91,7 @@ function matchesDynamicPattern(
 export async function validateSolrSchema(
   options: SolrSchemaValidatorOptions,
 ): Promise<SchemaValidationResult> {
-  const {
-    schemaUrl,
-    profile,
-    timeoutMs = 5000,
-    fetchFn = globalThis.fetch,
-  } = options;
+  const { schemaUrl, profile, timeoutMs = 5000, fetchFn = globalThis.fetch } = options;
 
   const fieldsUrl = `${schemaUrl}/fields`;
   const dynamicFieldsUrl = `${schemaUrl}/dynamicfields`;
@@ -111,19 +100,12 @@ export async function validateSolrSchema(
   const fieldNames = await fetchFieldNames(fieldsUrl, timeoutMs, fetchFn);
 
   // Fetch dynamic field patterns
-  const dynamicPatterns = await fetchDynamicFieldPatterns(
-    dynamicFieldsUrl,
-    timeoutMs,
-    fetchFn,
-  );
+  const dynamicPatterns = await fetchDynamicFieldPatterns(dynamicFieldsUrl, timeoutMs, fetchFn);
 
   // Check required fields against deployed schema
   const missingRequired: string[] = [];
   for (const field of profile.requiredSchemaFields) {
-    if (
-      !fieldNames.has(field) &&
-      !matchesDynamicPattern(field, dynamicPatterns)
-    ) {
+    if (!fieldNames.has(field) && !matchesDynamicPattern(field, dynamicPatterns)) {
       missingRequired.push(field);
     }
   }
@@ -132,10 +114,7 @@ export async function validateSolrSchema(
   const missingOptional: string[] = [];
   const disabledFeatures: string[] = [];
   for (const field of profile.optionalSchemaFields) {
-    if (
-      !fieldNames.has(field) &&
-      !matchesDynamicPattern(field, dynamicPatterns)
-    ) {
+    if (!fieldNames.has(field) && !matchesDynamicPattern(field, dynamicPatterns)) {
       missingOptional.push(field);
       disabledFeatures.push(featureForOptionalField(field));
     }
@@ -171,10 +150,7 @@ async function fetchFieldNames(
   try {
     body = await response.json();
   } catch {
-    throw new SolrSchemaError(
-      "Solr schema fields response is not valid JSON",
-      url,
-    );
+    throw new SolrSchemaError("Solr schema fields response is not valid JSON", url);
   }
 
   if (
@@ -183,10 +159,7 @@ async function fetchFieldNames(
     !("fields" in body) ||
     !Array.isArray((body as SolrFieldsResponse).fields)
   ) {
-    throw new SolrSchemaError(
-      "Solr schema fields response missing expected 'fields' array",
-      url,
-    );
+    throw new SolrSchemaError("Solr schema fields response missing expected 'fields' array", url);
   }
 
   const fields = (body as SolrFieldsResponse).fields;
@@ -212,10 +185,7 @@ async function fetchDynamicFieldPatterns(
   try {
     body = await response.json();
   } catch {
-    throw new SolrSchemaError(
-      "Solr dynamic fields response is not valid JSON",
-      url,
-    );
+    throw new SolrSchemaError("Solr dynamic fields response is not valid JSON", url);
   }
 
   if (
@@ -246,10 +216,7 @@ async function fetchWithTimeout(
     return await fetchFn(url, { signal: controller.signal });
   } catch (error) {
     if (error instanceof Error && error.name === "AbortError") {
-      throw new SolrSchemaError(
-        `Solr schema request timed out after ${timeoutMs}ms`,
-        url,
-      );
+      throw new SolrSchemaError(`Solr schema request timed out after ${timeoutMs}ms`, url);
     }
     throw new SolrSchemaError(
       `Solr schema request failed: ${error instanceof Error ? error.message : String(error)}`,

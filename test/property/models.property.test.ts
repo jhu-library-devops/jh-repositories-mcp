@@ -8,17 +8,17 @@
  * Additional: Limit normalization, Date format validation
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
   createRecordId,
+  createRepositoryRecord,
   parseRecordId,
   recordIdsCollide,
-  createRepositoryRecord,
   repositoryRecordSchema,
   searchItemsInputSchema,
 } from "../../src/models/index";
-import type { RepositoryId, Provenance } from "../../src/models/index";
+import type { Provenance, RepositoryId } from "../../src/models/index";
 
 // Run 150 cases per property (exceeds the minimum 100 requirement)
 const NUM_RUNS = 150;
@@ -34,7 +34,9 @@ const repositoryIdArb = fc.constantFrom<RepositoryId>("jscholarship", "jhrdr");
 /** Valid provenance for a given repository */
 function provenanceArb(repo: RepositoryId): fc.Arbitrary<Provenance> {
   return fc.record({
-    platform: fc.constant(repo === "jscholarship" ? "dspace" : "dataverse") as fc.Arbitrary<"dspace" | "dataverse">,
+    platform: fc.constant(repo === "jscholarship" ? "dspace" : "dataverse") as fc.Arbitrary<
+      "dspace" | "dataverse"
+    >,
     platformRecordId: fc.string({ minLength: 1, maxLength: 100 }),
     canonicalApi: fc.constant(
       repo === "jscholarship" ? "dspace_rest" : "dataverse_native_api",
@@ -49,7 +51,9 @@ function repositoryRecordInputArb() {
     fc.record({
       platformId: fc.string({ minLength: 1, maxLength: 100 }),
       repository: fc.constant(repo) as fc.Arbitrary<RepositoryId>,
-      kind: fc.constantFrom("repository_item", "dataset") as fc.Arbitrary<"repository_item" | "dataset">,
+      kind: fc.constantFrom("repository_item", "dataset") as fc.Arbitrary<
+        "repository_item" | "dataset"
+      >,
       title: fc.string({ minLength: 1, maxLength: 200 }),
       landingPageUrl: fc.webUrl(),
       provenance: provenanceArb(repo),
@@ -117,8 +121,8 @@ describe("Property 9: Namespaced IDs cannot collide", () => {
         const id = createRecordId(repo, platformId);
         const parsed = parseRecordId(id);
         expect(parsed).not.toBeNull();
-        expect(parsed!.repository).toBe(repo);
-        expect(parsed!.platformId).toBe(platformId);
+        expect(parsed?.repository).toBe(repo);
+        expect(parsed?.platformId).toBe(platformId);
       }),
       { numRuns: NUM_RUNS },
     );
@@ -223,7 +227,13 @@ describe("Property 8: Normalized output shape is stable", () => {
         const record = createRepositoryRecord(input);
 
         // Nullable scalars must be null, never undefined
-        const nullableScalars = ["abstract", "citation", "snippet", "sourceRank", "persistentId"] as const;
+        const nullableScalars = [
+          "abstract",
+          "citation",
+          "snippet",
+          "sourceRank",
+          "persistentId",
+        ] as const;
         for (const key of nullableScalars) {
           const value = record[key];
           expect(value).not.toBe(undefined);
@@ -245,7 +255,13 @@ describe("Property 8: Normalized output shape is stable", () => {
       fc.property(repositoryRecordInputArb(), (input) => {
         const record = createRepositoryRecord(input);
 
-        const arrayFields = ["creators", "subjects", "resourceTypes", "formats", "matchedFields"] as const;
+        const arrayFields = [
+          "creators",
+          "subjects",
+          "resourceTypes",
+          "formats",
+          "matchedFields",
+        ] as const;
         for (const key of arrayFields) {
           const value = record[key];
           expect(value).not.toBe(undefined);
@@ -319,13 +335,12 @@ describe("Property: Date format validation (from spec)", () => {
   /** Generate valid date strings: YYYY, YYYY-MM, YYYY-MM-DD */
   const validDateArb = fc.oneof(
     // YYYY
-    fc.integer({ min: 1000, max: 9999 }).map((y) => `${y}`),
+    fc
+      .integer({ min: 1000, max: 9999 })
+      .map((y) => `${y}`),
     // YYYY-MM
     fc
-      .tuple(
-        fc.integer({ min: 1000, max: 9999 }),
-        fc.integer({ min: 1, max: 12 }),
-      )
+      .tuple(fc.integer({ min: 1000, max: 9999 }), fc.integer({ min: 1, max: 12 }))
       .map(([y, m]) => `${y}-${String(m).padStart(2, "0")}`),
     // YYYY-MM-DD
     fc
@@ -356,9 +371,9 @@ describe("Property: Date format validation (from spec)", () => {
   /** Generate strings that do NOT match the date pattern /^\d{4}(-\d{2}(-\d{2})?)?$/ */
   const invalidDateArb = fc.oneof(
     // Random strings that aren't dates (filtered by the actual regex)
-    fc.string({ minLength: 1, maxLength: 20 }).filter(
-      (s) => !/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s),
-    ),
+    fc
+      .string({ minLength: 1, maxLength: 20 })
+      .filter((s) => !/^\d{4}(-\d{2}(-\d{2})?)?$/.test(s)),
     // Partial patterns that fail the regex
     fc.constant("202"),
     fc.constant("2024-1"),

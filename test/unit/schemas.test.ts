@@ -5,14 +5,14 @@
  * Requirements: 1.1-1.7, 5.3, 10.4, 12.4
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
-  searchItemsInputSchema,
-  getItemInputSchema,
-  listFacetsInputSchema,
-  findRelatedItemsInputSchema,
   explainSearchInputSchema,
   filtersSchema,
+  findRelatedItemsInputSchema,
+  getItemInputSchema,
+  listFacetsInputSchema,
+  searchItemsInputSchema,
 } from "../../src/models/schemas";
 
 // ─── search_items Input ──────────────────────────────────────────────────────
@@ -183,7 +183,10 @@ describe("filtersSchema", () => {
 
 describe("getItemInputSchema", () => {
   test("valid get_item input passes", () => {
-    const input = { repository: "jscholarship", identifier: "550e8400-e29b-41d4-a716-446655440000" };
+    const input = {
+      repository: "jscholarship",
+      identifier: "550e8400-e29b-41d4-a716-446655440000",
+    };
     const result = getItemInputSchema.safeParse(input);
     expect(result.success).toBe(true);
   });
@@ -216,9 +219,9 @@ describe("getItemInputSchema", () => {
     expect(
       getItemInputSchema.safeParse({ repository: "jscholarship", identifier: "id1" }).success,
     ).toBe(true);
-    expect(
-      getItemInputSchema.safeParse({ repository: "jhrdr", identifier: "id2" }).success,
-    ).toBe(true);
+    expect(getItemInputSchema.safeParse({ repository: "jhrdr", identifier: "id2" }).success).toBe(
+      true,
+    );
   });
 });
 

@@ -202,23 +202,50 @@
     "mcpItemOnlyFilter": "search.resourcetype:Item AND latestVersion:true AND -withdrawn:true AND -discoverable:false",
     "searchFilters": {
       "title": { "indexFieldName": "title", "metadata": ["dc.title"] },
-      "author": { "indexFieldName": "author", "metadata": ["dc.contributor.author", "dc.contributor.other", "dc.creator"] },
-      "subject": { "indexFieldName": "subject", "metadata": ["dc.subject.*"], "hierarchical": true, "splitter": "::" },
-      "dateIssued": { "indexFieldName": "dateIssued", "metadata": ["dc.date.issued"], "type": "date" },
+      "author": {
+        "indexFieldName": "author",
+        "metadata": ["dc.contributor.author", "dc.contributor.other", "dc.creator"]
+      },
+      "subject": {
+        "indexFieldName": "subject",
+        "metadata": ["dc.subject.*"],
+        "hierarchical": true,
+        "splitter": "::"
+      },
+      "dateIssued": {
+        "indexFieldName": "dateIssued",
+        "metadata": ["dc.date.issued"],
+        "type": "date"
+      },
       "entityType": { "indexFieldName": "entityType", "metadata": ["dspace.entity.type"] },
       "itemtype": { "indexFieldName": "itemtype", "metadata": ["dc.type"] },
-      "has_content_in_original_bundle": { "indexFieldName": "has_content_in_original_bundle", "programmatic": true },
+      "has_content_in_original_bundle": {
+        "indexFieldName": "has_content_in_original_bundle",
+        "programmatic": true
+      },
       "access_status": { "indexFieldName": "access_status", "programmatic": true },
-      "abstract": { "indexFieldName": "abstract", "metadata": ["dc.description.abstract"], "note": "Available as a Discovery search field for query (not a sidebar filter bean in JHU config)" }
+      "abstract": {
+        "indexFieldName": "abstract",
+        "metadata": ["dc.description.abstract"],
+        "note": "Available as a Discovery search field for query (not a sidebar filter bean in JHU config)"
+      }
     },
     "sortOptions": {
       "sortTitle": { "metadata": "dc.title", "generatedField": "dc.title_sort" },
       "sortDateIssued": { "metadata": "dc.date.issued", "generatedField": "dc.date.issued_dt" },
-      "sortDateAccessioned": { "metadata": "dc.date.accessioned", "generatedField": "dc.date.accessioned_dt" }
+      "sortDateAccessioned": {
+        "metadata": "dc.date.accessioned",
+        "generatedField": "dc.date.accessioned_dt"
+      }
     },
     "moreLikeThis": {
       "similarityMetadataFields": ["dc.title", "dc.contributor.author", "dc.creator", "dc.subject"],
-      "generatedFields": ["dc.title_mlt", "dc.contributor.author_mlt", "dc.creator_mlt", "dc.subject_mlt"],
+      "generatedFields": [
+        "dc.title_mlt",
+        "dc.contributor.author_mlt",
+        "dc.creator_mlt",
+        "dc.subject_mlt"
+      ],
       "minTermFrequency": 5,
       "maxResults": 3,
       "minWordLength": 5

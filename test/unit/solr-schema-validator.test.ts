@@ -9,20 +9,18 @@
  */
 
 import { describe, expect, test } from "bun:test";
-import {
-  SolrSchemaError,
-  validateSolrSchema,
-  type FetchFn,
-  type SolrSchemaValidatorOptions,
-} from "../../src/adapters/solr-schema-validator";
 import type { RepositoryProfile } from "../../config/repositories/jscholarship-profile";
+import {
+  type FetchFn,
+  SolrSchemaError,
+  type SolrSchemaValidatorOptions,
+  validateSolrSchema,
+} from "../../src/adapters/solr-schema-validator";
 
 // ─── Test Helpers ────────────────────────────────────────────────────────────
 
 /** Minimal profile for testing. */
-function createTestProfile(
-  overrides: Partial<RepositoryProfile> = {},
-): RepositoryProfile {
+function createTestProfile(overrides: Partial<RepositoryProfile> = {}): RepositoryProfile {
   return {
     id: "jscholarship",
     platform: "dspace",
@@ -35,17 +33,18 @@ function createTestProfile(
       "withdrawn",
       "discoverable",
     ],
-    optionalSchemaFields: [
-      "dc.title_mlt",
-      "dc.subject_mlt",
-    ],
+    optionalSchemaFields: ["dc.title_mlt", "dc.subject_mlt"],
     queryFields: {},
     filterFields: {},
     facetFields: {},
     sortFields: {},
     relatedFields: [],
     returnFields: [],
-    identityFields: { uuid: "search.resourceid", handle: "handle", resourceType: "search.resourcetype" },
+    identityFields: {
+      uuid: "search.resourceid",
+      handle: "handle",
+      resourceType: "search.resourcetype",
+    },
     immutablePublicFilters: [],
     fulltextDecision: { enabled: false, field: "fulltext", rationale: "test", reference: "test" },
     ...overrides,
@@ -53,12 +52,10 @@ function createTestProfile(
 }
 
 /** Create a mock fetch that returns specified fields and dynamic fields. */
-function createMockFetch(
-  staticFields: string[],
-  dynamicFields: string[] = [],
-): FetchFn {
+function createMockFetch(staticFields: string[], dynamicFields: string[] = []): FetchFn {
   return async (input: string | URL | Request, _init?: RequestInit): Promise<Response> => {
-    const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+    const url =
+      typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
 
     if (url.endsWith("/dynamicfields")) {
       return new Response(
@@ -79,10 +76,7 @@ function createMockFetch(
   };
 }
 
-function createOptions(
-  profile: RepositoryProfile,
-  fetchFn: FetchFn,
-): SolrSchemaValidatorOptions {
+function createOptions(profile: RepositoryProfile, fetchFn: FetchFn): SolrSchemaValidatorOptions {
   return {
     schemaUrl: "http://solr.test:8983/solr/search/schema",
     profile,
@@ -181,13 +175,7 @@ describe("validateSolrSchema", () => {
 
     // Static fields don't include the _mlt fields, but dynamic pattern *_mlt exists
     const mockFetch = createMockFetch(
-      [
-        "search.resourceid",
-        "search.resourcetype",
-        "handle",
-        "withdrawn",
-        "discoverable",
-      ],
+      ["search.resourceid", "search.resourcetype", "handle", "withdrawn", "discoverable"],
       ["*_mlt"], // dynamic field pattern
     );
 
@@ -244,7 +232,8 @@ describe("validateSolrSchema", () => {
   test("invalid JSON response → throws SolrSchemaError", async () => {
     const profile = createTestProfile();
     const mockFetch: FetchFn = async (input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.endsWith("/dynamicfields")) {
         return new Response(JSON.stringify({ dynamicFields: [] }), {
           status: 200,
@@ -301,7 +290,8 @@ describe("validateSolrSchema", () => {
   test("response missing 'fields' array → throws SolrSchemaError", async () => {
     const profile = createTestProfile();
     const mockFetch: FetchFn = async (input) => {
-      const url = typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
+      const url =
+        typeof input === "string" ? input : input instanceof URL ? input.toString() : input.url;
       if (url.endsWith("/dynamicfields")) {
         return new Response(JSON.stringify({ dynamicFields: [] }), {
           status: 200,

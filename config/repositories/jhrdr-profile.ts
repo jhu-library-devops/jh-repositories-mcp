@@ -61,36 +61,36 @@ export const jhrdrProfile = {
   // System identity and access-gate fields that MUST exist in the Solr schema.
   // Missing any of these fails adapter readiness.
   requiredSchemaFields: [
-    "id",                  // Solr document unique key
-    "entityId",            // Dataverse database entity ID (primary key)
-    "dvObjectType",        // Entity type discriminator (Dataset, Dataverse, DataFile)
-    "publicationStatus",   // Publication lifecycle gate (Published, Draft, Deaccessioned)
-    "identifier",          // Persistent identifier string (DOI or Handle)
-    "persistentUrl",       // Full persistent URL for citation
-    "dateSort",            // Sort-optimized date field
-    "nameSort",            // Sort-optimized name field (lowercase title)
+    "id", // Solr document unique key
+    "entityId", // Dataverse database entity ID (primary key)
+    "dvObjectType", // Entity type discriminator (Dataset, Dataverse, DataFile)
+    "publicationStatus", // Publication lifecycle gate (Published, Draft, Deaccessioned)
+    "identifier", // Persistent identifier string (DOI or Handle)
+    "persistentUrl", // Full persistent URL for citation
+    "dateSort", // Sort-optimized date field
+    "nameSort", // Sort-optimized name field (lowercase title)
   ],
 
   // ── Optional Schema Fields ─────────────────────────────────────────────────
   // Metadata-block fields from the citation metadata block and hierarchy.
   // Missing ones disable their corresponding feature but don't fail readiness.
   optionalSchemaFields: [
-    "title",               // Dataset title (text_en)
-    "authorName",          // Author names (text_en, multiValued)
-    "authorAffiliation",   // Author institutional affiliations (text_en, multiValued)
-    "authorIdentifier",    // Author identifiers e.g. ORCID (text_en, multiValued)
-    "dsDescriptionValue",  // Dataset description/abstract (text_en, multiValued)
-    "subject",             // Subject terms for search (text_en, multiValued)
-    "dvSubject",           // Subject facets for exact-match faceting (string, multiValued)
-    "keywordValue",        // Keywords (text_en, multiValued)
-    "topicClassValue",     // Topic classifications (text_en, multiValued)
-    "license",             // License identifier (string)
-    "fileCount",           // Number of files in dataset (plong)
-    "citation",            // Formatted citation string (stored, not indexed)
-    "parentId",            // Parent Dataverse entity ID (hierarchy)
-    "parentIdentifier",    // Parent Dataverse alias (collection filtering)
-    "parentName",          // Parent Dataverse display name
-    "publicationDate",     // Dataset publication date string
+    "title", // Dataset title (text_en)
+    "authorName", // Author names (text_en, multiValued)
+    "authorAffiliation", // Author institutional affiliations (text_en, multiValued)
+    "authorIdentifier", // Author identifiers e.g. ORCID (text_en, multiValued)
+    "dsDescriptionValue", // Dataset description/abstract (text_en, multiValued)
+    "subject", // Subject terms for search (text_en, multiValued)
+    "dvSubject", // Subject facets for exact-match faceting (string, multiValued)
+    "keywordValue", // Keywords (text_en, multiValued)
+    "topicClassValue", // Topic classifications (text_en, multiValued)
+    "license", // License identifier (string)
+    "fileCount", // Number of files in dataset (plong)
+    "citation", // Formatted citation string (stored, not indexed)
+    "parentId", // Parent Dataverse entity ID (hierarchy)
+    "parentIdentifier", // Parent Dataverse alias (collection filtering)
+    "parentName", // Parent Dataverse display name
+    "publicationDate", // Dataset publication date string
   ],
 
   // ── Query Fields ───────────────────────────────────────────────────────────
@@ -103,19 +103,13 @@ export const jhrdrProfile = {
       { field: "subject", boost: 2 },
       { field: "keywordValue", boost: 2 },
     ],
-    title: [
-      { field: "title", boost: 4 },
-    ],
-    creator: [
-      { field: "authorName", boost: 3 },
-    ],
+    title: [{ field: "title", boost: 4 }],
+    creator: [{ field: "authorName", boost: 3 }],
     subject: [
       { field: "subject", boost: 2 },
       { field: "keywordValue", boost: 2 },
     ],
-    abstract: [
-      { field: "dsDescriptionValue", boost: 1 },
-    ],
+    abstract: [{ field: "dsDescriptionValue", boost: 1 }],
   },
 
   // ── Filter Fields ──────────────────────────────────────────────────────────
@@ -182,8 +176,8 @@ export const jhrdrProfile = {
 
   // ── Identity Fields ────────────────────────────────────────────────────────
   identityFields: {
-    uuid: "entityId",       // Dataverse uses entityId as the primary key
-    handle: "identifier",   // Persistent identifier field (DOI or Handle)
+    uuid: "entityId", // Dataverse uses entityId as the primary key
+    handle: "identifier", // Persistent identifier field (DOI or Handle)
     resourceType: "dvObjectType",
   },
 
@@ -197,7 +191,8 @@ export const jhrdrProfile = {
   //   - Exclude deaccessioned datasets (may co-occur with Published)
   immutablePublicFilters: [
     {
-      description: "Restrict to Dataset documents only (exclude Dataverse collections and DataFiles)",
+      description:
+        "Restrict to Dataset documents only (exclude Dataverse collections and DataFiles)",
       fq: "dvObjectType:Dataset",
     },
     {
@@ -205,7 +200,8 @@ export const jhrdrProfile = {
       fq: "publicationStatus:Published",
     },
     {
-      description: "Exclude deaccessioned datasets (may co-occur with Published in multiValued field)",
+      description:
+        "Exclude deaccessioned datasets (may co-occur with Published in multiValued field)",
       fq: "-publicationStatus:Deaccessioned",
     },
     // TODO: Add discoverableBy filter once anonymous value is verified from live deployment

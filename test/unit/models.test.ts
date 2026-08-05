@@ -5,19 +5,15 @@
  * Requirements: 4.1-4.6, 5.1-5.5
  */
 
-import { describe, test, expect } from "bun:test";
+import { describe, expect, test } from "bun:test";
 import {
+  createItemDetail,
   createRecordId,
+  createRepositoryRecord,
   parseRecordId,
   recordIdsCollide,
-  createRepositoryRecord,
-  createItemDetail,
 } from "../../src/models/index";
-import type {
-  RepositoryRecord,
-  PublicFileSummary,
-  Provenance,
-} from "../../src/models/index";
+import type { Provenance, PublicFileSummary, RepositoryRecord } from "../../src/models/index";
 
 // ─── Identifier Tests ────────────────────────────────────────────────────────
 
@@ -33,9 +29,7 @@ describe("createRecordId()", () => {
   });
 
   test("throws when platformId is empty", () => {
-    expect(() => createRecordId("jscholarship", "")).toThrow(
-      /platformId must not be empty/,
-    );
+    expect(() => createRecordId("jscholarship", "")).toThrow(/platformId must not be empty/);
   });
 
   test("preserves colons in platform IDs (DOIs, handles)", () => {
@@ -158,9 +152,7 @@ describe("createRepositoryRecord()", () => {
       provenance: testProvenance,
     });
 
-    expect(record.id).toBe(
-      "jscholarship:550e8400-e29b-41d4-a716-446655440000",
-    );
+    expect(record.id).toBe("jscholarship:550e8400-e29b-41d4-a716-446655440000");
   });
 
   test("preserves provided values without overriding", () => {
@@ -169,7 +161,8 @@ describe("createRepositoryRecord()", () => {
       repository: "jhrdr",
       kind: "dataset",
       title: "Research Dataset",
-      landingPageUrl: "https://archive.data.jhu.edu/dataset.xhtml?persistentId=doi:10.7281/T1/EXAMPLE",
+      landingPageUrl:
+        "https://archive.data.jhu.edu/dataset.xhtml?persistentId=doi:10.7281/T1/EXAMPLE",
       provenance: {
         platform: "dataverse",
         platformRecordId: "doi:10.7281/T1/EXAMPLE",
@@ -314,9 +307,7 @@ describe("createItemDetail()", () => {
         retrievedAt: "2024-02-01T12:00:00Z",
       },
       subjects: ["Biology"],
-      creators: [
-        { name: "John Smith", affiliation: "JHU APL", identifier: "0000-0001-2345-6789" },
-      ],
+      creators: [{ name: "John Smith", affiliation: "JHU APL", identifier: "0000-0001-2345-6789" }],
     });
 
     const detail = createItemDetail(record, []);

@@ -32,9 +32,8 @@ import type { ItemDetail, RepositoryId } from "../../src/models/index";
 // ─── Minimal adapter ─────────────────────────────────────────────────────────
 
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
-  const platformId = repository === "jscholarship"
-    ? "11111111-1111-1111-1111-111111111111"
-    : "doi:10.7281/T1STUB";
+  const platformId =
+    repository === "jscholarship" ? "11111111-1111-1111-1111-111111111111" : "doi:10.7281/T1STUB";
   const record = createRepositoryRecord({
     platformId,
     repository,
@@ -52,15 +51,41 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   return {
     id: repository,
     async validateSchema() {
-      return { repository, valid: true, missingRequired: [], missingOptional: [], disabledFeatures: [] };
+      return {
+        repository,
+        valid: true,
+        missingRequired: [],
+        missingOptional: [],
+        disabledFeatures: [],
+      };
     },
     async search() {
       const { files: _f, ...summary } = item;
-      return { repository, results: [{ ...summary, sourceRank: 1 }], nextOffset: null, totalCandidates: 1, validationOmissions: 0, warnings: [] };
+      return {
+        repository,
+        results: [{ ...summary, sourceRank: 1 }],
+        nextOffset: null,
+        totalCandidates: 1,
+        validationOmissions: 0,
+        warnings: [],
+      };
     },
-    async get() { return item; },
-    async facets() { return { repository, facets: [], warnings: [] }; },
-    async related() { return { repository, results: [], nextOffset: null, totalCandidates: 0, validationOmissions: 0, warnings: [] }; },
+    async get() {
+      return item;
+    },
+    async facets() {
+      return { repository, facets: [], warnings: [] };
+    },
+    async related() {
+      return {
+        repository,
+        results: [],
+        nextOffset: null,
+        totalCandidates: 0,
+        validationOmissions: 0,
+        warnings: [],
+      };
+    },
   };
 }
 
@@ -88,7 +113,10 @@ function createTestApp(): Hono {
 
 const testApp = createTestApp();
 
-async function rpc(method: string, params?: unknown): Promise<{
+async function rpc(
+  method: string,
+  params?: unknown,
+): Promise<{
   status: number;
   body: Record<string, unknown>;
 }> {
@@ -125,12 +153,30 @@ describe("23.5 — Excluded capabilities absent and inaccessible", () => {
       ]);
 
       // None of the tool names or descriptions suggest write operations
-      const allText = tools.map((t) => `${t.name} ${t.description}`).join(" ").toLowerCase();
+      const allText = tools
+        .map((t) => `${t.name} ${t.description}`)
+        .join(" ")
+        .toLowerCase();
       const forbiddenTerms = [
-        "write", "delete", "create", "update", "edit", "deposit",
-        "publish", "deaccession", "embargo", "permission", "admin",
-        "statistics", "execute", "download", "proxy", "embed",
-        "vector", "summarize", "generate",
+        "write",
+        "delete",
+        "create",
+        "update",
+        "edit",
+        "deposit",
+        "publish",
+        "deaccession",
+        "embargo",
+        "permission",
+        "admin",
+        "statistics",
+        "execute",
+        "download",
+        "proxy",
+        "embed",
+        "vector",
+        "summarize",
+        "generate",
       ];
       for (const term of forbiddenTerms) {
         // Allow "read" in read-only context, but not write-associated terms
@@ -260,14 +306,7 @@ describe("23.5 — Excluded capabilities absent and inaccessible", () => {
     });
 
     test("GET to unapproved paths returns 404", async () => {
-      const paths = [
-        "/admin",
-        "/solr/select",
-        "/api/items",
-        "/files",
-        "/.env",
-        "/config",
-      ];
+      const paths = ["/admin", "/solr/select", "/api/items", "/files", "/.env", "/config"];
       for (const path of paths) {
         const response = await testApp.request(path, { method: "GET" });
         expect(response.status).toBe(404);
@@ -323,7 +362,10 @@ describe("23.5 — Excluded capabilities absent and inaccessible", () => {
     test("get_item does not include file bytes or download content", async () => {
       const { body } = await rpc("tools/call", {
         name: "get_item",
-        arguments: { repository: "jscholarship", identifier: "11111111-1111-1111-1111-111111111111" },
+        arguments: {
+          repository: "jscholarship",
+          identifier: "11111111-1111-1111-1111-111111111111",
+        },
       });
       const result = body.result as Record<string, unknown>;
       expect(result.isError).toBeUndefined();

@@ -11,7 +11,7 @@
  * Requirements: 12.1-12.2, 12.7-12.8
  */
 
-import { describe, test, expect, beforeAll, afterAll } from "bun:test";
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import { createMcpTransport } from "../../src/mcp/transport";
 
@@ -166,9 +166,7 @@ describe("MCP Streamable HTTP Transport — Stateless Operation", () => {
     expect(body.result.tools).toBeArray();
     expect(body.result.tools.length).toBeGreaterThanOrEqual(1);
 
-    const echoTool = body.result.tools.find(
-      (t: { name: string }) => t.name === "echo",
-    );
+    const echoTool = body.result.tools.find((t: { name: string }) => t.name === "echo");
     expect(echoTool).toBeDefined();
     expect(echoTool.description.toLowerCase()).toContain("echo");
   });
@@ -227,26 +225,17 @@ describe("MCP Streamable HTTP Transport — Stateless Operation", () => {
     expect(initRes.status).toBe(200);
 
     // Call echo on server1
-    const call1 = await mcpPost(
-      server1.url,
-      toolCallRequest(51, "echo", { message: "first" }),
-    );
+    const call1 = await mcpPost(server1.url, toolCallRequest(51, "echo", { message: "first" }));
     const body1 = await call1.json();
     expect(body1.result.content[0].text).toBe("first");
 
     // Call echo on server2 (different process, no initialize)
-    const call2 = await mcpPost(
-      server2.url,
-      toolCallRequest(52, "echo", { message: "second" }),
-    );
+    const call2 = await mcpPost(server2.url, toolCallRequest(52, "echo", { message: "second" }));
     const body2 = await call2.json();
     expect(body2.result.content[0].text).toBe("second");
 
     // Back to server1
-    const call3 = await mcpPost(
-      server1.url,
-      toolCallRequest(53, "echo", { message: "third" }),
-    );
+    const call3 = await mcpPost(server1.url, toolCallRequest(53, "echo", { message: "third" }));
     const body3 = await call3.json();
     expect(body3.result.content[0].text).toBe("third");
   });

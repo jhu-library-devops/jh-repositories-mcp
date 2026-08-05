@@ -24,7 +24,12 @@
 
   "title_filter": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
   "author_filter": ["Smith, Jane A.", "Johnson, Robert K."],
-  "subject_filter": ["Environmental Science", "Climate Change", "Wetland Ecology", "Chesapeake Bay"],
+  "subject_filter": [
+    "Environmental Science",
+    "Climate Change",
+    "Wetland Ecology",
+    "Chesapeake Bay"
+  ],
   "dateIssued_filter": "2024-03-15",
   "itemtype_filter": "Article",
   "entityType_filter": "Publication",
@@ -33,7 +38,12 @@
 
   "dc.title_mlt": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
   "dc.contributor.author_mlt": ["Smith, Jane A.", "Johnson, Robert K."],
-  "dc.subject_mlt": ["Environmental Science", "Climate Change", "Wetland Ecology", "Chesapeake Bay"],
+  "dc.subject_mlt": [
+    "Environmental Science",
+    "Climate Change",
+    "Wetland Ecology",
+    "Chesapeake Bay"
+  ],
 
   "dateIssued.year": 2024
 }

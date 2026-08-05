@@ -199,16 +199,23 @@ describe("23.4 — Failure scenarios and resilience", () => {
     });
 
     test("canonical API timeout returns backend_unavailable for get_item", async () => {
-      const app = createTestApp({
-        get: async () => {
-          await new Promise((resolve) => setTimeout(resolve, 6000));
-          return makeItem("jscholarship");
+      const app = createTestApp(
+        {
+          get: async () => {
+            await new Promise((resolve) => setTimeout(resolve, 6000));
+            return makeItem("jscholarship");
+          },
         },
-      }, {}, { deadlineMs: 2000 });
+        {},
+        { deadlineMs: 2000 },
+      );
 
       const { body } = await rpcTo(app, "tools/call", {
         name: "get_item",
-        arguments: { repository: "jscholarship", identifier: "11111111-1111-1111-1111-111111111111" },
+        arguments: {
+          repository: "jscholarship",
+          identifier: "11111111-1111-1111-1111-111111111111",
+        },
       });
       // Should hit the deadline and return an error
       const result = body.result as Record<string, unknown> | undefined;
@@ -251,7 +258,10 @@ describe("23.4 — Failure scenarios and resilience", () => {
 
       const { body } = await rpcTo(app, "tools/call", {
         name: "get_item",
-        arguments: { repository: "jscholarship", identifier: "11111111-1111-1111-1111-111111111111" },
+        arguments: {
+          repository: "jscholarship",
+          identifier: "11111111-1111-1111-1111-111111111111",
+        },
       });
       const result = body.result as Record<string, unknown>;
       expect(result.isError).toBe(true);
@@ -291,7 +301,11 @@ describe("23.4 — Failure scenarios and resilience", () => {
   describe("Partial failure", () => {
     test("JScholarship down, JHRDR healthy: returns JHRDR results with warning", async () => {
       const app = createTestApp(
-        { search: async () => { throw new Error("ECONNREFUSED"); } },
+        {
+          search: async () => {
+            throw new Error("ECONNREFUSED");
+          },
+        },
         {},
       );
 
@@ -317,8 +331,16 @@ describe("23.4 — Failure scenarios and resilience", () => {
 
     test("both repositories down: returns a tool error", async () => {
       const app = createTestApp(
-        { search: async () => { throw new Error("down"); } },
-        { search: async () => { throw new Error("down"); } },
+        {
+          search: async () => {
+            throw new Error("down");
+          },
+        },
+        {
+          search: async () => {
+            throw new Error("down");
+          },
+        },
       );
 
       const { body } = await rpcTo(app, "tools/call", {
@@ -336,12 +358,9 @@ describe("23.4 — Failure scenarios and resilience", () => {
     test("request with disallowed Origin returns 403", async () => {
       const app = createTestApp({}, {}, { allowedOrigins: ["https://chat.jhu.edu"] });
 
-      const { status, body } = await rpcTo(
-        app,
-        "tools/list",
-        undefined,
-        { origin: "https://evil.attacker.com" },
-      );
+      const { status, body } = await rpcTo(app, "tools/list", undefined, {
+        origin: "https://evil.attacker.com",
+      });
       expect(status).toBe(403);
       expect(body.error).toBeDefined();
     });
@@ -349,12 +368,9 @@ describe("23.4 — Failure scenarios and resilience", () => {
     test("request with allowed Origin succeeds", async () => {
       const app = createTestApp({}, {}, { allowedOrigins: ["https://chat.jhu.edu"] });
 
-      const { status } = await rpcTo(
-        app,
-        "tools/list",
-        undefined,
-        { origin: "https://chat.jhu.edu" },
-      );
+      const { status } = await rpcTo(app, "tools/list", undefined, {
+        origin: "https://chat.jhu.edu",
+      });
       expect(status).toBe(200);
     });
 
@@ -371,24 +387,30 @@ describe("23.4 — Failure scenarios and resilience", () => {
       // Create app with max concurrency of 1
       const context: ToolContext = {
         adapters: new Map([
-          ["jscholarship", behaviorAdapter("jscholarship", {
-            search: async () => {
-              // Slow search to hold the semaphore
-              await new Promise((resolve) => setTimeout(resolve, 500));
-              return healthyPage("jscholarship");
-            },
-          })],
+          [
+            "jscholarship",
+            behaviorAdapter("jscholarship", {
+              search: async () => {
+                // Slow search to hold the semaphore
+                await new Promise((resolve) => setTimeout(resolve, 500));
+                return healthyPage("jscholarship");
+              },
+            }),
+          ],
           ["jhrdr", behaviorAdapter("jhrdr", {})],
         ]),
       };
 
       const toolSemaphore = createSemaphore(1);
       const app = new Hono();
-      app.use("/mcp/*", edgeMiddleware({
-        allowedHosts: [],
-        allowedOrigins: [],
-        maxBodyBytes: 64 * 1024,
-      }));
+      app.use(
+        "/mcp/*",
+        edgeMiddleware({
+          allowedHosts: [],
+          allowedOrigins: [],
+          maxBodyBytes: 64 * 1024,
+        }),
+      );
       app.route(
         "/mcp",
         createMcpTransport({
@@ -413,7 +435,9 @@ describe("23.4 — Failure scenarios and resilience", () => {
       const results = [r1.body, r2.body];
       const toolResults = results.map((b) => b.result as Record<string, unknown>);
       const rateLimited = toolResults.filter(
-        (r) => r.isError && String((r.content as Array<{ text: string }>)[0]?.text).includes("rate_limited"),
+        (r) =>
+          r.isError &&
+          String((r.content as Array<{ text: string }>)[0]?.text).includes("rate_limited"),
       );
       // At least one should be rate-limited with concurrency of 1
       expect(rateLimited.length).toBeGreaterThanOrEqual(1);

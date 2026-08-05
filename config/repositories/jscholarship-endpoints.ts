@@ -172,10 +172,7 @@ export const jscholarshipProductionEndpoints = {
     },
   },
 
-  privateSubnets: [
-    "subnet-PLACEHOLDER-prod-1a",
-    "subnet-PLACEHOLDER-prod-1b",
-  ],
+  privateSubnets: ["subnet-PLACEHOLDER-prod-1a", "subnet-PLACEHOLDER-prod-1b"],
 
   vpcId: "vpc-PLACEHOLDER-prod",
 } as const satisfies EnvironmentEndpoints;

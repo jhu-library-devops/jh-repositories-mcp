@@ -17,10 +17,7 @@ import type { RepositoryId } from "./index";
 const NAMESPACE_SEPARATOR = ":";
 
 /** Valid repository IDs for parsing. */
-const VALID_REPOSITORIES: ReadonlySet<string> = new Set<string>([
-  "jscholarship",
-  "jhrdr",
-]);
+const VALID_REPOSITORIES: ReadonlySet<string> = new Set<string>(["jscholarship", "jhrdr"]);
 
 /**
  * Create a namespaced record ID.
@@ -30,10 +27,7 @@ const VALID_REPOSITORIES: ReadonlySet<string> = new Set<string>([
  * @returns A namespaced ID in the format "repository:platformId".
  * @throws If repository or platformId is empty.
  */
-export function createRecordId(
-  repository: RepositoryId,
-  platformId: string,
-): string {
+export function createRecordId(repository: RepositoryId, platformId: string): string {
   if (!repository) {
     throw new Error("repository must not be empty");
   }
@@ -53,9 +47,7 @@ export function createRecordId(
  * @param id - The namespaced record ID to parse.
  * @returns The parsed components, or null if the format is invalid.
  */
-export function parseRecordId(
-  id: string,
-): { repository: RepositoryId; platformId: string } | null {
+export function parseRecordId(id: string): { repository: RepositoryId; platformId: string } | null {
   if (!id) {
     return null;
   }

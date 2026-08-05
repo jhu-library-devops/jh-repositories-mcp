@@ -55,9 +55,8 @@ const NON_PUBLIC_IDENTIFIERS = {
 // ─── Adapter that enforces public-access gates ───────────────────────────────
 
 function makePublicItem(repository: RepositoryId): ItemDetail {
-  const platformId = repository === "jscholarship"
-    ? "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    : "doi:10.7281/T1PUBLIC";
+  const platformId =
+    repository === "jscholarship" ? "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" : "doi:10.7281/T1PUBLIC";
   const record = createRepositoryRecord({
     platformId,
     repository,
@@ -81,9 +80,8 @@ function makePublicItem(repository: RepositoryId): ItemDetail {
  */
 function gatedAdapter(repository: RepositoryId): RepositoryAdapter {
   // The one public identifier that resolves
-  const publicId = repository === "jscholarship"
-    ? "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"
-    : "doi:10.7281/T1PUBLIC";
+  const publicId =
+    repository === "jscholarship" ? "aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa" : "doi:10.7281/T1PUBLIC";
 
   return {
     id: repository,

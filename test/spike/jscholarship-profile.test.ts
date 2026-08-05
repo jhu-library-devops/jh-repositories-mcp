@@ -47,9 +47,9 @@ function fieldExistsInSchema(fieldName: string): boolean {
 
   // Discovery search fields (title, author, subject, abstract) are configured
   // in discovery.xml and exist as logical search fields even if not in schema.xml
-  const discoverySearchFields = Object.values(
-    solrSchema.discoveryConfiguration.searchFilters
-  ).map((f) => (f as { indexFieldName: string }).indexFieldName);
+  const discoverySearchFields = Object.values(solrSchema.discoveryConfiguration.searchFilters).map(
+    (f) => (f as { indexFieldName: string }).indexFieldName,
+  );
   if (discoverySearchFields.includes(fieldName)) {
     return true;
   }
@@ -190,9 +190,7 @@ describe("JScholarship RepositoryProfile", () => {
     });
 
     test("fulltext is NOT in any query field set", () => {
-      for (const [_concept, fields] of Object.entries(
-        jscholarshipProfile.queryFields
-      )) {
+      for (const [_concept, fields] of Object.entries(jscholarshipProfile.queryFields)) {
         const fieldNames = fields.map((f) => f.field);
         expect(fieldNames).not.toContain("fulltext");
       }
@@ -209,9 +207,7 @@ describe("JScholarship RepositoryProfile", () => {
     });
 
     test("fulltext is NOT in sort fields", () => {
-      const sortFieldValues = Object.values(jscholarshipProfile.sortFields).map(
-        (s) => s.field
-      );
+      const sortFieldValues = Object.values(jscholarshipProfile.sortFields).map((s) => s.field);
       expect(sortFieldValues).not.toContain("fulltext");
     });
 
@@ -224,9 +220,7 @@ describe("JScholarship RepositoryProfile", () => {
     });
 
     test("rationale references DS-3498", () => {
-      expect(jscholarshipProfile.fulltextDecision.rationale).toContain(
-        "DS-3498"
-      );
+      expect(jscholarshipProfile.fulltextDecision.rationale).toContain("DS-3498");
     });
   });
 
@@ -240,9 +234,7 @@ describe("JScholarship RepositoryProfile", () => {
     });
 
     test("Resource type field is defined", () => {
-      expect(jscholarshipProfile.identityFields.resourceType).toBe(
-        "search.resourcetype"
-      );
+      expect(jscholarshipProfile.identityFields.resourceType).toBe("search.resourcetype");
     });
 
     test("all identity fields exist in schema", () => {
@@ -266,9 +258,7 @@ describe("JScholarship RepositoryProfile", () => {
       });
 
       for (const gateField of gateFields) {
-        expect(
-          jscholarshipProfile.requiredSchemaFields as readonly string[],
-        ).toContain(gateField);
+        expect(jscholarshipProfile.requiredSchemaFields as readonly string[]).toContain(gateField);
       }
     });
 

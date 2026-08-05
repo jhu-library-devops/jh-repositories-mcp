@@ -56,20 +56,17 @@
     "facet_queries": {},
     "facet_fields": {
       "subject_filter": [
-        "Environmental Science", 4,
-        "Climate Change", 3,
-        "Sustainability", 2,
-        "Ecology", 1
+        "Environmental Science",
+        4,
+        "Climate Change",
+        3,
+        "Sustainability",
+        2,
+        "Ecology",
+        1
       ],
-      "author_filter": [
-        "Smith, Jane A.", 3,
-        "Johnson, Robert K.", 2,
-        "Williams, Maria L.", 1
-      ],
-      "dateIssued.year": [
-        "2024", 2,
-        "2023", 1
-      ]
+      "author_filter": ["Smith, Jane A.", 3, "Johnson, Robert K.", 2, "Williams, Maria L.", 1],
+      "dateIssued.year": ["2024", 2, "2023", 1]
     },
     "facet_ranges": {},
     "facet_intervals": {}
