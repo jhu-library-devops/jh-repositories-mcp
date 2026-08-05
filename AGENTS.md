@@ -10,7 +10,7 @@ When scaffolding begins, follow the planned layout: `src/adapters/{jscholarship,
 
 No build or test command is runnable yet. For documentation-only changes, use `git diff --check` to catch whitespace errors and review all three spec files for consistency. After task 2 scaffolds the service, the specified commands are:
 
-- `bun ci` — install the committed lockfile with the pinned Bun version.
+- `bun install --frozen-lockfile` — install the committed lockfile with the pinned Bun version.
 - `tsc --noEmit` — run strict TypeScript checks.
 - `bun test` — run unit, property, contract, and integration tests.
 - `bun build --target=bun --production` — create the production bundle.
