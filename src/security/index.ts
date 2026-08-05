@@ -144,7 +144,9 @@ export function deadlineMiddleware(deadlineMs: number): MiddlewareHandler {
       timer = setTimeout(() => resolve("timeout"), deadlineMs);
     });
     const outcome = await Promise.race([next().then(() => "done" as const), timeout]);
-    clearTimeout(timer);
+    if (timer !== undefined) {
+      clearTimeout(timer);
+    }
     if (outcome === "timeout") {
       return c.json(
         { jsonrpc: "2.0", error: { code: -32000, message: "Request deadline exceeded" }, id: null },
