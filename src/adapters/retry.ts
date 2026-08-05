@@ -30,12 +30,10 @@ export function backoffDelayMs(attempt: number, random: () => number): number {
 export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions): Promise<T> {
   const sleep = options.sleep ?? ((ms) => new Promise((resolve) => setTimeout(resolve, ms)));
   const random = options.random ?? Math.random;
-  let lastError: unknown;
   for (let attempt = 0; attempt < MAX_ATTEMPTS; attempt += 1) {
     try {
       return await fn();
     } catch (error) {
-      lastError = error;
       const isLastAttempt = attempt === MAX_ATTEMPTS - 1;
       if (isLastAttempt || !options.isTransient(error)) {
         throw error;
@@ -43,5 +41,5 @@ export async function withRetry<T>(fn: () => Promise<T>, options: RetryOptions):
       await sleep(backoffDelayMs(attempt, random));
     }
   }
-  throw lastError;
+  throw new Error("Retry logic error: loop exited without return or throw");
 }
