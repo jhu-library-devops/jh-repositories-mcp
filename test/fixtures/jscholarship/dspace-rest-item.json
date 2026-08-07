@@ -1,0 +1,162 @@
+{
+  "$comment": "Synthetic DSpace 7 REST API response for a public item in HAL+JSON format. Corresponds to solr-public-item.json (UUID 11111111-...). Uses fake metadata content. No credentials or private content.",
+  "id": "11111111-1111-1111-1111-111111111111",
+  "uuid": "11111111-1111-1111-1111-111111111111",
+  "name": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
+  "handle": "1774.2/99999",
+  "type": "item",
+  "inArchive": true,
+  "discoverable": true,
+  "withdrawn": false,
+  "lastModified": "2024-03-20T14:30:00.000+00:00",
+  "entityType": "Publication",
+  "metadata": {
+    "dc.title": [
+      {
+        "value": "Climate Adaptation Strategies for Chesapeake Bay Wetlands",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.contributor.author": [
+      {
+        "value": "Smith, Jane A.",
+        "language": null,
+        "authority": "will be generated::11111111-aaaa-bbbb-cccc-111111111111",
+        "confidence": 600,
+        "place": 0
+      },
+      {
+        "value": "Johnson, Robert K.",
+        "language": null,
+        "authority": "will be generated::22222222-aaaa-bbbb-cccc-222222222222",
+        "confidence": 600,
+        "place": 1
+      }
+    ],
+    "dc.subject": [
+      {
+        "value": "Environmental Science",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      },
+      {
+        "value": "Climate Change",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 1
+      },
+      {
+        "value": "Wetland Ecology",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 2
+      },
+      {
+        "value": "Chesapeake Bay",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 3
+      }
+    ],
+    "dc.date.issued": [
+      {
+        "value": "2024-03-15",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.type": [
+      {
+        "value": "Article",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.description.abstract": [
+      {
+        "value": "This study examines climate adaptation strategies for tidal wetlands in the Chesapeake Bay watershed. Using long-term ecological monitoring data from 2010 to 2023, we evaluate the effectiveness of managed retreat, living shorelines, and hydrological restoration in maintaining wetland ecosystem services under projected sea-level rise scenarios. Results indicate that combined approaches outperform single-strategy interventions by 40% in biomass retention and 60% in carbon sequestration capacity.",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.identifier.uri": [
+      {
+        "value": "https://jscholarship.library.jhu.edu/handle/1774.2/99999",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.date.accessioned": [
+      {
+        "value": "2024-03-20T14:30:00Z",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.publisher": [
+      {
+        "value": "Johns Hopkins University",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.rights": [
+      {
+        "value": "This work is licensed under a Creative Commons Attribution 4.0 International License.",
+        "language": "en_US",
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ],
+    "dc.rights.uri": [
+      {
+        "value": "https://creativecommons.org/licenses/by/4.0/",
+        "language": null,
+        "authority": null,
+        "confidence": -1,
+        "place": 0
+      }
+    ]
+  },
+  "_links": {
+    "bundles": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111/bundles"
+    },
+    "owningCollection": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111/owningCollection"
+    },
+    "relationships": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111/relationships"
+    },
+    "version": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111/version"
+    },
+    "thumbnail": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111/thumbnail"
+    },
+    "self": {
+      "href": "https://jscholarship.library.jhu.edu/server/api/core/items/11111111-1111-1111-1111-111111111111"
+    }
+  }
+}

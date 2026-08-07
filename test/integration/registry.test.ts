@@ -1,0 +1,343 @@
+/**
+ * Integration Tests: MCP Registry over Streamable HTTP
+ *
+ * **Validates: Requirements 1.7, 8.3-8.4, 12.1-12.5, 14.2-14.5, 16.2, 17**
+ *
+ * Drives the fully wired low-level server through the stateless transport:
+ * initialization, tools/list with closed JSON Schemas and read-only
+ * annotations, tools/call with structuredContent + compact text + resource
+ * links, strict unknown-property rejection, resource templates and reads,
+ * prompts, capability absence, and the edge middleware.
+ */
+
+import { afterAll, beforeAll, describe, expect, test } from "bun:test";
+import { Hono } from "hono";
+import type { RepositoryAdapter } from "../../src/adapters/index";
+import { createRepositoryServer } from "../../src/mcp/registry";
+import type { ToolContext } from "../../src/mcp/tools/search-items";
+import { createMcpTransport } from "../../src/mcp/transport";
+import { createItemDetail, createRepositoryRecord } from "../../src/models/index";
+import type { ItemDetail, RepositoryId } from "../../src/models/index";
+import { deadlineMiddleware, edgeMiddleware } from "../../src/security/index";
+
+// ─── Stub context ────────────────────────────────────────────────────────────
+
+function detail(repository: RepositoryId): ItemDetail {
+  const record = createRepositoryRecord({
+    platformId:
+      repository === "jscholarship" ? "11111111-1111-1111-1111-111111111111" : "doi:10.7281/T1X",
+    repository,
+    kind: repository === "jscholarship" ? "repository_item" : "dataset",
+    title: `Sample ${repository} record`,
+    landingPageUrl: "https://example.jhu.edu/x",
+    provenance: {
+      platform: repository === "jscholarship" ? "dspace" : "dataverse",
+      platformRecordId:
+        repository === "jscholarship" ? "11111111-1111-1111-1111-111111111111" : "doi:10.7281/T1X",
+      canonicalApi: repository === "jscholarship" ? "dspace_rest" : "dataverse_native_api",
+      retrievedAt: "2026-07-30T00:00:00.000Z",
+    },
+  });
+  return createItemDetail(record, []);
+}
+
+function stubAdapter(repository: RepositoryId): RepositoryAdapter {
+  const item = detail(repository);
+  const { files: _files, ...summary } = item;
+  return {
+    id: repository,
+    async validateSchema() {
+      return {
+        repository,
+        valid: true,
+        missingRequired: [],
+        missingOptional: [],
+        disabledFeatures: [],
+      };
+    },
+    async search() {
+      return {
+        repository,
+        results: [{ ...summary, sourceRank: 1 }],
+        nextOffset: null,
+        totalCandidates: 1,
+        validationOmissions: 0,
+        warnings: [],
+      };
+    },
+    async get() {
+      return item;
+    },
+    async facets() {
+      return {
+        repository,
+        facets: [
+          {
+            facet: "subject" as const,
+            values: [{ label: "Wetlands", count: 3, repositoryBreakdown: { [repository]: 3 } }],
+          },
+        ],
+        warnings: [],
+      };
+    },
+    async related() {
+      return {
+        repository,
+        results: [],
+        nextOffset: null,
+        totalCandidates: 0,
+        validationOmissions: 0,
+        warnings: [],
+      };
+    },
+  };
+}
+
+const context: ToolContext = {
+  adapters: new Map([
+    ["jscholarship", stubAdapter("jscholarship")],
+    ["jhrdr", stubAdapter("jhrdr")],
+  ]),
+};
+
+// ─── Server under test ───────────────────────────────────────────────────────
+
+function createApp(): Hono {
+  const app = new Hono();
+  app.use(
+    "/mcp/*",
+    edgeMiddleware({
+      allowedHosts: [],
+      allowedOrigins: ["https://chat.jhu.edu"],
+      maxBodyBytes: 64 * 1024,
+    }),
+  );
+  app.use("/mcp/*", deadlineMiddleware(5000));
+  app.route(
+    "/mcp",
+    createMcpTransport({
+      serverName: "test",
+      serverVersion: "0.0.1",
+      createServer: () => createRepositoryServer({ name: "test", version: "0.0.1", context }),
+    }),
+  );
+  return app;
+}
+
+let server: ReturnType<typeof Bun.serve>;
+let baseUrl: string;
+
+beforeAll(() => {
+  server = Bun.serve({ port: 0, fetch: createApp().fetch });
+  baseUrl = `http://localhost:${server.port}`;
+});
+
+afterAll(() => {
+  server.stop(true);
+});
+
+let nextId = 1;
+
+async function rpc(method: string, params?: unknown, extraHeaders: Record<string, string> = {}) {
+  const response = await fetch(`${baseUrl}/mcp`, {
+    method: "POST",
+    headers: {
+      "content-type": "application/json",
+      accept: "application/json, text/event-stream",
+      ...extraHeaders,
+    },
+    body: JSON.stringify({ jsonrpc: "2.0", id: nextId++, method, params: params ?? {} }),
+  });
+  return response;
+}
+
+async function rpcResult(method: string, params?: unknown): Promise<Record<string, unknown>> {
+  const response = await rpc(method, params);
+  expect(response.status).toBe(200);
+  const body = (await response.json()) as { result?: Record<string, unknown>; error?: unknown };
+  expect(body.error).toBeUndefined();
+  if (body.result === undefined) throw new Error("expected result");
+  return body.result;
+}
+
+const INIT_PARAMS = {
+  protocolVersion: "2025-03-26",
+  capabilities: {},
+  clientInfo: { name: "test-client", version: "1.0" },
+};
+
+// ─── Tests ───────────────────────────────────────────────────────────────────
+
+describe("MCP registry over stateless HTTP", () => {
+  test("initializes and advertises tools, resources, and prompts capabilities", async () => {
+    const result = await rpcResult("initialize", INIT_PARAMS);
+    const capabilities = result.capabilities as Record<string, unknown>;
+    expect(Object.keys(capabilities).sort()).toEqual(["prompts", "resources", "tools"]);
+  });
+
+  test("tools/list returns exactly the five read-only tools with closed schemas", async () => {
+    const result = await rpcResult("tools/list");
+    const tools = result.tools as Array<Record<string, unknown>>;
+    expect(tools.map((t) => t.name).sort()).toEqual([
+      "explain_search",
+      "find_related_items",
+      "get_item",
+      "list_facets",
+      "search_items",
+    ]);
+    for (const tool of tools) {
+      const inputSchema = tool.inputSchema as Record<string, unknown>;
+      expect(inputSchema.additionalProperties).toBe(false);
+      const annotations = tool.annotations as Record<string, unknown>;
+      expect(annotations.readOnlyHint).toBe(true);
+      expect(annotations.destructiveHint).toBe(false);
+      expect(tool.outputSchema).toBeDefined();
+    }
+  });
+
+  test("search_items returns structuredContent, compact text, and resource links", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "search_items",
+      arguments: { query: "wetlands" },
+    });
+    expect(result.isError).toBeUndefined();
+    const structured = result.structuredContent as Record<string, unknown>;
+    expect(Array.isArray(structured.results)).toBe(true);
+    const content = result.content as Array<Record<string, unknown>>;
+    expect(content[0]?.type).toBe("text");
+    expect(String(content[0]?.text)).toContain("Sample jscholarship record");
+    const links = content.filter((c) => c.type === "resource_link");
+    expect(links.length).toBeGreaterThan(0);
+    expect(String(links[0]?.uri)).toStartWith("jhu-repo://");
+  });
+
+  test("unknown properties are rejected, not stripped (closed schemas)", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "search_items",
+      arguments: { query: "x", rawSolr: "read:*" },
+    });
+    expect(result.isError).toBe(true);
+    const content = result.content as Array<Record<string, unknown>>;
+    expect(String(content[0]?.text)).toContain("invalid_input");
+  });
+
+  test("unknown tools produce a method-not-found protocol error", async () => {
+    const response = await rpc("tools/call", { name: "delete_item", arguments: {} });
+    const body = (await response.json()) as { error?: { message?: string } };
+    expect(body.error).toBeDefined();
+  });
+
+  test("zero-result searches read as a non-error message", async () => {
+    const emptyContext: ToolContext = {
+      adapters: new Map([
+        [
+          "jscholarship",
+          {
+            ...stubAdapter("jscholarship"),
+            async search() {
+              return {
+                repository: "jscholarship" as const,
+                results: [],
+                nextOffset: null,
+                totalCandidates: 0,
+                validationOmissions: 0,
+                warnings: [],
+              };
+            },
+          },
+        ],
+      ]),
+    };
+    const app = new Hono();
+    app.route(
+      "/mcp",
+      createMcpTransport({
+        serverName: "t",
+        serverVersion: "0",
+        createServer: () =>
+          createRepositoryServer({ name: "t", version: "0", context: emptyContext }),
+      }),
+    );
+    const response = await app.request("/mcp", {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method: "tools/call",
+        params: { name: "search_items", arguments: { query: "nothing" } },
+      }),
+    });
+    const body = (await response.json()) as {
+      result: { isError?: boolean; content: Array<{ text: string }> };
+    };
+    expect(body.result.isError).toBeUndefined();
+    expect(body.result.content[0]?.text).toContain("No matching public records were found");
+  });
+
+  test("resource templates list both jhu-repo URIs and reads resolve canonically", async () => {
+    const templates = await rpcResult("resources/templates/list");
+    const uris = (templates.resourceTemplates as Array<{ uriTemplate: string }>).map(
+      (t) => t.uriTemplate,
+    );
+    expect(uris).toEqual([
+      "jhu-repo://jscholarship/item/{encodedIdentifier}",
+      "jhu-repo://jhrdr/dataset/{encodedIdentifier}",
+    ]);
+
+    const read = await rpcResult("resources/read", {
+      uri: "jhu-repo://jscholarship/item/11111111-1111-1111-1111-111111111111",
+    });
+    const contents = read.contents as Array<{ mimeType: string; text: string }>;
+    expect(contents[0]?.mimeType).toBe("application/json");
+    expect(JSON.parse(contents[0]?.text ?? "{}").title).toBe("Sample jscholarship record");
+  });
+
+  test("prompts list and resolve with fenced arguments", async () => {
+    const list = await rpcResult("prompts/list");
+    expect((list.prompts as Array<{ name: string }>).map((p) => p.name).sort()).toEqual([
+      "explore_research_topic",
+      "find_reusable_data",
+    ]);
+    const prompt = await rpcResult("prompts/get", {
+      name: "explore_research_topic",
+      arguments: { topic: "urban heat islands" },
+    });
+    const messages = prompt.messages as Array<{ role: string; content: { text: string } }>;
+    expect(messages[0]?.role).toBe("user");
+    expect(messages[0]?.content.text).toContain("urban heat islands");
+    expect(messages[0]?.content.text).toContain("untrusted data");
+  });
+
+  test("edge middleware rejects disallowed origins and oversized bodies", async () => {
+    const badOrigin = await rpc("tools/list", undefined, { origin: "https://evil.example" });
+    expect(badOrigin.status).toBe(403);
+
+    const tooLarge = await fetch(`${baseUrl}/mcp`, {
+      method: "POST",
+      headers: {
+        "content-type": "application/json",
+        accept: "application/json, text/event-stream",
+      },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 999,
+        method: "tools/call",
+        params: { name: "search_items", arguments: { query: "x".repeat(100_000) } },
+      }),
+    });
+    expect(tooLarge.status).toBe(413);
+
+    const goodOrigin = await rpc("tools/list", undefined, { origin: "https://chat.jhu.edu" });
+    expect(goodOrigin.status).toBe(200);
+  });
+
+  test("excluded capabilities are absent from discovery", async () => {
+    const result = await rpcResult("tools/list");
+    const names = (result.tools as Array<{ name: string }>).map((t) => t.name).join(",");
+    expect(names).not.toMatch(/write|delete|admin|deposit|update|execute/);
+  });
+});

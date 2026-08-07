@@ -1,0 +1,12 @@
+.git
+.kiro
+node_modules
+dist
+docs
+changelog.d
+infra
+*.md
+.env
+.env.*
+Dockerfile
+.dockerignore

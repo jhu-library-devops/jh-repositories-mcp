@@ -1,0 +1,1 @@
+Add the multi-stage production container: version-and-digest-pinned oven/bun stages for install, type-check, test, and Bun-targeted bundle; non-root runtime with OCI labels, dependency-free health check, TMPDIR-only writability for read-only root filesystems, and a .dockerignore keeping specs, env files, and infra out of the build context

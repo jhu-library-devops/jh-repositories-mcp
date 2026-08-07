@@ -1,0 +1,22 @@
+{
+  "$comment": "Synthetic Solr document for a WITHDRAWN JScholarship item. The immutable filter '-withdrawn:true' must exclude this document from all MCP results. Used for negative testing.",
+  "search.resourceid": "33333333-3333-3333-3333-333333333333",
+  "search.resourcetype": "Item",
+  "search.uniqueid": "Item-33333333-3333-3333-3333-333333333333",
+  "handle": "1774.2/77777",
+  "withdrawn": "true",
+  "discoverable": "true",
+  "latestVersion": true,
+  "database_status": "ARCHIVED",
+  "read": ["g0"],
+  "location.comm": ["aaaaaaaa-aaaa-aaaa-aaaa-aaaaaaaaaaaa"],
+  "location.coll": ["bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb"],
+
+  "title": "Retracted: Preliminary Findings on Urban Heat Islands",
+  "author": ["Doe, John M."],
+  "subject": ["Urban Studies", "Climate"],
+  "dateIssued": "2022-08-10",
+  "itemtype": "Article",
+
+  "exclusion_reason": "withdrawn:true — this item was withdrawn by an administrator and must never appear in MCP results"
+}

@@ -1,0 +1,1 @@
+Implement federated ranking and pagination: balanced reciprocal-rank merge with deterministic alternating tie handling, versioned base64url cursor codec with FNV-1a query-hash binding and stale-cursor reset semantics, exhaustion sentinels, sanitized Partial_Result assembly, and property tests for Properties 10-13 and 16

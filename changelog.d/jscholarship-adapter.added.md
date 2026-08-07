@@ -1,0 +1,1 @@
+Implement the JScholarship adapter: allowlisted candidate search, rank-ordered bounded canonicalization with nextOffset = startOffset + candidatesConsumed cursor arithmetic and validation_attrition warnings, allowlisted facets with per-repository counts, MoreLikeThis related discovery, and paired Solr/DSpace integration tests

@@ -1,0 +1,137 @@
+{
+  "$comment": "Synthetic Dataverse 6.10.1 Native API response for GET /api/datasets/:persistentId/versions/:latest-published. Published public dataset with two public files and one restricted file (which must be excluded from summaries). Fake DOI, names, and content. No credentials or private content.",
+  "status": "OK",
+  "data": {
+    "id": 501,
+    "datasetId": 401,
+    "datasetPersistentId": "doi:10.7281/T1ABCDEF",
+    "storageIdentifier": "s3://demo:401",
+    "versionNumber": 2,
+    "versionMinorNumber": 0,
+    "versionState": "RELEASED",
+    "lastUpdateTime": "2024-06-02T15:00:00Z",
+    "releaseTime": "2024-06-02T15:00:00Z",
+    "createTime": "2024-01-15T10:00:00Z",
+    "publicationDate": "2024-06-02",
+    "citationDate": "2024-06-02",
+    "license": {
+      "name": "CC0 1.0",
+      "uri": "http://creativecommons.org/publicdomain/zero/1.0"
+    },
+    "termsOfUse": "CC0 Waiver",
+    "fileAccessRequest": false,
+    "metadataBlocks": {
+      "citation": {
+        "displayName": "Citation Metadata",
+        "name": "citation",
+        "fields": [
+          {
+            "typeName": "title",
+            "multiple": false,
+            "typeClass": "primitive",
+            "value": "Baltimore Housing Vacancy Survey Microdata 2020-2024"
+          },
+          {
+            "typeName": "author",
+            "multiple": true,
+            "typeClass": "compound",
+            "value": [
+              {
+                "authorName": { "typeName": "authorName", "value": "Chen, Wei" },
+                "authorAffiliation": {
+                  "typeName": "authorAffiliation",
+                  "value": "Johns Hopkins University"
+                }
+              },
+              {
+                "authorName": { "typeName": "authorName", "value": "Okafor, Adaeze" },
+                "authorAffiliation": {
+                  "typeName": "authorAffiliation",
+                  "value": "Johns Hopkins Bloomberg School of Public Health"
+                }
+              }
+            ]
+          },
+          {
+            "typeName": "dsDescription",
+            "multiple": true,
+            "typeClass": "compound",
+            "value": [
+              {
+                "dsDescriptionValue": {
+                  "typeName": "dsDescriptionValue",
+                  "value": "Block-level housing vacancy observations for Baltimore City collected between 2020 and 2024, with derived indices used in the accompanying publication."
+                }
+              }
+            ]
+          },
+          {
+            "typeName": "subject",
+            "multiple": true,
+            "typeClass": "controlledVocabulary",
+            "value": ["Social Sciences", "Earth and Environmental Sciences"]
+          },
+          {
+            "typeName": "keyword",
+            "multiple": true,
+            "typeClass": "compound",
+            "value": [
+              { "keywordValue": { "typeName": "keywordValue", "value": "housing vacancy" } },
+              { "keywordValue": { "typeName": "keywordValue", "value": "urban policy" } }
+            ]
+          }
+        ]
+      }
+    },
+    "files": [
+      {
+        "label": "vacancy-survey-2020-2024.csv",
+        "restricted": false,
+        "version": 1,
+        "datasetVersionId": 501,
+        "dataFile": {
+          "id": 9001,
+          "persistentId": "",
+          "filename": "vacancy-survey-2020-2024.csv",
+          "contentType": "text/csv",
+          "filesize": 18234567,
+          "storageIdentifier": "s3://demo:9001",
+          "rootDataFileId": -1,
+          "checksum": { "type": "MD5", "value": "d41d8cd98f00b204e9800998ecf8427e" }
+        }
+      },
+      {
+        "label": "codebook.pdf",
+        "restricted": false,
+        "version": 1,
+        "datasetVersionId": 501,
+        "dataFile": {
+          "id": 9002,
+          "persistentId": "",
+          "filename": "codebook.pdf",
+          "contentType": "application/pdf",
+          "filesize": 412876,
+          "storageIdentifier": "s3://demo:9002",
+          "rootDataFileId": -1,
+          "checksum": { "type": "MD5", "value": "e99a18c428cb38d5f260853678922e03" }
+        }
+      },
+      {
+        "label": "respondent-identifiers.csv",
+        "restricted": true,
+        "version": 1,
+        "datasetVersionId": 501,
+        "dataFile": {
+          "id": 9003,
+          "persistentId": "",
+          "filename": "respondent-identifiers.csv",
+          "contentType": "text/csv",
+          "filesize": 51234,
+          "storageIdentifier": "s3://demo:9003",
+          "rootDataFileId": -1,
+          "checksum": { "type": "MD5", "value": "ab56b4d92b40713acc5af89985d4b786" }
+        }
+      }
+    ]
+  }
+}

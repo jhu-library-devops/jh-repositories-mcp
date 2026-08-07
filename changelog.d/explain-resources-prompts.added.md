@@ -1,0 +1,1 @@
+Implement explain_search (concept-level interpretation with no backend syntax), the two jhu-repo resource templates resolving through canonical get_item, and the explore_research_topic and find_reusable_data prompts with a fixed instruction preamble and fenced argument data, plus Property 15 tests
