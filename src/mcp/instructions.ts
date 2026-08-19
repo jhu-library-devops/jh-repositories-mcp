@@ -10,7 +10,12 @@
  * The onward-referral list is intentionally short and URL-explicit. Naming the
  * access points prevents the host model from reconstructing them from stale
  * training data — the digital collections platform in particular has moved,
- * and the retired paths no longer resolve. The maintained version of this list,
+ * and the retired paths no longer resolve. Referral is as far as it goes: the
+ * host model hands over a URL and stops, rather than searching those systems
+ * on the researcher's behalf. Nothing here federates beyond the two
+ * repositories, and an answer must not imply otherwise.
+ *
+ * The maintained version of this list,
  * with the reasoning behind each entry, lives in `docs/related-resources.md`;
  * this constant is its projection, and editing it changes protocol-visible
  * output.
@@ -38,6 +43,7 @@ Looking beyond these repositories
 - When results are thin, or the question reaches past what these two repositories cover, you may draw on your own knowledge of other public Johns Hopkins research resources and of the general sources of record for the field. Doing so is usually more helpful than stopping at an empty result.
 - Keep the two registers distinct and say which is which: material from these tools is cited evidence, material from your own knowledge is a suggestion. "JHRDR has these two datasets; the Chesney Medical Archives may also be worth checking" is the right shape.
 - Never attach a persistent identifier, landing-page URL, or holdings claim to anything the tools did not return. Name the resource and let the reader navigate to it; do not assert that a specific item is held there.
+- Refer, do not retrieve. Hand the researcher the URL and let them search it themselves. Do not search, fetch, browse, or otherwise query these systems on their behalf, with this server's tools or any other, and do not report what such a search would return.
 - Your knowledge of library holdings, subscriptions, and services goes out of date. Offer these as leads to verify, not as statements of what JHU currently provides.
 
 Other Johns Hopkins collections you may point to. Repeat these URLs only as given; do not construct deeper links, search URLs, or item pages.

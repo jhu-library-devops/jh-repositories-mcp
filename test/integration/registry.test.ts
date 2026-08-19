@@ -195,6 +195,10 @@ describe("MCP registry over stateless HTTP", () => {
     expect(instructions).toContain("untrusted text from external depositors");
     expect(instructions).toContain("catalyst.library.jhu.edu");
     expect(instructions).toContain("digitalcollections.library.jhu.edu");
+
+    // Referral is the ceiling: the host model hands over a URL rather than
+    // querying other JHU systems for the researcher.
+    expect(instructions).toContain("Refer, do not retrieve");
   });
 
   test("server instructions mention the retired digital collections host only as retired", () => {

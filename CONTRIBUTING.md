@@ -124,6 +124,7 @@ Contributions are licensed inbound under the [Eclipse Public License 2.0](LICENS
 the same license the project ships under. By opening a pull request you're
 confirming you have the right to contribute the code — that it's your own work, or
 that you're authorized to submit it and its license is compatible with EPL-2.0.
+That's the whole affirmation: there's no DCO sign-off and no CLA to sign.
 
 Credit people in the commit, not just the PR thread. If someone pairs with you,
 debugs it with you, or hands you the fix, add them:
@@ -181,20 +182,23 @@ gate, weakening an immutable filter, or falling back to Solr metadata — these 
 locally reasonable and globally wrong. Anything that weakens the disclosure
 guarantee is a spec change with security review, no matter how it was arrived at.
 
-**Disclose substantial AI generation in the commit.** If a model produced most of a
-change rather than assisting with it, say so with a trailer:
+**Noting AI generation is optional.** If a model produced most of a change rather
+than assisting with it, you're welcome to say so with a trailer:
 
 ```
-Assisted-by: Claude Code
+Assisted-by: <tool>
 ```
 
-This isn't a scarlet letter — it's useful signal for reviewers deciding how closely
-to read, and for anyone later bisecting a class of bug.
+It's not required, and it isn't a scarlet letter — nearly everything here is
+written with assistance, so the trailer carries signal only where you think a
+reviewer would want it. Authorship is what matters, and that's covered above.
 
-> **Team decisions still to confirm:** whether `Assisted-by:` is required or
-> optional, whether JHU requires a DCO sign-off or CLA on this repo, and which AI
-> tools are approved for use against private JHU infrastructure. Settle these and
-> replace this note.
+**Choosing tools.** There's no approved-vendor list in this document, deliberately:
+such a list dates quickly and reads as endorsement. Use what your unit sanctions,
+and let the data-handling rule above decide the hard cases — if a tool would send
+credentials, internal endpoint names, or unsanitized repository payloads somewhere
+you can't account for, it's the wrong tool for that task regardless of who
+approved it. Check with your supervisor when a tool is new to the team.
 
 ## Documentation
 

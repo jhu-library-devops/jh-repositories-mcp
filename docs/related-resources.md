@@ -17,6 +17,19 @@ result, and a host model left to its own devices will invent one. Naming the
 access points is the cheaper failure mode: the model repeats a URL we supplied
 instead of reconstructing one from training data that may be years stale.
 
+## Referral only
+
+The host model hands the researcher a URL and stops there. It does not search,
+fetch, or browse these systems on their behalf — not with this server's tools,
+which cannot reach outside the two repositories, and not with any tool of its
+own. A retrieved-and-summarized result from Catalyst or ArchivesSpace would read
+as though this service federates those collections, which it does not, and would
+put uncited third-party content beside the canonically validated records this
+server is accountable for.
+
+That constraint is what keeps the list safe to publish. Adding an entry commits
+us to naming it, not to standing behind whatever a model might find there.
+
 ## Inclusion criteria
 
 1. **A collection or repository access point, not a public-information page.**

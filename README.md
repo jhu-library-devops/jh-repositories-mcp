@@ -182,6 +182,7 @@ DSpace, or Dataverse exist.
 | [`CONTEXT.md`](CONTEXT.md) | Domain vocabulary — the terms to use, and the ones to avoid |
 | [`docs/adr/`](docs/adr/README.md) | Twelve accepted ADRs: why each structural decision was made |
 | [`docs/spike/`](docs/spike/) | Verified facts about the deployed Solr schemas and network routes |
+| [`docs/related-resources.md`](docs/related-resources.md) | The JHU collections the server refers researchers to, and why — the maintained source for the MCP `initialize` instructions |
 | [`.kiro/specs/jscholarship-jhrdr-mcp/`](.kiro/specs/jscholarship-jhrdr-mcp/) | Requirements, design, and the dependency-ordered task plan |
 | [`.kiro/steering/`](.kiro/steering/) | Team standards: TypeScript, error handling, logging, security, testing |
 | [`.claude/skills/jh-repo-mcp-onboarding/`](.claude/skills/jh-repo-mcp-onboarding/SKILL.md) | The onboarding walkthrough and architecture reference |
