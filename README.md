@@ -48,6 +48,63 @@ thesis. So the whole architecture is built around one guarantee: **never disclos
 a record that isn't public, and never let a client infer that one exists.**
 Most of what looks over-engineered here is downstream of that.
 
+## Topology
+
+Everything runs in one VPC. The MCP tasks attach ENIs to the same private subnets
+as both repository deployments, so there's a direct network path to each with no
+NAT and no peering, and east-west traffic stays on plain HTTP.
+
+```mermaid
+flowchart LR
+    client["AI assistant<br/>LibreChat · HopGPT · Claude"]
+
+    subgraph vpc["VPC — shared repository network"]
+        walb["Public ALB + WAF"]
+
+        subgraph priv["Private subnets · us-east-1a / us-east-1b"]
+            mcp["<b>jh-repositories-mcp</b><br/>ECS Fargate"]
+
+            subgraph jhrdr["JHRDR · Dataverse"]
+                dvapi["Dataverse Native API<br/>:8080"]
+                dvsolr["Solr · collection1<br/>:8983"]
+            end
+
+            subgraph js["JScholarship · DSpace"]
+                dalb["Internal ALB<br/>private-dspace-alb"]
+                drest["DSpace REST<br/>:8080"]
+                dsolr["Solr · search<br/>:8983"]
+            end
+        end
+    end
+
+    client -->|"POST /mcp · Streamable HTTP"| walb
+    walb --> mcp
+
+    mcp -->|":8983 candidates"| dalb
+    mcp -->|":80 canonical"| dalb
+    dalb --> dsolr
+    dalb --> drest
+
+    mcp -.->|"Cloud Map :8983 candidates"| dvsolr
+    mcp -.->|"Cloud Map :8080 canonical"| dvapi
+
+    classDef mcpNode fill:#1f4e79,stroke:#0d2d47,color:#fff
+    classDef stub stroke-dasharray: 4 3
+    class mcp mcpNode
+    class jhrdr,dvapi,dvsolr stub
+```
+
+Two hops per repository, and the split is the architecture: the **Solr** edge
+finds candidates, the **canonical API** edge decides which of them are real and
+public. DSpace is reached through an internal ALB that fronts both its REST API
+and its Solr collection; Dataverse is reached directly through Cloud Map service
+discovery.
+
+The dashed JHRDR path is documented but not yet validated against live
+infrastructure — see [`docs/spike/endpoint-routes.md`](docs/spike/endpoint-routes.md)
+for DNS names, ports, health paths, security group rules, and the open questions
+on the Dataverse side.
+
 ## MCP surface
 
 Closed and fixed for v1 — no dynamic registration, strict schemas throughout.
@@ -161,6 +218,13 @@ Post-deployment verification:
 ```bash
 ./scripts/smoke-test.sh https://mcp-stage.library.jhu.edu
 ```
+
+## Status
+
+Tasks 1–19 and 22–24 in [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md)
+are complete: the service is implemented, tested, containerized, and deployed to
+stage. Open work is task 20 (OpenTofu stack), 21 (public edge), 25 (pilot
+evaluation), and 26 (production release).
 
 ## License
 
