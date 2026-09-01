@@ -10,8 +10,11 @@ locals {
   # Listener rule priority: stage=100, prod=200
   listener_rule_priority = var.environment == "prod" ? 200 : 100
 
-  # JScholarship endpoints derived from DSpace remote state
-  jscholarship_solr_url   = "http://solr.dspace-${var.environment}.local:8983/solr/search"
+  # JScholarship endpoints derived from DSpace remote state.
+  # Solr is fronted by the same private ALB on port 8983 — use the ALB DNS name
+  # directly rather than the Cloud Map A record (solr.dspace-*.local), which holds
+  # static IPs that go stale when the ALB's ENIs rotate.
+  jscholarship_solr_url   = "http://${local.dspace_private_alb_dns}:8983/solr/search"
   jscholarship_api_url    = "http://${local.dspace_private_alb_dns}/server/api"
   jscholarship_public_url = var.jscholarship_public_url
 }

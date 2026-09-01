@@ -62,6 +62,7 @@ import {
 } from "../observability/index";
 import type { Semaphore } from "../security/index";
 import { ToolFailure } from "./errors";
+import { SERVER_INSTRUCTIONS } from "./instructions";
 import {
   EXPLORE_RESEARCH_TOPIC,
   FIND_REUSABLE_DATA,
@@ -266,7 +267,11 @@ export function createRepositoryServer(options: RepositoryServerOptions): Server
   const { name, version, context } = options;
   const server = new Server(
     { name, version },
-    { capabilities: { tools: {}, resources: {}, prompts: {} } },
+    {
+      capabilities: { tools: {}, resources: {}, prompts: {} },
+      // Reaches every session at initialize, unlike the opt-in prompts.
+      instructions: SERVER_INSTRUCTIONS,
+    },
   );
 
   server.setRequestHandler(ListToolsRequestSchema, async () => ({

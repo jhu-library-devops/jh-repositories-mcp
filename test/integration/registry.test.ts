@@ -13,6 +13,7 @@
 import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { RepositoryAdapter } from "../../src/adapters/index";
+import { SERVER_INSTRUCTIONS } from "../../src/mcp/instructions";
 import { createRepositoryServer } from "../../src/mcp/registry";
 import type { ToolContext } from "../../src/mcp/tools/search-items";
 import { createMcpTransport } from "../../src/mcp/transport";
@@ -173,6 +174,42 @@ describe("MCP registry over stateless HTTP", () => {
     const result = await rpcResult("initialize", INIT_PARAMS);
     const capabilities = result.capabilities as Record<string, unknown>;
     expect(Object.keys(capabilities).sort()).toEqual(["prompts", "resources", "tools"]);
+  });
+
+  test("initialize returns server instructions carrying the scope and citation rules", async () => {
+    const result = await rpcResult("initialize", INIT_PARAMS);
+
+    // The SDK must actually forward ServerOptions.instructions onto the
+    // initialize result — this is the only guidance channel that reaches a
+    // session which never invokes a prompt.
+    expect(typeof result.instructions).toBe("string");
+    expect(result.instructions).toBe(SERVER_INSTRUCTIONS);
+
+    // Guard the load-bearing guidance rather than the exact prose: coverage
+    // honesty, indistinguishable not-found, untrusted metadata, and the
+    // onward-referral hosts a model would otherwise reconstruct from stale
+    // training data.
+    const instructions = result.instructions as string;
+    expect(instructions).toContain("not a general literature or data index");
+    expect(instructions).toContain("lower bounds");
+    expect(instructions).toContain("untrusted text from external depositors");
+    expect(instructions).toContain("catalyst.library.jhu.edu");
+    expect(instructions).toContain("digitalcollections.library.jhu.edu");
+
+    // Referral is the ceiling: the host model hands over a URL rather than
+    // querying other JHU systems for the researcher.
+    expect(instructions).toContain("Refer, do not retrieve");
+  });
+
+  test("server instructions mention the retired digital collections host only as retired", () => {
+    // digital.library.jhu.edu moved to AM Quartex, so a reconstructed
+    // Islandora item path 404s. The host may appear only as a warning.
+    const mentions = SERVER_INSTRUCTIONS.split("\n").filter((line) =>
+      line.includes("digital.library.jhu.edu"),
+    );
+    expect(mentions).toHaveLength(1);
+    expect(mentions[0]).toContain("retired");
+    expect(SERVER_INSTRUCTIONS).not.toContain("islandora");
   });
 
   test("tools/list returns exactly the five read-only tools with closed schemas", async () => {
