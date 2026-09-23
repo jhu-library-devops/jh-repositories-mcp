@@ -61,8 +61,8 @@ bun test                        # unit, property, contract, integration
 bun run lint                    # biome check .
 ```
 
-`bun ci` shows up in the `Dockerfile` and in some older notes. It is not a Bun
-command. Use `bun install --frozen-lockfile`.
+Don't substitute `bun ci`. Newer Bun releases have it, but the pinned 1.2.15
+doesn't and fails with `error: Script not found "ci"`.
 
 ### Start the server
 
@@ -393,19 +393,12 @@ wrong. A stale reference leads to confidently wrong changes at scale.
   cites the right files. For larger rewrites, the `skill-creator` skill can run
   structured evals.
 
-### Drift found while writing this guide
+### Reporting drift
 
-Following the skill's own rule, here's where the docs and the repo disagreed on
-2026-09-23. Check each before relying on it:
-
-- `AGENTS.md` still says the repo "does not yet contain application code or a
-  package manifest." That's no longer true. Its style, testing, and PR guidance is
-  otherwise accurate.
-- `CONTRIBUTING.md` mentions agents in `.claude/agents/`, but that directory is in
-  `.gitignore`. Only `.claude/skills/` is committed, so a fresh clone has no
-  agents.
-- The `Dockerfile` runs `bun ci`, which isn't a Bun command (see
-  [section 1](#install-check-test)).
+When a document and the code disagree, the code wins. Fix the document in the
+same PR if it's small. Otherwise, add it to the rough-edges list in `CLAUDE.md`
+and to the drift list in `references/doc-map.md`, so the skill warns the next
+person instead of misleading them.
 
 ---
 

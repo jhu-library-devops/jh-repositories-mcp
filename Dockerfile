@@ -23,7 +23,7 @@ ARG BUN_IMAGE=oven/bun:1.2.15@sha256:8b5e8d3b6a734ae438c7c6f1bdc23e54eb9c35a0e2e
 FROM ${BUN_IMAGE} AS install
 WORKDIR /app
 COPY package.json bun.lock bunfig.toml ./
-RUN bun ci
+RUN bun install --frozen-lockfile
 
 # ─── Stage 2: verify + build ─────────────────────────────────────────────────
 FROM ${BUN_IMAGE} AS build

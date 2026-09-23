@@ -147,7 +147,8 @@ tools, registry, transport) may know that Solr, DSpace, or Dataverse exist.
 ## Commands
 
 - Install: `bun install --frozen-lockfile` (honors `.bun-version` and the
-  committed `bun.lock`). Note: `bun ci` is not a real Bun command.
+  committed `bun.lock`). Don't use `bun ci`: it doesn't exist in the pinned
+  Bun 1.2.15 (`error: Script not found "ci"`).
 - Type-check: `bun run typecheck` (`tsc --noEmit` — Bun's bundler does not
   type-check)
 - Test: `bun test`
@@ -229,11 +230,6 @@ Verify before relying on any of these; they may have been fixed.
   `unsupported_filter` warning; no adapter implements it.
 - `find_related_items` can return fewer than `limit` results, because the source
   record is filtered out after the merge trims.
-- Two stale `TODO: Implement as Hono middleware (task 16.4)` comments in
-  `src/security/index.ts` sit above the implemented middleware.
-- `CONTEXT.md` describes the search cache as storing candidates that are
-  re-validated on read; `src/adapters/caching.ts` caches already-validated pages
-  and re-validates only the record cache via `probePublic`.
 - JHRDR's Solr-side `discoverableBy:Anonymous` clause is commented out pending
   verification, so the Dataverse `versionState === "RELEASED"` check carries the
   gate. `config/repositories/jhrdr-endpoints.ts` is a self-declared stub.

@@ -24,7 +24,7 @@ fastest, because nothing fails when they're wrong.
 | `docs/spike/` | Verified real-world facts about the deployed DSpace/Dataverse Solr schemas and routes | Before assuming a Solr field exists |
 | `test/fixtures/*/README.md` | Provenance and sanitization rules for fixtures | Before adding any fixture |
 | `.kiro/steering/` | Team standards: TypeScript formatting, error handling, logging, security, testing | Writing code, especially error handling and logging |
-| `.claude/` | Agent configuration — the `kfc` spec-workflow subagents, system prompts, and this skill under `.claude/skills/` | Working out how the spec workflow is driven |
+| `.claude/skills/` | This skill — the only committed part of `.claude/`. Agents, system prompts, and settings under `.claude/` are gitignored and per-developer | Working out what agent configuration ships with the repo |
 | `ONBOARDING.md` | Human-facing setup guide: toolchain, installing this skill (project, `--add-dir`, personal, Claude.ai), and using it to build a sibling server | Someone asks how to install or share this skill |
 | `CLAUDE.md` | Orientation for AI agents: current state, invariants, commands, conventions | Starting any task in the repo |
 | `AGENTS.md` | Same role, different tool — style, testing, and PR guidance | With skepticism about repo state; see below |
@@ -59,30 +59,13 @@ it** — some may have been fixed, and a confident wrong claim about the docs is
 worse than no claim. When you confirm drift, say so explicitly to whoever you're
 onboarding; the habit of noticing it is part of what you're teaching.
 
-**`AGENTS.md` still assumes the repo is spec-only** ("does not yet contain
-application code or a package manifest"). That was true once and isn't now —
-`src/`, `package.json`, and the test suite all exist. Its style, testing, and PR
-guidance is otherwise accurate, and its build commands are the correct ones.
-(`CLAUDE.md` carried the same assumption until it was rewritten; it is current
-as of this skill's writing, so read it as a description rather than a plan.)
-
-**`bun ci` is not a real Bun command.** It appears in the Dockerfile. The
-working command is `bun install --frozen-lockfile`, which is what `AGENTS.md`,
-`CLAUDE.md`, and `.github/workflows/ci.yml` use.
-
-**`CONTEXT.md` and `src/adapters/caching.ts` describe different caching.** The
-glossary dialogue says the search cache stores Candidates that are always
-re-validated before becoming SearchResults. In the code, the search cache stores
-already-validated `RepositoryPage` objects and serves them without
-re-validation; only the *record* cache re-validates, through `probePublic`. Both
-are consistent with ADR-011's intent (nothing bypasses the gate — the cached
-page went through it), but the doc's mechanism is not the code's mechanism.
-
-**Two stale `TODO: Implement as Hono middleware (task 16.4)` comments** in
-`src/security/index.ts` sit above the already-implemented middleware.
-
-**`tasks.md` says zod v4; `package.json` pins the `^3.25` line.** Worth
-confirming which the code actually imports before repeating either.
+**Resolved in the onboarding-guide change** (listed so you don't re-report
+them): `AGENTS.md` describing the repo as spec-only; `bun ci` in the Dockerfile,
+ADR-002, `design.md`, and `tasks.md` (it doesn't exist in the pinned Bun
+1.2.15); `CONTEXT.md`'s search-cache description; the stale task 16.4 TODOs in
+`src/security/index.ts`; `tasks.md` naming zod v4 (the code imports zod 3); and
+`CONTRIBUTING.md` pointing at the gitignored `.claude/agents/`. If one of these
+reappears, it's a regression — say so.
 
 **Some `Requirements: N.N` comments in `src/` and design-section references in
 `src/federation/index.ts`** point into the Kiro spec. Those files do exist —

@@ -33,7 +33,7 @@ The MCP server needs a JavaScript/TypeScript runtime, package manager, bundler, 
 - One version file (`.bun-version`) governs all environments
 - Faster installs, builds, and test execution compared to Node.js toolchains
 - Native Web Standard Request/Response APIs align with the MCP SDK's transport
-- `bun ci` ensures reproducible lockfile installs
+- `bun install --frozen-lockfile` ensures reproducible lockfile installs
 - Single multi-stage Docker image uses the same Bun for all phases
 
 ### Negative Consequences
