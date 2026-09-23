@@ -25,6 +25,7 @@ fastest, because nothing fails when they're wrong.
 | `test/fixtures/*/README.md` | Provenance and sanitization rules for fixtures | Before adding any fixture |
 | `.kiro/steering/` | Team standards: TypeScript formatting, error handling, logging, security, testing | Writing code, especially error handling and logging |
 | `.claude/` | Agent configuration — the `kfc` spec-workflow subagents, system prompts, and this skill under `.claude/skills/` | Working out how the spec workflow is driven |
+| `ONBOARDING.md` | Human-facing setup guide: toolchain, installing this skill (project, `--add-dir`, personal, Claude.ai), and using it to build a sibling server | Someone asks how to install or share this skill |
 | `CLAUDE.md` | Orientation for AI agents: current state, invariants, commands, conventions | Starting any task in the repo |
 | `AGENTS.md` | Same role, different tool — style, testing, and PR guidance | With skepticism about repo state; see below |
 | `infra/`, `.github/workflows/` | Deployment and CI reality | Deployment questions |

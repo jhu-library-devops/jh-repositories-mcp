@@ -27,6 +27,10 @@ build on each other, and stops to check that each one landed. It also works as a
 architecture reference, and as a pattern guide if you're building another MCP
 server on the same bones.
 
+[`ONBOARDING.md`](ONBOARDING.md) shows how to set up the skill (in this repo, from
+another project, or in Claude.ai), how to get the most out of it, and how to use
+it to build a new MCP server.
+
 Prefer to read? Start with [`CLAUDE.md`](CLAUDE.md) for current state and
 conventions, [`CONTEXT.md`](CONTEXT.md) for the domain vocabulary, then
 [ADR-005](docs/adr/ADR-005-solr-candidates-canonical-api-gate.md) for the decision
@@ -178,6 +182,7 @@ DSpace, or Dataverse exist.
 
 | Where | What it's for |
 | --- | --- |
+| [`ONBOARDING.md`](ONBOARDING.md) | New-contributor setup, installing the onboarding skill, and building a new MCP server with it |
 | [`CLAUDE.md`](CLAUDE.md) | Current state, invariants, commands, conventions. Start here. |
 | [`CONTEXT.md`](CONTEXT.md) | Domain vocabulary — the terms to use, and the ones to avoid |
 | [`docs/adr/`](docs/adr/README.md) | Twelve accepted ADRs: why each structural decision was made |
