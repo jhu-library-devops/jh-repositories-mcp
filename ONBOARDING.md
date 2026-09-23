@@ -56,7 +56,7 @@ Run these in order and stop at the first failure:
 
 ```bash
 bun install --frozen-lockfile   # honors .bun-version and the committed bun.lock
-bun run typecheck               # tsc --noEmit (Bun's bundler strips types without checking them)
+bun run typecheck               # tsc --noEmit; the bundler doesn't type-check
 bun test                        # unit, property, contract, integration
 bun run lint                    # biome check .
 ```
