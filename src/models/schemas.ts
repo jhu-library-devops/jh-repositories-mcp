@@ -218,6 +218,7 @@ const publicFileSummarySchema = z
 const metadataFieldSchema = z
   .object({
     field: z.string().min(1).max(MAX_METADATA_FIELD_NAME_LENGTH),
+    label: z.string().min(1).max(MAX_METADATA_FIELD_NAME_LENGTH),
     values: z
       .array(z.string().min(1).max(MAX_METADATA_VALUE_LENGTH))
       .min(1)

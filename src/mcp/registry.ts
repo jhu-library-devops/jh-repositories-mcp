@@ -150,16 +150,17 @@ const MAX_TEXT_METADATA_VALUE = 1_000;
 const MAX_TEXT_METADATA_CHARS = 20_000;
 
 /**
- * The full metadata as `field: value | value` lines, bounded so the text
- * block stays usable; the complete set is always in structuredContent.
+ * The full metadata as `Label: value | value` lines under a "Details" heading,
+ * bounded so the text block stays usable; the complete set, with the
+ * platform field names, is always in structuredContent.
  */
 function metadataText(item: ItemDetail): string[] {
   if (item.metadata.length === 0) {
     return [];
   }
-  const lines = ["Metadata:"];
+  const lines = ["Details:"];
   let used = 0;
-  for (const [index, { field, values }] of item.metadata.entries()) {
+  for (const [index, { label, values }] of item.metadata.entries()) {
     const rendered = values
       .map((value) =>
         value.length > MAX_TEXT_METADATA_VALUE
@@ -168,7 +169,7 @@ function metadataText(item: ItemDetail): string[] {
       )
       .join(" | ")
       .replace(/\s+/g, " ");
-    const line = `  ${field}: ${rendered}`;
+    const line = `  ${label}: ${rendered}`;
     if (used + line.length > MAX_TEXT_METADATA_CHARS) {
       lines.push(`  … ${item.metadata.length - index} more field(s) in the structured result.`);
       break;

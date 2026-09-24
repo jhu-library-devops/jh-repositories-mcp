@@ -28,6 +28,7 @@ import type {
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
 import { withRetry } from "../retry";
+import { dataverseMetadataLabel } from "./metadata-labels";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -363,7 +364,11 @@ function collectField(field: DataverseField, out: MetadataField[]): void {
     }
   }
   if (strings.length > 0) {
-    out.push({ field: field.typeName, values: strings });
+    out.push({
+      field: field.typeName,
+      label: dataverseMetadataLabel(field.typeName),
+      values: strings,
+    });
   }
 }
 

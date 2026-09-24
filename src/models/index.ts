@@ -149,10 +149,12 @@ export interface RepositoryRecord {
 /**
  * One canonical metadata field as the platform's public API returned it,
  * named by the platform's own field identifier (e.g. `dc.description.sponsorship`
- * for DSpace, `authorAffiliation` for Dataverse). Values are untrusted data.
+ * for DSpace, `authorAffiliation` for Dataverse) and carrying a reader-facing
+ * label (e.g. `Sponsor`, `Author affiliation`). Values are untrusted data.
  */
 export interface MetadataField {
   field: string;
+  label: string;
   values: string[];
 }
 

@@ -293,6 +293,10 @@ describe("full canonical metadata passthrough", () => {
     expect(byField.get("geographicUnit")).toEqual(["County", "State"]);
     expect(byField.get("datasetContactName")).toEqual(["Data Services"]);
     expect(byField.has("datasetContactEmail")).toBe(false);
+    const labels = new Map(item.metadata.map((entry) => [entry.field, entry.label]));
+    expect(labels.get("authorName")).toBe("Author");
+    expect(labels.get("geographicUnit")).toBe("Geographic unit");
+    expect(labels.get("datasetContactName")).toBe("Contact");
     expect(JSON.stringify(item)).not.toContain("contact@example.edu");
   });
 });

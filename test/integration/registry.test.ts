@@ -43,8 +43,12 @@ function detail(repository: RepositoryId): ItemDetail {
   });
   return createItemDetail(record, [], {
     metadata: [
-      { field: "dc.description.sponsorship", values: ["National Science Foundation"] },
-      { field: "dc.subject", values: ["Wetlands", "Climate"] },
+      {
+        field: "dc.description.sponsorship",
+        label: "Sponsor",
+        values: ["National Science Foundation"],
+      },
+      { field: "dc.subject", label: "Subject", values: ["Wetlands", "Climate"] },
     ],
   });
 }
@@ -258,14 +262,20 @@ describe("MCP registry over stateless HTTP", () => {
     expect(result.isError).toBeUndefined();
     const structured = result.structuredContent as { metadata: unknown };
     expect(structured.metadata).toEqual([
-      { field: "dc.description.sponsorship", values: ["National Science Foundation"] },
-      { field: "dc.subject", values: ["Wetlands", "Climate"] },
+      {
+        field: "dc.description.sponsorship",
+        label: "Sponsor",
+        values: ["National Science Foundation"],
+      },
+      { field: "dc.subject", label: "Subject", values: ["Wetlands", "Climate"] },
     ]);
     const content = result.content as Array<Record<string, unknown>>;
     const text = String(content[0]?.text);
-    expect(text).toContain("Metadata:");
-    expect(text).toContain("dc.description.sponsorship: National Science Foundation");
-    expect(text).toContain("dc.subject: Wetlands | Climate");
+    expect(text).toContain("Details:");
+    expect(text).toContain("Sponsor: National Science Foundation");
+    expect(text).toContain("Subject: Wetlands | Climate");
+    // Platform field names stay in structuredContent, out of the chat text.
+    expect(text).not.toContain("dc.");
     expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("complete");
   });
 
@@ -278,7 +288,7 @@ describe("MCP registry over stateless HTTP", () => {
     expect(result.isError).toBeUndefined();
     const text = String((result.content as Array<Record<string, unknown>>)[0]?.text);
     expect(text).toContain(FILES_UNAVAILABLE_NOTE);
-    expect(text).toContain("dc.description.sponsorship: National Science Foundation");
+    expect(text).toContain("Sponsor: National Science Foundation");
     // No operator vocabulary reaches the chat.
     for (const term of [
       "filesStatus",
@@ -288,6 +298,7 @@ describe("MCP registry over stateless HTTP", () => {
       "HTTP",
       "DSpace",
       "Access: ",
+      "dc.",
     ]) {
       expect(text).not.toContain(term);
     }

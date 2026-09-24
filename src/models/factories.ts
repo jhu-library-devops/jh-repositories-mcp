@@ -119,7 +119,7 @@ export const MAX_METADATA_FIELDS = 200;
 export const MAX_METADATA_VALUES_PER_FIELD = 100;
 /** Maximum characters per metadata value; longer values are truncated. */
 export const MAX_METADATA_VALUE_LENGTH = 10_000;
-/** Maximum characters in a metadata field name; longer names are dropped. */
+/** Maximum characters in a metadata field name or label; longer names are dropped. */
 export const MAX_METADATA_FIELD_NAME_LENGTH = 200;
 
 /**
@@ -128,24 +128,27 @@ export const MAX_METADATA_FIELD_NAME_LENGTH = 200;
  * capped so a pathological record cannot blow up the response.
  */
 export function boundMetadata(fields: readonly MetadataField[]): MetadataField[] {
-  const merged = new Map<string, string[]>();
-  for (const { field, values } of fields) {
+  const merged = new Map<string, { label: string; values: string[] }>();
+  for (const { field, label, values } of fields) {
     if (field.length === 0 || field.length > MAX_METADATA_FIELD_NAME_LENGTH) {
       continue;
     }
-    const bucket = merged.get(field) ?? [];
+    // The first label seen for a field wins; an unusable one falls back to the name.
+    const usableLabel =
+      label.length > 0 && label.length <= MAX_METADATA_FIELD_NAME_LENGTH ? label : field;
+    const bucket = merged.get(field) ?? { label: usableLabel, values: [] };
     for (const value of values) {
-      if (value.length > 0 && bucket.length < MAX_METADATA_VALUES_PER_FIELD) {
-        bucket.push(value.slice(0, MAX_METADATA_VALUE_LENGTH));
+      if (value.length > 0 && bucket.values.length < MAX_METADATA_VALUES_PER_FIELD) {
+        bucket.values.push(value.slice(0, MAX_METADATA_VALUE_LENGTH));
       }
     }
     merged.set(field, bucket);
   }
   return [...merged.entries()]
-    .filter(([, values]) => values.length > 0)
+    .filter(([, entry]) => entry.values.length > 0)
     .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
     .slice(0, MAX_METADATA_FIELDS)
-    .map(([field, values]) => ({ field, values }));
+    .map(([field, { label, values }]) => ({ field, label, values }));
 }
 
 export interface ItemDetailExtras {

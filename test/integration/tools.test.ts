@@ -427,7 +427,7 @@ describe("get_item: degraded file listing", () => {
   test("returns metadata with filesStatus unavailable and logs files_omitted", async () => {
     const degraded = createItemDetail(summary("jscholarship", 1), [], {
       filesStatus: "unavailable",
-      metadata: [{ field: "dc.title", values: ["Sample"] }],
+      metadata: [{ field: "dc.title", label: "Title", values: ["Sample"] }],
     });
     const base = context({ getResult: degraded });
     const adapter = base.adapters.get("jscholarship");
@@ -456,7 +456,7 @@ describe("get_item: degraded file listing", () => {
     };
     const output = await getItem(ctx, { repository: "jscholarship", identifier: "1774.2/99999" });
     expect(output.filesStatus).toBe("unavailable");
-    expect(output.metadata).toEqual([{ field: "dc.title", values: ["Sample"] }]);
+    expect(output.metadata).toEqual([{ field: "dc.title", label: "Title", values: ["Sample"] }]);
     expect(getItemOutputSchema.safeParse(output).success).toBe(true);
     expect(faults).toHaveLength(1);
     expect(faults[0]).toMatchObject({

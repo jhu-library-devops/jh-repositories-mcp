@@ -202,6 +202,9 @@ describe("public item resolution", () => {
       "Smith, Jane A.",
       "Johnson, Robert K.",
     ]);
+    const labels = new Map(item.metadata.map((entry) => [entry.field, entry.label]));
+    expect(labels.get("dc.contributor.author")).toBe("Author");
+    expect(labels.get("dc.description.sponsorship")).toBe("Sponsor");
     expect(fields).not.toContain("dc.description.provenance");
     expect(fields).not.toContain("dc.relation.ispartof");
     expect(JSON.stringify(item)).not.toContain("someone@jhu.edu");

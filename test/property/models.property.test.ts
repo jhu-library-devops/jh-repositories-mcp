@@ -417,6 +417,7 @@ describe("Canonical metadata is bounded, ordered, and schema-valid", () => {
         fc.constantFrom("dc.title", "dc.subject", "dc.description.abstract", "authorName"),
         fc.string({ maxLength: 250 }),
       ),
+      label: fc.string({ maxLength: 250 }),
       values: fc.array(fc.string({ maxLength: MAX_METADATA_VALUE_LENGTH + 50 }), {
         maxLength: MAX_METADATA_VALUES_PER_FIELD + 20,
       }),
@@ -433,7 +434,12 @@ describe("Canonical metadata is bounded, ordered, and schema-valid", () => {
         expect(new Set(names).size).toBe(names.length);
         expect(names).toEqual([...names].sort());
         expect(bounded.length).toBeLessThanOrEqual(MAX_METADATA_FIELDS);
-        for (const { field, values } of bounded) {
+        for (const { field, label, values } of bounded) {
+          // The label is the first usable input label for the field, else the field name.
+          const firstLabel = input.find((entry) => entry.field === field)?.label ?? "";
+          expect(label).toBe(
+            firstLabel.length > 0 && firstLabel.length <= 200 ? firstLabel : field,
+          );
           expect(values.length).toBeGreaterThan(0);
           expect(values.length).toBeLessThanOrEqual(MAX_METADATA_VALUES_PER_FIELD);
           const sources = input.filter((entry) => entry.field === field).flatMap((e) => e.values);

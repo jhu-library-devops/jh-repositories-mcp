@@ -26,6 +26,7 @@ import type {
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
 import { withRetry } from "../retry";
+import { dspaceMetadataLabel } from "./metadata-labels";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -486,7 +487,7 @@ function canonicalMetadata(metadata: DspaceMetadata): MetadataField[] {
     if (WITHHELD_METADATA_FIELDS.has(field) || !Array.isArray(entries)) {
       continue;
     }
-    fields.push({ field, values: allValues(metadata, field) });
+    fields.push({ field, label: dspaceMetadataLabel(field), values: allValues(metadata, field) });
   }
   return fields;
 }
