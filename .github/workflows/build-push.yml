@@ -61,15 +61,6 @@ jobs:
           echo "ecr-uri=${ECR_URI}" >> "$GITHUB_OUTPUT"
           echo "image-uri=${ECR_URI}:sha-${SHORT_SHA}" >> "$GITHUB_OUTPUT"
 
-      # TEMPORARY: print the OIDC token's claims (never the token) to debug the trust policy
-      - name: Show OIDC token claims
-        run: |
-          TOKEN=$(curl -sSf -H "Authorization: bearer ${ACTIONS_ID_TOKEN_REQUEST_TOKEN}" \
-            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com" | jq -r .value)
-          PAYLOAD=$(cut -d. -f2 <<<"$TOKEN" | tr '_-' '/+')
-          while (( ${#PAYLOAD} % 4 )); do PAYLOAD="${PAYLOAD}="; done
-          base64 -d <<<"$PAYLOAD" | jq '{iss, aud, sub, repository, repository_owner, repository_owner_id, repository_id, ref, event_name, job_workflow_ref}'
-
       - name: Configure AWS credentials (OIDC)
         uses: aws-actions/configure-aws-credentials@v4
         with:
