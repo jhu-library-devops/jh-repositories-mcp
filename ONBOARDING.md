@@ -43,7 +43,7 @@ before you change any behavior.
 
 ### Prerequisites
 
-- **Bun `1.2.15`**, pinned in [`.bun-version`](.bun-version). Other versions may
+- **Bun `1.3.11`**, pinned in [`.bun-version`](.bun-version). Other versions may
   work, but CI uses this one.
 - **Git**, and access to this repository.
 - **Claude Code** ([install docs](https://code.claude.com/docs/en/setup)), for
@@ -61,8 +61,8 @@ bun test                        # unit, property, contract, integration
 bun run lint                    # biome check .
 ```
 
-Don't substitute `bun ci`. Newer Bun releases have it, but the pinned 1.2.15
-doesn't and fails with `error: Script not found "ci"`.
+`bun ci` is an equivalent alias in the pinned 1.3.11, but CI and the Dockerfile
+use `bun install --frozen-lockfile`, so the docs do too.
 
 ### Start the server
 
