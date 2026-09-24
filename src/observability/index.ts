@@ -84,12 +84,57 @@ export function serializeToolInvocation(event: ToolInvocationLog): Record<string
   return serialized;
 }
 
+// ─── Backend fault event ─────────────────────────────────────────────────────
+
+/**
+ * Why a canonical lookup surfaced as `backend_unavailable`. The client sees
+ * only the opaque error (Requirement 5.5); this line gives operators the
+ * failing call and HTTP status. No URL, identifier, or error message is
+ * carried — only closed-shape tokens.
+ */
+export interface BackendFaultLog {
+  timestamp: string;
+  tool: string;
+  repository: RepositoryId;
+  /** Adapter-reported call name, e.g. `item`, `bundles`, `handle_lookup`. */
+  operation: string;
+  errorName: string;
+  status: number | null;
+}
+
+const TOKEN_PATTERN = /^[a-z_]{1,40}$/;
+const ERROR_NAME_PATTERN = /^[A-Za-z]{1,60}$/;
+
+export function serializeBackendFault(event: BackendFaultLog): Record<string, unknown> {
+  return {
+    type: "backend_fault",
+    timestamp: boundedName(event.timestamp),
+    tool: boundedName(event.tool),
+    repository: REPOSITORY_IDS.has(event.repository) ? event.repository : "unknown",
+    operation:
+      typeof event.operation === "string" && TOKEN_PATTERN.test(event.operation)
+        ? event.operation
+        : "unknown",
+    errorName:
+      typeof event.errorName === "string" && ERROR_NAME_PATTERN.test(event.errorName)
+        ? event.errorName
+        : "Error",
+    status:
+      Number.isInteger(event.status) &&
+      (event.status as number) >= 100 &&
+      (event.status as number) <= 599
+        ? event.status
+        : null,
+  };
+}
+
 // ─── Logger (task 18.1) ─────────────────────────────────────────────────────
 
 export type LogWriter = (line: string) => void;
 
 export interface Logger {
   toolInvocation(event: ToolInvocationLog): void;
+  backendFault(event: BackendFaultLog): void;
   info(message: string, metadata?: Record<string, unknown>): void;
   warn(message: string, metadata?: Record<string, unknown>): void;
   error(message: string, metadata?: Record<string, unknown>): void;
@@ -109,6 +154,9 @@ export function createLogger(writer: LogWriter = console.log): Logger {
   return {
     toolInvocation(event) {
       writer(JSON.stringify(serializeToolInvocation(event)));
+    },
+    backendFault(event) {
+      writer(JSON.stringify(serializeBackendFault(event)));
     },
     info(message) {
       writer(messageLine("info", message));

@@ -532,6 +532,12 @@ interface RepositoryRecord {
 
 interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
+  metadata: MetadataField[];         // full public canonical metadata, ordered by field
+}
+
+interface MetadataField {
+  field: string;                     // platform field id: "dc.description.sponsorship", "authorAffiliation"
+  values: string[];
 }
 
 interface Creator {
@@ -551,6 +557,8 @@ interface PublicFileSummary {
 ~~~
 
 Search and related tools return `RepositoryRecord` summaries (the SearchResult projection). `get_item` and item resources return `ItemDetail` with the expanded `files` array. Optional values are required-but-nullable so clients receive a stable object shape. Files are capped at 100; `fileCount` records the public count reported by the canonical platform and may exceed the returned file-summary length. (Requirements 4, 5)
+
+`metadata` carries every field the Canonical_API returns to an anonymous caller, so a researcher sees the whole record, not just the normalized projection. The DSpace client passes through the item's `metadata` map; the Dataverse client flattens every metadata block, emitting compound values as their leaf sub-fields (`authorName`, `authorAffiliation`). Each client withholds fields that carry submitter or contact email addresses (`dc.description.provenance`, `datasetContactEmail`). The shared factory merges repeated names, drops empty values, sorts by field, and caps at 200 fields, 100 values per field, and 10,000 characters per value. The `get_item` text block lists the same fields with each value cut to 1,000 characters and the section to 20,000 characters. Canonicalization strips `metadata` along with `files`, so search and related results remain SearchResult summaries. Values are untrusted data and never enter prompt or instruction roles. (Requirements 5.6, 8.6)
 
 #### Search Response
 
@@ -714,6 +722,22 @@ Each tool invocation emits one structured summary event:
   "build": "git-sha"
 }
 ~~~
+
+When `get_item`, a resource read, or `find_related_items` resolves a source and the Canonical_API faults, the client receives only the opaque `backend_unavailable` error, and the server logs one closed-shape event for operators:
+
+~~~json
+{
+  "type": "backend_fault",
+  "timestamp": "2026-07-14T15:00:00Z",
+  "tool": "get_item",
+  "repository": "jscholarship",
+  "operation": "bundles",
+  "errorName": "DSpaceRequestError",
+  "status": 500
+}
+~~~
+
+`operation` names the failing canonical call (`item`, `handle_lookup`, `bundles`, `probe` for DSpace). No URL, identifier, or error message is logged. (Requirement 15.10)
 
 Raw query text and filter values are absent. For aggregate zero-result analysis, the system may log a one-way, rotating-salt query hash only after privacy review; it is not part of v1 by default. (Requirement 15)
 

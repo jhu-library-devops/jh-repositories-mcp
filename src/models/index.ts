@@ -18,6 +18,11 @@ export {
 export {
   createRepositoryRecord,
   createItemDetail,
+  boundMetadata,
+  MAX_METADATA_FIELDS,
+  MAX_METADATA_VALUES_PER_FIELD,
+  MAX_METADATA_VALUE_LENGTH,
+  MAX_METADATA_FIELD_NAME_LENGTH,
   type RepositoryRecordInput,
 } from "./factories";
 
@@ -140,8 +145,20 @@ export interface RepositoryRecord {
 
 // ─── Item Detail (Full Record) ───────────────────────────────────────────────
 
+/**
+ * One canonical metadata field as the platform's public API returned it,
+ * named by the platform's own field identifier (e.g. `dc.description.sponsorship`
+ * for DSpace, `authorAffiliation` for Dataverse). Values are untrusted data.
+ */
+export interface MetadataField {
+  field: string;
+  values: string[];
+}
+
 export interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
+  /** Full public canonical metadata, ordered by field name. */
+  metadata: MetadataField[];
 }
 
 // ─── Search Request ──────────────────────────────────────────────────────────

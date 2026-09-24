@@ -21,7 +21,7 @@ import type {
 } from "../../models/index";
 import { backendUnavailable, invalidInput, notFound } from "../errors";
 import { ToolFailure } from "../errors";
-import { classifyIdentifier } from "./get-item";
+import { classifyIdentifier, reportBackendFault } from "./get-item";
 import { type ToolContext, selectRepositories } from "./search-items";
 
 /** Bound on the metadata-derived cross-repository query (Requirement 10.6). */
@@ -57,6 +57,7 @@ export async function findRelatedItems(
     if (cause instanceof ToolFailure) {
       throw cause;
     }
+    reportBackendFault(context, "find_related_items", input.repository, cause);
     throw backendUnavailable();
   }
   if (source === null) {

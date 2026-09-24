@@ -125,7 +125,42 @@ function itemText(item: ItemDetail): string {
     `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`,
     `Cite: ${item.citation ?? pid}`,
     `Link: ${pid}`,
+    ...metadataText(item),
   ].join("\n");
+}
+
+/** Per-value and overall bounds for the metadata section of the text block. */
+const MAX_TEXT_METADATA_VALUE = 1_000;
+const MAX_TEXT_METADATA_CHARS = 20_000;
+
+/**
+ * The full metadata as `field: value | value` lines, bounded so the text
+ * block stays usable; the complete set is always in structuredContent.
+ */
+function metadataText(item: ItemDetail): string[] {
+  if (item.metadata.length === 0) {
+    return [];
+  }
+  const lines = ["Metadata:"];
+  let used = 0;
+  for (const [index, { field, values }] of item.metadata.entries()) {
+    const rendered = values
+      .map((value) =>
+        value.length > MAX_TEXT_METADATA_VALUE
+          ? `${value.slice(0, MAX_TEXT_METADATA_VALUE)}…`
+          : value,
+      )
+      .join(" | ")
+      .replace(/\s+/g, " ");
+    const line = `  ${field}: ${rendered}`;
+    if (used + line.length > MAX_TEXT_METADATA_CHARS) {
+      lines.push(`  … ${item.metadata.length - index} more field(s) in the structured result.`);
+      break;
+    }
+    lines.push(line);
+    used += line.length;
+  }
+  return lines;
 }
 
 function facetsText(output: ListFacetsOutput): string {

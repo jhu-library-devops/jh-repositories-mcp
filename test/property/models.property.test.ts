@@ -5,14 +5,21 @@
  *
  * Property 8: Normalized output shape is stable
  * Property 9: Namespaced IDs cannot collide
+ * Additional: Canonical metadata is bounded, ordered, and schema-valid
  * Additional: Limit normalization, Date format validation
  */
 
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
+  MAX_METADATA_FIELDS,
+  MAX_METADATA_VALUES_PER_FIELD,
+  MAX_METADATA_VALUE_LENGTH,
+  boundMetadata,
+  createItemDetail,
   createRecordId,
   createRepositoryRecord,
+  itemDetailSchema,
   parseRecordId,
   recordIdsCollide,
   repositoryRecordSchema,
@@ -397,6 +404,60 @@ describe("Property: Date format validation (from spec)", () => {
           filters: { dateFrom: dateStr },
         });
         expect(parsed.success).toBe(false);
+      }),
+      { numRuns: NUM_RUNS },
+    );
+  });
+});
+
+describe("Canonical metadata is bounded, ordered, and schema-valid", () => {
+  const metadataInput = fc.array(
+    fc.record({
+      field: fc.oneof(
+        fc.constantFrom("dc.title", "dc.subject", "dc.description.abstract", "authorName"),
+        fc.string({ maxLength: 250 }),
+      ),
+      values: fc.array(fc.string({ maxLength: MAX_METADATA_VALUE_LENGTH + 50 }), {
+        maxLength: MAX_METADATA_VALUES_PER_FIELD + 20,
+      }),
+    }),
+    { maxLength: 40 },
+  );
+
+  test("output is unique, sorted, capped, derived from input, and passes itemDetailSchema", () => {
+    fc.assert(
+      fc.property(metadataInput, (input) => {
+        const bounded = boundMetadata(input);
+        const names = bounded.map((entry) => entry.field);
+
+        expect(new Set(names).size).toBe(names.length);
+        expect(names).toEqual([...names].sort());
+        expect(bounded.length).toBeLessThanOrEqual(MAX_METADATA_FIELDS);
+        for (const { field, values } of bounded) {
+          expect(values.length).toBeGreaterThan(0);
+          expect(values.length).toBeLessThanOrEqual(MAX_METADATA_VALUES_PER_FIELD);
+          const sources = input.filter((entry) => entry.field === field).flatMap((e) => e.values);
+          for (const value of values) {
+            expect(value.length).toBeGreaterThan(0);
+            expect(value.length).toBeLessThanOrEqual(MAX_METADATA_VALUE_LENGTH);
+            expect(sources.some((source) => source.startsWith(value))).toBe(true);
+          }
+        }
+
+        const record = createRepositoryRecord({
+          platformId: "11111111-1111-1111-1111-111111111111",
+          repository: "jscholarship",
+          kind: "repository_item",
+          title: "T",
+          landingPageUrl: "https://jscholarship.library.jhu.edu/handle/1774.2/1",
+          provenance: {
+            platform: "dspace",
+            platformRecordId: "11111111-1111-1111-1111-111111111111",
+            canonicalApi: "dspace_rest",
+            retrievedAt: "2026-01-01T00:00:00.000Z",
+          },
+        });
+        expect(itemDetailSchema.safeParse(createItemDetail(record, [], input)).success).toBe(true);
       }),
       { numRuns: NUM_RUNS },
     );

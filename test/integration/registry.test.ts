@@ -39,12 +39,19 @@ function detail(repository: RepositoryId): ItemDetail {
       retrievedAt: "2026-07-30T00:00:00.000Z",
     },
   });
-  return createItemDetail(record, []);
+  return createItemDetail(
+    record,
+    [],
+    [
+      { field: "dc.description.sponsorship", values: ["National Science Foundation"] },
+      { field: "dc.subject", values: ["Wetlands", "Climate"] },
+    ],
+  );
 }
 
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   const item = detail(repository);
-  const { files: _files, ...summary } = item;
+  const { files: _files, metadata: _metadata, ...summary } = item;
   return {
     id: repository,
     async validateSchema() {
@@ -232,6 +239,27 @@ describe("MCP registry over stateless HTTP", () => {
     }
   });
 
+  test("get_item returns full metadata in structuredContent and the text block", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "get_item",
+      arguments: {
+        repository: "jscholarship",
+        identifier: "jscholarship:11111111-1111-1111-1111-111111111111",
+      },
+    });
+    expect(result.isError).toBeUndefined();
+    const structured = result.structuredContent as { metadata: unknown };
+    expect(structured.metadata).toEqual([
+      { field: "dc.description.sponsorship", values: ["National Science Foundation"] },
+      { field: "dc.subject", values: ["Wetlands", "Climate"] },
+    ]);
+    const content = result.content as Array<Record<string, unknown>>;
+    const text = String(content[0]?.text);
+    expect(text).toContain("Metadata:");
+    expect(text).toContain("dc.description.sponsorship: National Science Foundation");
+    expect(text).toContain("dc.subject: Wetlands | Climate");
+  });
+
   test("search_items returns structuredContent, compact text, and resource links", async () => {
     const result = await rpcResult("tools/call", {
       name: "search_items",
@@ -243,6 +271,10 @@ describe("MCP registry over stateless HTTP", () => {
     const content = result.content as Array<Record<string, unknown>>;
     expect(content[0]?.type).toBe("text");
     expect(String(content[0]?.text)).toContain("Sample jscholarship record");
+    // Full metadata belongs to get_item only; search results stay summaries.
+    for (const record of structured.results as Array<Record<string, unknown>>) {
+      expect(record).not.toHaveProperty("metadata");
+    }
     const links = content.filter((c) => c.type === "resource_link");
     expect(links.length).toBeGreaterThan(0);
     expect(String(links[0]?.uri)).toStartWith("jhu-repo://");

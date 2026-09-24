@@ -20,6 +20,7 @@ import type {
   Creator,
   DateValue,
   ItemDetail,
+  MetadataField,
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
@@ -47,7 +48,12 @@ export function isValidHandle(value: string): boolean {
 
 // ─── Errors ──────────────────────────────────────────────────────────────────
 
+/** Which DSpace REST call failed; logged for diagnosis, never shown to clients. */
+export type DSpaceOperation = "item" | "handle_lookup" | "bundles" | "probe";
+
 export class DSpaceRequestError extends Error {
+  operation?: DSpaceOperation;
+
   constructor(
     message: string,
     readonly status?: number,
@@ -56,6 +62,17 @@ export class DSpaceRequestError extends Error {
     this.name = "DSpaceRequestError";
   }
 }
+
+// ─── Canonical metadata exposure ─────────────────────────────────────────────
+
+/**
+ * Fields withheld from the metadata passthrough even when the anonymous REST
+ * response carries them. DSpace hides `dc.description.provenance` from
+ * anonymous users by default (`metadata.hide`), but it records submitter
+ * names and email addresses, so it is dropped here as well in case that
+ * setting is ever changed.
+ */
+const WITHHELD_METADATA_FIELDS: ReadonlySet<string> = new Set(["dc.description.provenance"]);
 
 // ─── Client ──────────────────────────────────────────────────────────────────
 
@@ -134,14 +151,21 @@ export class DSpaceClient {
     if (!isValidDspaceUuid(uuid)) {
       return false;
     }
-    const response = await this.request(new URL(`core/items/${uuid}`, this.apiBaseUrl), "HEAD");
+    const response = await this.request(
+      new URL(`core/items/${uuid}`, this.apiBaseUrl),
+      "HEAD",
+      "probe",
+    );
     if (response.status === 200) {
       return true;
     }
     if (response.status === 401 || response.status === 403 || response.status === 404) {
       return false;
     }
-    throw new DSpaceRequestError(`DSpace probe returned HTTP ${response.status}`, response.status);
+    throw tagged(
+      new DSpaceRequestError(`DSpace probe returned HTTP ${response.status}`, response.status),
+      "probe",
+    );
   }
 
   // ─── Internals ─────────────────────────────────────────────────────────────
@@ -159,22 +183,87 @@ export class DSpaceClient {
       if (!isValidHandle(identifier.value)) {
         return null;
       }
-      target = new URL("pid/find", this.apiBaseUrl);
-      target.searchParams.set("id", `hdl:${identifier.value}`);
+      const resolved = await this.resolveHandle(identifier.value);
+      if (resolved === null) {
+        return null;
+      }
+      target = resolved;
     }
 
-    const response = await this.request(target, "GET");
+    const response = await this.request(target, "GET", "item");
     if (response.status === 401 || response.status === 403 || response.status === 404) {
       return null;
     }
     if (!response.ok) {
-      throw new DSpaceRequestError(`DSpace returned HTTP ${response.status}`, response.status);
+      throw tagged(
+        new DSpaceRequestError(`DSpace returned HTTP ${response.status}`, response.status),
+        "item",
+      );
     }
-    const body = await parseJson(response);
+    const body = await parseJson(response, "item");
     if (typeof body !== "object" || body === null) {
-      throw new DSpaceRequestError("DSpace returned a non-object item payload");
+      throw tagged(new DSpaceRequestError("DSpace returned a non-object item payload"), "item");
     }
     return body as Record<string, unknown>;
+  }
+
+  /**
+   * Resolve a Handle to its item endpoint. DSpace 7 answers `pid/find` with a
+   * 302 whose Location is the object's REST URL; the redirect is read, not
+   * followed, and accepted only when it points at an item under our own API
+   * base. A Handle for a community or collection, or a Location anywhere
+   * else, resolves to null (not found), never to an outbound request.
+   */
+  private async resolveHandle(handle: string): Promise<URL | null> {
+    const lookup = new URL("pid/find", this.apiBaseUrl);
+    lookup.searchParams.set("id", `hdl:${handle}`);
+    const response = await this.request(lookup, "GET", "handle_lookup", "manual");
+    if (response.status === 401 || response.status === 403 || response.status === 404) {
+      return null;
+    }
+    if (response.status >= 300 && response.status < 400) {
+      const location = response.headers.get("location");
+      if (location === null) {
+        throw tagged(
+          new DSpaceRequestError("DSpace Handle redirect had no Location", response.status),
+          "handle_lookup",
+        );
+      }
+      return this.toItemUrl(location);
+    }
+    if (response.ok) {
+      // Tolerate a pid/find that answers 200 with the object instead of redirecting.
+      const body = (await parseJson(response, "handle_lookup")) as { uuid?: unknown } | null;
+      const uuid = body?.uuid;
+      return typeof uuid === "string" && isValidDspaceUuid(uuid)
+        ? new URL(`core/items/${uuid}`, this.apiBaseUrl)
+        : null;
+    }
+    throw tagged(
+      new DSpaceRequestError(`DSpace returned HTTP ${response.status}`, response.status),
+      "handle_lookup",
+    );
+  }
+
+  /**
+   * Map a `pid/find` Location to our API base. DSpace builds the Location
+   * from `dspace.server.url` (its public hostname), which is not the private
+   * ALB this client talks to, so only the `core/items/<uuid>` path suffix is
+   * trusted; the host in the Location is never contacted.
+   */
+  private toItemUrl(location: string): URL | null {
+    let parsed: URL;
+    try {
+      parsed = new URL(location, this.apiBaseUrl);
+    } catch {
+      return null;
+    }
+    const match = /\/api\/core\/items\/([^/]+)\/?$/.exec(parsed.pathname);
+    const uuid = match?.[1];
+    if (uuid === undefined || !isValidDspaceUuid(uuid)) {
+      return null;
+    }
+    return new URL(`core/items/${uuid}`, this.apiBaseUrl);
   }
 
   private async fetchOriginalBitstreams(uuid: string): Promise<{
@@ -184,15 +273,18 @@ export class DSpaceClient {
   }> {
     const target = new URL(`core/items/${uuid}/bundles`, this.apiBaseUrl);
     target.searchParams.set("embed", "bitstreams");
-    const response = await this.request(target, "GET");
+    const response = await this.request(target, "GET", "bundles");
     if (response.status === 401 || response.status === 403 || response.status === 404) {
       return { files: [], totalCount: 0, formats: [] };
     }
     if (!response.ok) {
-      throw new DSpaceRequestError(`DSpace returned HTTP ${response.status}`, response.status);
+      throw tagged(
+        new DSpaceRequestError(`DSpace returned HTTP ${response.status}`, response.status),
+        "bundles",
+      );
     }
 
-    const body = (await parseJson(response)) as {
+    const body = (await parseJson(response, "bundles")) as {
       _embedded?: { bundles?: unknown[] };
     };
     const bundles = Array.isArray(body?._embedded?.bundles) ? body._embedded.bundles : [];
@@ -234,7 +326,12 @@ export class DSpaceClient {
     return { files, totalCount: bitstreams.length, formats: [...formats] };
   }
 
-  private async request(target: URL, method: "GET" | "HEAD"): Promise<Response> {
+  private async request(
+    target: URL,
+    method: "GET" | "HEAD",
+    operation: DSpaceOperation,
+    redirect: "error" | "manual" = "error",
+  ): Promise<Response> {
     try {
       // Idempotent read: at most one retry for network faults and 5xx.
       return await withRetry(
@@ -242,7 +339,7 @@ export class DSpaceClient {
           const attempt = await this.fetchImpl(target, {
             method,
             headers: { accept: "application/json" },
-            redirect: "error",
+            redirect,
             signal: AbortSignal.timeout(this.requestTimeoutMs),
           });
           if (attempt.status >= 500) {
@@ -259,13 +356,22 @@ export class DSpaceClient {
       );
     } catch (cause) {
       if (cause instanceof DSpaceRequestError) {
-        throw cause;
+        throw tagged(cause, operation);
       }
-      throw new DSpaceRequestError(
+      const wrapped = new DSpaceRequestError(
         cause instanceof Error ? cause.message : "DSpace request failed",
       );
+      if (cause instanceof Error && cause.name === "TimeoutError") {
+        wrapped.name = "DSpaceTimeoutError";
+      }
+      throw tagged(wrapped, operation);
     }
   }
+}
+
+function tagged(error: DSpaceRequestError, operation: DSpaceOperation): DSpaceRequestError {
+  error.operation ??= operation;
+  return error;
 }
 
 // ─── Public_Record gate (Requirements 2.4, 9.3-9.5) ─────────────────────────
@@ -343,7 +449,19 @@ function normalizeItem(
     fileCount: context.fileCount,
     formats: context.formats,
   });
-  return createItemDetail(record, context.files);
+  return createItemDetail(record, context.files, canonicalMetadata(metadata));
+}
+
+/** Every public metadata field on the item except the withheld ones. */
+function canonicalMetadata(metadata: DspaceMetadata): MetadataField[] {
+  const fields: MetadataField[] = [];
+  for (const [field, entries] of Object.entries(metadata)) {
+    if (WITHHELD_METADATA_FIELDS.has(field) || !Array.isArray(entries)) {
+      continue;
+    }
+    fields.push({ field, values: allValues(metadata, field) });
+  }
+  return fields;
 }
 
 function firstValue(metadata: DspaceMetadata, key: string): string | null {
@@ -384,10 +502,10 @@ function normalizeBase(url: URL): URL {
   return normalized;
 }
 
-async function parseJson(response: Response): Promise<unknown> {
+async function parseJson(response: Response, operation: DSpaceOperation): Promise<unknown> {
   try {
     return await response.json();
   } catch {
-    throw new DSpaceRequestError("DSpace returned malformed JSON");
+    throw tagged(new DSpaceRequestError("DSpace returned malformed JSON"), operation);
   }
 }

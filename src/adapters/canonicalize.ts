@@ -66,7 +66,7 @@ export async function canonicalizeInOrder<C>(options: {
       omissions += 1;
       continue;
     }
-    const { files: _files, ...summary } = item;
+    const { files: _files, metadata: _metadata, ...summary } = item;
     records.push({ ...summary, sourceRank: startOffset + index + 1 });
   }
 

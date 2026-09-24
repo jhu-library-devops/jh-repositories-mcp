@@ -16,6 +16,7 @@ import type {
   Creator,
   DateValue,
   ItemDetail,
+  MetadataField,
   PersistentId,
   Provenance,
   PublicFileSummary,
@@ -109,16 +110,60 @@ export function createRepositoryRecord(input: RepositoryRecordInput): Repository
   };
 }
 
+// ─── Canonical metadata bounds (Requirement 5.1) ────────────────────────────
+
+/** Maximum distinct metadata fields returned for one item. */
+export const MAX_METADATA_FIELDS = 200;
+/** Maximum values returned per metadata field. */
+export const MAX_METADATA_VALUES_PER_FIELD = 100;
+/** Maximum characters per metadata value; longer values are truncated. */
+export const MAX_METADATA_VALUE_LENGTH = 10_000;
+/** Maximum characters in a metadata field name; longer names are dropped. */
+export const MAX_METADATA_FIELD_NAME_LENGTH = 200;
+
 /**
- * Create an ItemDetail from a RepositoryRecord and public file summaries.
+ * Bound and order canonical metadata: repeated field names merge, empty
+ * values and empty fields drop, fields sort by name, and every dimension is
+ * capped so a pathological record cannot blow up the response.
+ */
+export function boundMetadata(fields: readonly MetadataField[]): MetadataField[] {
+  const merged = new Map<string, string[]>();
+  for (const { field, values } of fields) {
+    if (field.length === 0 || field.length > MAX_METADATA_FIELD_NAME_LENGTH) {
+      continue;
+    }
+    const bucket = merged.get(field) ?? [];
+    for (const value of values) {
+      if (value.length > 0 && bucket.length < MAX_METADATA_VALUES_PER_FIELD) {
+        bucket.push(value.slice(0, MAX_METADATA_VALUE_LENGTH));
+      }
+    }
+    merged.set(field, bucket);
+  }
+  return [...merged.entries()]
+    .filter(([, values]) => values.length > 0)
+    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .slice(0, MAX_METADATA_FIELDS)
+    .map(([field, values]) => ({ field, values }));
+}
+
+/**
+ * Create an ItemDetail from a RepositoryRecord, public file summaries, and
+ * the record's full public canonical metadata.
  *
  * @param record - The base RepositoryRecord.
  * @param files - The public file summaries to attach.
+ * @param metadata - Canonical metadata fields; bounded and ordered here.
  * @returns A complete ItemDetail.
  */
-export function createItemDetail(record: RepositoryRecord, files: PublicFileSummary[]): ItemDetail {
+export function createItemDetail(
+  record: RepositoryRecord,
+  files: PublicFileSummary[],
+  metadata: readonly MetadataField[] = [],
+): ItemDetail {
   return {
     ...record,
     files,
+    metadata: boundMetadata(metadata),
   };
 }

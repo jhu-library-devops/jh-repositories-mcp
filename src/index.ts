@@ -18,6 +18,7 @@ import { createRepositoryServer } from "./mcp/registry";
 import type { ToolContext } from "./mcp/tools/search-items";
 import { createMcpTransport } from "./mcp/transport";
 import type { SchemaValidationResult } from "./models/index";
+import { logger } from "./observability/index";
 import { createSemaphore, deadlineMiddleware, edgeMiddleware } from "./security/index";
 
 // ─── Configuration ───────────────────────────────────────────────────────────
@@ -109,7 +110,10 @@ const cachingOptions = {
   maxEntries: config.cache.maxEntries,
 };
 
-const toolContext: ToolContext = { adapters: new Map() };
+const toolContext: ToolContext = {
+  adapters: new Map(),
+  onBackendFault: (fault) => logger.backendFault(fault),
+};
 toolContext.adapters.set(
   "jscholarship",
   withCaching(

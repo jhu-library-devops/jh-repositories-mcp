@@ -27,12 +27,15 @@ import type {
   SearchItemsInput,
   SearchItemsOutput,
 } from "../../models/index";
+import type { BackendFaultLog } from "../../observability/index";
 import { backendUnavailable, invalidInput } from "../errors";
 
 const MAX_OUTPUT_WARNINGS = 10;
 
 export interface ToolContext {
   adapters: Map<RepositoryId, RepositoryAdapter>;
+  /** Receives the cause behind an opaque `backend_unavailable`; defaults to no-op. */
+  onBackendFault?: (fault: BackendFaultLog) => void;
 }
 
 export function selectRepositories(

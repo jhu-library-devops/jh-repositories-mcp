@@ -11,7 +11,7 @@
 
 import type { RepositoryIdentifier } from "../../models/index";
 import { parseRecordId } from "../../models/index";
-import type { GetItemInput, ItemDetail } from "../../models/index";
+import type { GetItemInput, ItemDetail, RepositoryId } from "../../models/index";
 import { ToolFailure, backendUnavailable, invalidInput, notFound } from "../errors";
 import type { ToolContext } from "./search-items";
 
@@ -54,6 +54,35 @@ export function classifyIdentifier(
   return null;
 }
 
+/**
+ * Hand the cause of a backend fault to the operator log. Only closed-shape
+ * properties an adapter error may carry (`name`, `status`, `operation`) are
+ * read; the serializer re-validates them, so messages and URLs never leak.
+ */
+export function reportBackendFault(
+  context: ToolContext,
+  tool: string,
+  repository: RepositoryId,
+  cause: unknown,
+): void {
+  if (context.onBackendFault === undefined) {
+    return;
+  }
+  const fault = (typeof cause === "object" && cause !== null ? cause : {}) as {
+    name?: unknown;
+    status?: unknown;
+    operation?: unknown;
+  };
+  context.onBackendFault({
+    timestamp: new Date().toISOString(),
+    tool,
+    repository,
+    operation: typeof fault.operation === "string" ? fault.operation : "unknown",
+    errorName: typeof fault.name === "string" ? fault.name : "Error",
+    status: typeof fault.status === "number" ? fault.status : null,
+  });
+}
+
 export async function getItem(context: ToolContext, input: GetItemInput): Promise<ItemDetail> {
   const identifier = classifyIdentifier(input.repository, input.identifier);
   if (identifier === null) {
@@ -75,7 +104,9 @@ export async function getItem(context: ToolContext, input: GetItemInput): Promis
       throw cause;
     }
     // Backend faults surface as a structured error with no internal detail
-    // (Requirements 5.5, 15.3) — never as not_found.
+    // (Requirements 5.5, 15.3) — never as not_found. The cause goes to the
+    // operator log only.
+    reportBackendFault(context, "get_item", input.repository, cause);
     throw backendUnavailable();
   }
 

@@ -6,7 +6,8 @@
  * Fixture-driven tests against recorded DSpace 7 REST payload shapes:
  * public resolution by UUID and Handle, the Public_Record gate,
  * indistinguishable not-found behavior, bitstream expansion caps,
- * backend-fault fail-closed behavior, and the HEAD revalidation probe.
+ * backend-fault fail-closed behavior, the HEAD revalidation probe, the
+ * pid/find redirect, and the full canonical metadata passthrough.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -36,7 +37,12 @@ function makeClient(routes: RouteTable, log: string[] = []): DSpaceClient {
     if (!route) {
       return new Response(JSON.stringify({ status: 404 }), { status: 404 });
     }
-    return route();
+    const response = route();
+    // Match real fetch: a redirect under `redirect: "error"` is a network error.
+    if (response.status >= 300 && response.status < 400 && init.redirect === "error") {
+      throw new TypeError("unexpected redirect");
+    }
+    return response;
   };
   return new DSpaceClient({
     apiBaseUrl: new URL("http://dspace.internal:8080/server/api"),
@@ -57,9 +63,15 @@ const happyRoutes: RouteTable = {
   [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse(dspaceItem),
   [`GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`]: () =>
     jsonResponse(dspaceBundles),
+  // DSpace 7 answers pid/find with a 302 to the object's URL on its public
+  // `dspace.server.url`, not on the private API base this client uses.
   [`GET /server/api/pid/find?id=${encodeURIComponent(`hdl:${HANDLE}`)}`]: () =>
-    jsonResponse(dspaceItem),
+    redirectTo(`https://jscholarship.library.jhu.edu/server/api/core/items/${PUBLIC_UUID}`),
 };
+
+function redirectTo(location: string): Response {
+  return new Response(null, { status: 302, headers: { location } });
+}
 
 describe("identifier validation happens before any I/O", () => {
   test("invalid UUID and Handle shapes resolve to null without a network call", async () => {
@@ -119,6 +131,80 @@ describe("public item resolution", () => {
     );
     expect(item).not.toBeNull();
     expect(log[0]).toContain("/server/api/pid/find?id=hdl%3A");
+    // The item is then fetched from the private API base, never the Location host.
+    expect(log[1]).toBe(`GET /server/api/core/items/${PUBLIC_UUID}`);
+  });
+
+  test("accepts a pid/find that answers with the object instead of redirecting", async () => {
+    const client = makeClient({
+      ...happyRoutes,
+      [`GET /server/api/pid/find?id=${encodeURIComponent(`hdl:${HANDLE}`)}`]: () =>
+        jsonResponse(dspaceItem),
+    });
+    const item = await client.resolveItem(
+      { type: "handle", value: HANDLE },
+      { expandFiles: false },
+    );
+    expect(item?.id).toBe(`jscholarship:${PUBLIC_UUID}`);
+  });
+
+  test("a Handle redirecting to a non-item or foreign path resolves to null", async () => {
+    const locations = [
+      "https://jscholarship.library.jhu.edu/server/api/core/collections/22222222-2222-2222-2222-222222222222",
+      "https://evil.example/server/api/core/items/not-a-uuid",
+      "javascript:alert(1)",
+    ];
+    for (const location of locations) {
+      const log: string[] = [];
+      const client = makeClient(
+        {
+          ...happyRoutes,
+          [`GET /server/api/pid/find?id=${encodeURIComponent(`hdl:${HANDLE}`)}`]: () =>
+            redirectTo(location),
+        },
+        log,
+      );
+      expect(
+        await client.resolveItem({ type: "handle", value: HANDLE }, { expandFiles: false }),
+      ).toBeNull();
+      expect(log).toHaveLength(1);
+    }
+  });
+
+  test("returns every public metadata field except provenance, ordered by name", async () => {
+    const client = makeClient({
+      ...happyRoutes,
+      [`GET /server/api/core/items/${PUBLIC_UUID}`]: () =>
+        jsonResponse({
+          ...dspaceItem,
+          metadata: {
+            ...dspaceItem.metadata,
+            "dc.description.sponsorship": [{ value: "National Science Foundation" }],
+            "dc.description.provenance": [{ value: "Submitted by someone@jhu.edu" }],
+            "dc.relation.ispartof": [{ value: "" }],
+          },
+        }),
+    });
+    const item = await client.resolveItem(
+      { type: "uuid", value: PUBLIC_UUID },
+      { expandFiles: false },
+    );
+    if (!item) throw new Error("expected item");
+    const fields = item.metadata.map((entry) => entry.field);
+    expect(fields).toEqual([...fields].sort());
+    for (const key of Object.keys(dspaceItem.metadata)) {
+      expect(fields).toContain(key);
+    }
+    expect(item.metadata.find((m) => m.field === "dc.description.sponsorship")?.values).toEqual([
+      "National Science Foundation",
+    ]);
+    expect(item.metadata.find((m) => m.field === "dc.contributor.author")?.values).toEqual([
+      "Smith, Jane A.",
+      "Johnson, Robert K.",
+    ]);
+    expect(fields).not.toContain("dc.description.provenance");
+    expect(fields).not.toContain("dc.relation.ispartof");
+    expect(JSON.stringify(item)).not.toContain("someone@jhu.edu");
   });
 
   test("expands only public ORIGINAL bitstreams with bounded summaries", async () => {
@@ -191,6 +277,39 @@ describe("backend faults throw instead of masquerading as not-found", () => {
     await expect(
       client.resolveItem({ type: "uuid", value: PUBLIC_UUID }, { expandFiles: true }),
     ).rejects.toThrow(DSpaceRequestError);
+  });
+
+  test("faults name the failing call so operators can tell item from bundles", async () => {
+    const cases: Array<[RouteTable, string, number | undefined]> = [
+      [{ [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse({}, 500) }, "item", 500],
+      [
+        {
+          [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse(dspaceItem),
+          [`GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`]: () =>
+            jsonResponse({}, 400),
+        },
+        "bundles",
+        400,
+      ],
+      [
+        {
+          [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse(dspaceItem),
+          [`GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`]: () =>
+            new Response("not json", { status: 200 }),
+        },
+        "bundles",
+        undefined,
+      ],
+    ];
+    for (const [routes, operation, status] of cases) {
+      const error = await makeClient(routes)
+        .resolveItem({ type: "uuid", value: PUBLIC_UUID }, { expandFiles: true })
+        .then(() => null)
+        .catch((cause: unknown) => cause);
+      expect(error).toBeInstanceOf(DSpaceRequestError);
+      expect((error as DSpaceRequestError).operation).toBe(operation as never);
+      expect((error as DSpaceRequestError).status).toBe(status);
+    }
   });
 
   test("malformed JSON throws DSpaceRequestError", async () => {
