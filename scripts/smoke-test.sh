@@ -263,6 +263,52 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Check 9: find_related_items resolves the source and returns without error
+# (JScholarship MoreLikeThis via the /select search component)
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "--- Related Records and Facets ---"
+
+if [[ -n "$record_id" ]]; then
+  related_payload="{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"find_related_items\",\"arguments\":{\"repository\":\"jscholarship\",\"identifier\":\"${record_id}\",\"targetRepositories\":\"jscholarship\",\"limit\":3}}}"
+  related_response=$(mcp_call "$related_payload")
+  if tool_call_ok "$related_response"; then
+    related_count=$(echo "$related_response" | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2)
+    pass "find_related_items returned ${related_count:-0} related record(s) for ${record_id}"
+  else
+    fail "find_related_items failed for ${record_id}"
+    echo "  Response: $(echo "$related_response" | head -c 300)"
+  fi
+else
+  fail "find_related_items skipped — no record from search_items"
+fi
+
+# ---------------------------------------------------------------------------
+# Check 10: list_facets with no query aggregates every public record, and
+# facet labels carry no DSpace index encoding ("value|||Value")
+# ---------------------------------------------------------------------------
+
+facets_payload='{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_facets","arguments":{"repositories":"jscholarship","facets":["repository","year","subject"]}}}'
+facets_response=$(mcp_call "$facets_payload")
+repo_total=$(echo "$facets_response" | grep -o '"label":"jscholarship","count":[0-9]*' | head -1 | cut -d: -f3)
+
+if ! tool_call_ok "$facets_response"; then
+  fail "list_facets without a query failed"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif [[ -z "$repo_total" || "$repo_total" -eq 0 ]]; then
+  fail "list_facets without a query matched no records"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif ! echo "$facets_response" | grep -q '"facet":"year","values":\[{'; then
+  fail "list_facets without a query returned no year values"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif echo "$facets_response" | grep -q '|||'; then
+  fail "list_facets labels still carry DSpace index encoding (|||)"
+else
+  pass "list_facets without a query covered ${repo_total} records with year and subject values"
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 

@@ -276,6 +276,8 @@ export interface RepositoryFacetRequest {
 export interface RepositoryFacets {
   repository: RepositoryId;
   facets: FacetResult[];
+  /** Public records matching the query and filters (Solr numFound). */
+  totalMatches: number;
   warnings: RepositoryWarning[];
 }
 

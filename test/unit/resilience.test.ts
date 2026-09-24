@@ -166,7 +166,7 @@ function instrumentedAdapter(): InstrumentedAdapter {
       return adapter.probeResult;
     },
     async facets() {
-      return { repository: "jscholarship", facets: [], warnings: [] };
+      return { repository: "jscholarship", facets: [], totalMatches: 0, warnings: [] };
     },
     async related() {
       return page;

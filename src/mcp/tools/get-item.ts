@@ -13,7 +13,13 @@ import type { RepositoryIdentifier } from "../../models/index";
 import { parseRecordId } from "../../models/index";
 import type { GetItemInput, ItemDetail, RepositoryId } from "../../models/index";
 import type { BackendFaultLog } from "../../observability/index";
-import { ToolFailure, backendUnavailable, invalidInput, notFound } from "../errors";
+import {
+  ToolFailure,
+  backendUnavailable,
+  invalidInput,
+  notFound,
+  repositoryNotAvailable,
+} from "../errors";
 import type { ToolContext } from "./search-items";
 
 const UUID_SHAPE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -96,7 +102,7 @@ export async function getItem(context: ToolContext, input: GetItemInput): Promis
 
   const adapter = context.adapters.get(input.repository);
   if (adapter === undefined) {
-    throw invalidInput("The requested repository is not available on this server.");
+    throw repositoryNotAvailable(input.repository, [...context.adapters.keys()]);
   }
 
   let item: ItemDetail | null;

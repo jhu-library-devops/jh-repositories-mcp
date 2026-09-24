@@ -90,7 +90,7 @@ function behaviorAdapter(repository: RepositoryId, behavior: StubBehavior): Repo
       return makeItem(repository);
     },
     async facets() {
-      return { repository, facets: [], warnings: [] };
+      return { repository, facets: [], totalMatches: 0, warnings: [] };
     },
     async related() {
       return {

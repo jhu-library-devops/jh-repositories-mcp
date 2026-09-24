@@ -70,6 +70,8 @@ interface SolrDoc {
 interface SolrSearchBody {
   response?: { numFound?: number; docs?: unknown[] };
   facet_counts?: { facet_fields?: Record<string, unknown[]> };
+  /** MoreLikeThis component output, keyed by source document. */
+  moreLikeThis?: unknown;
 }
 
 /**
@@ -194,10 +196,8 @@ export class JScholarshipAdapter implements RepositoryAdapter {
       }
       supported.push(concept);
     }
-    if (supported.length === 0) {
-      return { repository: this.id, facets: [], warnings };
-    }
-
+    // Queried even when only the synthesized `repository` facet was asked
+    // for: its count is this repository's match total.
     const query = buildFacetQuery(jscholarshipProfile, {
       query: request.query,
       field: request.field,
@@ -208,6 +208,8 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     });
     const body = (await this.solr.execute(query)) as SolrSearchBody;
     const facetFields = body.facet_counts?.facet_fields ?? {};
+    const totalMatches =
+      typeof body.response?.numFound === "number" ? Math.max(0, body.response.numFound) : 0;
 
     const facets: FacetResult[] = [];
     for (const concept of supported) {
@@ -217,7 +219,7 @@ export class JScholarshipAdapter implements RepositoryAdapter {
       }
       facets.push({ facet: concept, values: parseFacetPairs(facetFields[solrField]) });
     }
-    return { repository: this.id, facets, warnings };
+    return { repository: this.id, facets, totalMatches, warnings };
   }
 
   async related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage> {
@@ -227,7 +229,7 @@ export class JScholarshipAdapter implements RepositoryAdapter {
       limit: request.limit,
     });
     const body = (await this.solr.execute(query)) as SolrSearchBody;
-    const docs = parseDocs(body).filter((doc) => doc.uuid !== sourceUuid);
+    const docs = parseMoreLikeThisDocs(body).filter((doc) => doc.uuid !== sourceUuid);
 
     const { records, omissions } = await this.canonicalize(docs, request.limit, 0);
     return {
@@ -305,17 +307,64 @@ function parseDocs(body: SolrSearchBody): SolrDoc[] {
   return docs;
 }
 
+/**
+ * Similar documents from the MoreLikeThis component. With `json.nl=map` the
+ * section is an object keyed by the source document's unique key; a flat
+ * `[key, value, ...]` list is accepted too in case a deployment overrides
+ * `json.nl`. The main query matches one source, so every entry is read.
+ */
+function parseMoreLikeThisDocs(body: SolrSearchBody): SolrDoc[] {
+  const section = body.moreLikeThis;
+  let entries: unknown[] = [];
+  if (Array.isArray(section)) {
+    entries = section.filter((_, index) => index % 2 === 1);
+  } else if (typeof section === "object" && section !== null) {
+    entries = Object.values(section);
+  }
+  return entries.flatMap((entry) => {
+    const docs = (entry as { docs?: unknown } | null)?.docs;
+    return Array.isArray(docs) ? parseDocs({ response: { docs } }) : [];
+  });
+}
+
 function parseFacetPairs(pairs: unknown): FacetResult["values"] {
   if (!Array.isArray(pairs)) {
     return [];
   }
   const values: FacetResult["values"] = [];
   for (let i = 0; i + 1 < pairs.length; i += 2) {
-    const label = pairs[i];
+    const raw = pairs[i];
     const count = pairs[i + 1];
-    if (typeof label === "string" && typeof count === "number") {
+    if (typeof raw !== "string" || typeof count !== "number") {
+      continue;
+    }
+    const label = decodeFacetLabel(raw);
+    if (label.length > 0) {
       values.push({ label, count, repositoryBreakdown: { jscholarship: count } });
     }
   }
   return values;
+}
+
+/** DSpace's separator between the sort key and the display value in *_filter fields. */
+const FILTER_SEPARATOR = "|||";
+/** DSpace's separator before an authority key appended to the display value. */
+const AUTHORITY_SEPARATOR = "###";
+
+/**
+ * Discovery indexes *_filter values as `lowercase\n|||\nDisplay value`,
+ * with `###authority-key` appended for authority-controlled values. Only
+ * the display value is a label; values without the separator (years,
+ * collection IDs) pass through unchanged.
+ */
+export function decodeFacetLabel(raw: string): string {
+  const separator = raw.lastIndexOf(FILTER_SEPARATOR);
+  let display = separator === -1 ? raw : raw.slice(separator + FILTER_SEPARATOR.length);
+  // Split at the last marker: authority keys (URIs, UUIDs) never contain it,
+  // but a display value may end in "#" ("C#").
+  const authority = display.lastIndexOf(AUTHORITY_SEPARATOR);
+  if (authority !== -1) {
+    display = display.slice(0, authority);
+  }
+  return display.trim();
 }

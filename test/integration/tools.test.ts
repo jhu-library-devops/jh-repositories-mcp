@@ -96,7 +96,7 @@ function stubAdapter(repository: RepositoryId, behavior: StubBehavior = {}): Rep
       return behavior.getResult ?? null;
     },
     async facets() {
-      return { repository, facets: [], warnings: [] };
+      return { repository, facets: [], totalMatches: 0, warnings: [] };
     },
     async related() {
       return {
