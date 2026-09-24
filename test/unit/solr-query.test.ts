@@ -9,11 +9,13 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { jhrdrProfile } from "../../config/repositories/jhrdr-profile";
 import { jscholarshipProfile } from "../../config/repositories/jscholarship-profile";
 import {
   MAX_ROWS,
   MAX_START,
   MAX_TIME_ALLOWED_MS,
+  UnsafeQueryError,
   buildFacetQuery,
   buildRelatedQuery,
   buildSearchQuery,
@@ -104,13 +106,47 @@ describe("buildSearchQuery()", () => {
     expect(appliedFilters).toContain("subjects");
   });
 
-  test("builds a bounded date range filter", () => {
+  test("builds a half-open range over the typed date field", () => {
     const { query } = buildSearchQuery(jscholarshipProfile, {
       ...baseRequest,
       filters: { dateFrom: "1990", dateTo: "2000-06-15" },
     });
     const fqs = query.params.getAll("fq");
-    expect(fqs).toContain('dateIssued_filter:["1990" TO "2000-06-15"]');
+    expect(fqs).toContain("dc.date.issued_dt:[1990-01-01T00:00:00Z TO 2000-06-16T00:00:00Z}");
+  });
+
+  test("dateTo covers its whole year, month, or day", () => {
+    const range = (dateFrom: string | undefined, dateTo: string | undefined) =>
+      buildSearchQuery(jscholarshipProfile, { ...baseRequest, filters: { dateFrom, dateTo } })
+        .query.params.getAll("fq")
+        .find((fq) => fq.startsWith("dc.date.issued_dt:"));
+    expect(range("2020", "2023")).toBe(
+      "dc.date.issued_dt:[2020-01-01T00:00:00Z TO 2024-01-01T00:00:00Z}",
+    );
+    expect(range("2023-02", "2023-02")).toBe(
+      "dc.date.issued_dt:[2023-02-01T00:00:00Z TO 2023-03-01T00:00:00Z}",
+    );
+    expect(range(undefined, "2023-12-31")).toBe("dc.date.issued_dt:[* TO 2024-01-01T00:00:00Z}");
+    expect(range("0850", undefined)).toBe("dc.date.issued_dt:[0850-01-01T00:00:00Z TO *}");
+    expect(range(undefined, "9999")).toBe("dc.date.issued_dt:[* TO *}");
+  });
+
+  test("impossible calendar dates are rejected before any query", () => {
+    for (const dateTo of ["2023-02-30", "2023-13", "2023-00"]) {
+      expect(() =>
+        buildSearchQuery(jscholarshipProfile, { ...baseRequest, filters: { dateTo } }),
+      ).toThrow(UnsafeQueryError);
+    }
+  });
+
+  test("JHRDR ranges use its typed dateSort field, not the publicationDate string", () => {
+    const { query } = buildSearchQuery(jhrdrProfile, {
+      ...baseRequest,
+      filters: { dateFrom: "2021", dateTo: "2022" },
+    });
+    expect(query.params.getAll("fq")).toContain(
+      "dateSort:[2021-01-01T00:00:00Z TO 2023-01-01T00:00:00Z}",
+    );
   });
 
   test("reports filters the profile cannot apply instead of guessing", () => {

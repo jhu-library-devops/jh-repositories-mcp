@@ -193,6 +193,8 @@
     - _Requirements: 6.5-6.6, 15.3_
   - [x] 13.4 Aggregate query-less facets over every public record, decode DSpace <code>*_filter</code> labels, filter on <code>*_keyword</code>, and count the <code>repository</code> facet from matches
     - _Requirements: 6.1, 6.3-6.4, 1.4_
+  - [x] 13.5 Filter dates over each repository's typed date field with whole-period, half-open bounds, and reject impossible calendar dates before I/O
+    - _Requirements: 1.4, 10.1-10.2_
 
 - [x] 14. Implement <code>find_related_items</code>
   - [x] 14.1 Resolve the source through its Canonical_API before deriving terms
