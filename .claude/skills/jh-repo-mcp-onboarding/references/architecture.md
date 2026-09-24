@@ -287,22 +287,19 @@ Mention these when relevant — they're the things that cost a newcomer an
 afternoon. Verify each against current code before asserting it, since some may
 have been fixed since this was written.
 
-- **`bun ci` is not a real command.** Some docs say it; the working command is
-  `bun install --frozen-lockfile`.
+- **Use `bun install --frozen-lockfile`, not `bun ci`.** `bun ci` exists only in
+  Bun releases newer than the pinned 1.2.15, where it fails with
+  `Script not found "ci"`.
 - **`zod-to-json-schema` is imported in `src/mcp/registry.ts` but is not a
   declared dependency** in `package.json`. It resolves transitively today, which
   is fragile.
 - **`TIMEOUT_API_MS` / `config.timeouts.canonicalApiMs` is parsed but not read** —
   both platform clients get the Solr timeout. The canonical-API timeout knob
   currently does nothing.
-- **The search cache stores validated pages and is served without
-  revalidation.** `CONTEXT.md`'s dialogue says the cache stores candidates that
-  are always re-validated; the code re-validates only the *record* cache via
-  `probePublic`. Both designs are defensible (the cached page was already
-  canonically validated, and the TTL bounds staleness) but the doc and the code
-  do not describe the same thing.
-- **Two stale `TODO: Implement as Hono middleware (task 16.4)` comments** sit in
-  `src/security/index.ts` directly above the implemented middleware.
+- **The search cache is served without revalidation; the record cache is not.**
+  Search entries are pages that already passed canonicalization, bounded by a
+  TTL at or below Solr re-index lag; cached records are re-probed via
+  `probePublic` before being served. Don't "optimize" the record probe away.
 - **`disabledFeatures` is computed and reported but not enforced** — the
   JScholarship `related()` path will still issue an `/mlt` query even when the
   schema validator reported those dynamic fields missing.

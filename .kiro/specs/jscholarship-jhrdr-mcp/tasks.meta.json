@@ -61,7 +61,7 @@
         "timestamp": 1784921232496
       }
     ],
-    "2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting": [
+    "2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod 3, linting, and formatting": [
       {
         "executionId": "a25f19fa-ae22-4b9f-9385-a125e9f900ab",
         "chatSessionId": "sess_a1528011-5ab0-4ba5-8c28-c3443df75aa7",

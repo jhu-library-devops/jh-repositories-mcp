@@ -7,7 +7,8 @@ specs, and picking them up early makes everything cheaper to read.
 
 If you're new to the codebase, the fastest way in is the onboarding skill at
 [`.claude/skills/jh-repo-mcp-onboarding/`](.claude/skills/jh-repo-mcp-onboarding/SKILL.md):
-open the repo in Claude Code and ask for a walkthrough.
+open the repo in Claude Code and ask for a walkthrough. [`ONBOARDING.md`](ONBOARDING.md)
+covers installing it, including from another project.
 
 ## Before you change behavior
 
@@ -149,8 +150,9 @@ attached, so the supply chain is part of the threat model.
 ## Using AI tools
 
 This project is built with AI assistance and expects it — the Kiro spec workflow in
-[`.kiro/`](.kiro/), the agents in [`.claude/agents/`](.claude/agents/), and the
-onboarding skill are all part of the normal toolchain. What follows isn't
+[`.kiro/`](.kiro/) and the onboarding skill in [`.claude/skills/`](.claude/skills/)
+are part of the normal toolchain. (Agent definitions under `.claude/agents/` are
+per-developer and gitignored, so a fresh clone won't have any.) What follows isn't
 discouragement, it's the operating manual.
 
 **You own what you submit.** Authorship of a PR means you understand every line in

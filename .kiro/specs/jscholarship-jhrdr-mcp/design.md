@@ -678,13 +678,13 @@ The OpenTofu stack reads DSpace and Dataverse remote-state outputs for VPC, priv
 - CloudWatch log group, dashboard, alarms, and autoscaling policy.
 - Route 53 or documented DNS outputs for the public hostname.
 
-The repository commits the text <code>bun.lock</code> lockfile and pins one approved Bun version in <code>.bun-version</code>. The same version is used by the official Bun setup action and every Docker stage. CI installs with <code>bun ci</code>, type-checks with <code>tsc --noEmit</code>, tests with <code>bun test</code>, and builds with <code>bun build --target=bun --production</code>. Bun's bundler does not replace TypeScript type-checking.
+The repository commits the text <code>bun.lock</code> lockfile and pins one approved Bun version in <code>.bun-version</code>. The same version is used by the official Bun setup action and every Docker stage. CI installs with <code>bun install --frozen-lockfile</code>, type-checks with <code>tsc --noEmit</code>, tests with <code>bun test</code>, and builds with <code>bun build --target=bun --production</code>. Bun's bundler does not replace TypeScript type-checking.
 
 Stage runs one task by default. Production runs two tasks and autoscaling from two through six tasks based on CPU and ALB request count. The multi-stage container uses a version-and-digest-pinned official <code>oven/bun</code> image, copies only the Bun-targeted production bundle and required runtime files into the final image, runs as the non-root <code>bun</code> user, has a read-only root filesystem where supported, contains a health check, and embeds source commit/version labels. No Node.js runtime or development dependencies are installed in the final image. (Requirements 12.7-12.8, 13-16)
 
 The deployment pipeline follows the repository patterns already used by JScholarship and JHRDR:
 
-1. Install reproducibly with <code>bun ci</code>, type-check, test with <code>bun test</code>, and build the Bun-targeted production bundle.
+1. Install reproducibly with <code>bun install --frozen-lockfile</code>, type-check, test with <code>bun test</code>, and build the Bun-targeted production bundle.
 2. Generate SBOM and scan image.
 3. Push immutable stage image.
 4. Deploy to stage and run smoke/compatibility tests.
