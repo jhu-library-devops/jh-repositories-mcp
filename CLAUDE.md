@@ -227,9 +227,6 @@ Verify before relying on any of these; they may have been fixed.
 - `disabledFeatures` from schema validation is reported but not enforced — the
   JScholarship `related()` path still issues MoreLikeThis queries (on `/select`)
   when `*_mlt` fields are missing.
-- The JScholarship date-range filter compares `dateIssued_filter` as a string,
-  and those values carry DSpace's `lowercase\n|||\nValue` encoding, so a
-  `dateTo` year may drop records dated within that year. Unverified on stage.
 - `filters.access` is accepted by the input schema and always produces an
   `unsupported_filter` warning; no adapter implements it.
 - `find_related_items` can return fewer than `limit` results, because the source

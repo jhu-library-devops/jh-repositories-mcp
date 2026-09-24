@@ -21,6 +21,22 @@ import {
 /** ISO partial date: YYYY, YYYY-MM, or YYYY-MM-DD */
 const DATE_PATTERN = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 
+/** True when a YYYY, YYYY-MM, or YYYY-MM-DD string names a real calendar date. */
+function isCalendarDate(value: string): boolean {
+  const [year, month = 1, day = 1] = value.split("-").map(Number) as [number, number?, number?];
+  const date = new Date(0);
+  date.setUTCFullYear(year, month - 1, day);
+  return (
+    date.getUTCFullYear() === year && date.getUTCMonth() === month - 1 && date.getUTCDate() === day
+  );
+}
+
+const dateBoundSchema = z
+  .string()
+  .max(10)
+  .regex(DATE_PATTERN, "Must be YYYY, YYYY-MM, or YYYY-MM-DD")
+  .refine(isCalendarDate, "Must be a real calendar date");
+
 const MAX_QUERY_LENGTH = 512;
 const MAX_IDENTIFIER_LENGTH = 512;
 const MAX_CURSOR_LENGTH = 2048;
@@ -54,16 +70,8 @@ const commonFacetSchema = z.enum([
 
 export const filtersSchema = z
   .object({
-    dateFrom: z
-      .string()
-      .max(10)
-      .regex(DATE_PATTERN, "Must be YYYY, YYYY-MM, or YYYY-MM-DD")
-      .optional(),
-    dateTo: z
-      .string()
-      .max(10)
-      .regex(DATE_PATTERN, "Must be YYYY, YYYY-MM, or YYYY-MM-DD")
-      .optional(),
+    dateFrom: dateBoundSchema.optional(),
+    dateTo: dateBoundSchema.optional(),
     resourceTypes: z
       .array(z.string().min(1).max(MAX_STRING_SHORT))
       .max(MAX_RESOURCE_TYPE_ITEMS)

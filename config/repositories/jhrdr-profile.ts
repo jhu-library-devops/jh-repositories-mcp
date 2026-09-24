@@ -116,7 +116,8 @@ export const jhrdrProfile = {
   // Maps MCP filter concepts to Dataverse Solr filter fields.
   filterFields: {
     subject: "dvSubject",
-    publicationDate: "publicationDate",
+    // Date ranges need a typed date field; publicationDate is a string.
+    publicationDate: "dateSort",
     collection: "parentIdentifier",
     datasetType: "datasetType",
     license: "license",

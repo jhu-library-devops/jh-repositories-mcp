@@ -59,7 +59,11 @@ export interface RepositoryProfile {
   /** MCP search concepts → weighted Solr query fields (for edismax qf). */
   readonly queryFields: Readonly<Record<string, readonly WeightedField[]>>;
 
-  /** MCP filter concepts → Solr filter fields. */
+  /**
+   * MCP filter concepts → Solr filter fields. The date concept
+   * (`dateIssued` / `publicationDate`) must name a typed date field: ranges
+   * are built as ISO-8601 instants.
+   */
   readonly filterFields: Readonly<Record<string, string>>;
 
   /** MCP facet concepts → Solr facet fields. */
@@ -181,7 +185,9 @@ export const jscholarshipProfile = {
   // never matches them.
   filterFields: {
     subject: "subject_keyword",
-    dateIssued: "dateIssued_filter",
+    // Date ranges need a typed date field: dateIssued_filter is an encoded
+    // string, so a string range over it drops records inside the end year.
+    dateIssued: "dc.date.issued_dt",
     author: "author_keyword",
     resourceType: "itemtype_keyword",
     entityType: "entityType_keyword",

@@ -309,6 +309,30 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Check 11: a date range returns only years inside it, including its last
+# year (dateTo=2023 covers all of 2023)
+# ---------------------------------------------------------------------------
+
+range_payload='{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_facets","arguments":{"repositories":"jscholarship","facets":["year"],"filters":{"dateFrom":"2020","dateTo":"2023"}}}}'
+range_response=$(mcp_call "$range_payload")
+range_years=$(echo "$range_response" | grep -o '"label":"[0-9]\{4\}"' | cut -d'"' -f4 | sort -u | tr '\n' ' ')
+out_of_range=$(for y in $range_years; do if (( 10#$y < 2020 || 10#$y > 2023 )); then echo "$y"; fi; done)
+
+if ! tool_call_ok "$range_response"; then
+  fail "list_facets with a date range failed"
+  echo "  Response: $(echo "$range_response" | head -c 300)"
+elif [[ -z "$range_years" ]]; then
+  fail "list_facets with dateFrom=2020 dateTo=2023 returned no years"
+elif [[ -n "$out_of_range" ]]; then
+  fail "list_facets date range leaked years outside 2020-2023: ${out_of_range//$'\n'/ }"
+else
+  pass "list_facets dateFrom=2020 dateTo=2023 returned years: ${range_years% }"
+  if [[ " $range_years " != *" 2023 "* ]]; then
+    warn "no 2023 records in range — cannot confirm dateTo includes its final year"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 
