@@ -3,8 +3,9 @@
 # jhu-repository-mcp — multi-stage production image
 #
 # Every stage uses the SAME pinned Bun release (.bun-version = 1.2.15),
-# pinned by version AND digest so local, CI, and production builds are
-# byte-reproducible. The final image contains only the Bun-targeted
+# pinned by version AND digest so local, CI, and production builds use the
+# same toolchain; the runtime stage additionally applies Debian security
+# updates at build time. The final image contains only the Bun-targeted
 # production bundle and required runtime files: no dev dependencies, no
 # source tree, no repository credentials, and no Node.js runtime.
 #
@@ -42,6 +43,14 @@ RUN bun build src/index.ts --target=bun --production --outdir=dist
 FROM ${BUN_IMAGE} AS runtime
 ARG BUILD_VERSION=0.0.0-dev
 ARG BUILD_COMMIT=unknown
+
+# The pinned base lags Debian security fixes (e.g. libgnutls30), which the
+# CRITICAL Trivy gate rejects, so apply them at build time. This layer depends
+# on the build date; the Bun runtime and bundle stay pinned.
+RUN apt-get update \
+ && apt-get upgrade -y --no-install-recommends \
+ && apt-get clean \
+ && rm -rf /var/lib/apt/lists/*
 
 LABEL org.opencontainers.image.title="jhu-repository-mcp" \
       org.opencontainers.image.description="Read-only federated MCP server for JScholarship (DSpace) and JHRDR (Dataverse)" \
