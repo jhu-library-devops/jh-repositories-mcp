@@ -7,16 +7,22 @@ on:
     types: [completed]
     branches: [main]
 
-  # Production: manual promotion with required inputs
+  # Manual: redeploy stage, or promote to production with sign-off
   workflow_dispatch:
     inputs:
-      image-digest:
-        description: "Image digest from stage deployment to promote (sha256:...)"
+      environment:
+        description: "Environment to deploy"
         required: true
+        type: choice
+        options: [stage, production]
+        default: stage
+      image-digest:
+        description: "Image digest (sha256:...). Required for production; for stage, blank deploys the selected branch's sha-<commit> image"
+        required: false
         type: string
       approver:
-        description: "Who authorized this production promotion"
-        required: true
+        description: "Who authorized this production promotion (required for production)"
+        required: false
         type: string
 
 permissions:
@@ -29,19 +35,20 @@ env:
   ECS_CLUSTER: jhu-repo-mcp-cluster
 
 concurrency:
-  group: deploy-${{ github.event_name == 'workflow_dispatch' && 'prod' || 'stage' }}
+  group: deploy-${{ inputs.environment == 'production' && 'prod' || 'stage' }}
   cancel-in-progress: false
 
 jobs:
   # ─────────────────────────────────────────────────────────────────────────────
-  # Stage Deployment — triggered automatically after Build, Scan & Push
+  # Stage Deployment — automatic after Build, Scan & Push, or manual dispatch
   # ─────────────────────────────────────────────────────────────────────────────
   deploy-stage:
     name: Deploy to Stage
     runs-on: ubuntu-latest
     if: >
-      github.event_name == 'workflow_run' &&
-      github.event.workflow_run.conclusion == 'success'
+      (github.event_name == 'workflow_run' &&
+       github.event.workflow_run.conclusion == 'success') ||
+      (github.event_name == 'workflow_dispatch' && inputs.environment == 'stage')
     environment: stage
 
     steps:
@@ -55,22 +62,37 @@ jobs:
         id: ecr-login
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: Resolve image from build workflow
+      - name: Resolve image
         id: image
+        env:
+          INPUT_DIGEST: ${{ inputs.image-digest }}
         run: |
-          SHORT_SHA=$(echo "${{ github.event.workflow_run.head_sha }}" | cut -c1-7)
+          COMMIT="${{ github.event.workflow_run.head_sha || github.sha }}"
+          SHORT_SHA=$(echo "${COMMIT}" | cut -c1-7)
           ECR_URI="${{ secrets.AWS_ACCOUNT_ID }}.dkr.ecr.${{ env.AWS_REGION }}.amazonaws.com/${{ env.ECR_REPOSITORY }}"
-          SOURCE_TAG="sha-${SHORT_SHA}"
 
-          # Get the digest for the source image
+          if [ -n "$INPUT_DIGEST" ]; then
+            # Manual dispatch with an explicit digest
+            if [[ ! "$INPUT_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "::error::Invalid image digest format. Expected sha256:<64 hex chars>"
+              exit 1
+            fi
+            SOURCE_TAG="(digest input)"
+            IMAGE_ID="imageDigest=${INPUT_DIGEST}"
+          else
+            # Build workflow, or manual dispatch of the selected branch's image
+            SOURCE_TAG="sha-${SHORT_SHA}"
+            IMAGE_ID="imageTag=${SOURCE_TAG}"
+          fi
+
           DIGEST=$(aws ecr batch-get-image \
             --repository-name "${{ env.ECR_REPOSITORY }}" \
-            --image-ids imageTag="${SOURCE_TAG}" \
+            --image-ids "${IMAGE_ID}" \
             --query 'images[0].imageId.imageDigest' \
             --output text)
 
           if [ "$DIGEST" = "None" ] || [ -z "$DIGEST" ]; then
-            echo "::error::Image with tag ${SOURCE_TAG} not found in ECR"
+            echo "::error::Image ${IMAGE_ID} not found in ECR"
             exit 1
           fi
 
@@ -119,8 +141,8 @@ jobs:
           echo "| **Image Tag** | \`stage\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Source Tag** | \`${{ steps.image.outputs.source-tag }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Digest** | \`${{ steps.image.outputs.digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Commit** | \`${{ github.event.workflow_run.head_sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Deployed by** | \`github-actions\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Commit** | \`${{ github.event.workflow_run.head_sha || github.sha }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Deployed by** | \`${{ github.event_name == 'workflow_dispatch' && github.actor || 'github-actions' }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Timestamp** | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" >> "$GITHUB_STEP_SUMMARY"
 
   # ─────────────────────────────────────────────────────────────────────────────
@@ -129,7 +151,7 @@ jobs:
   deploy-prod:
     name: Deploy to Production
     runs-on: ubuntu-latest
-    if: github.event_name == 'workflow_dispatch'
+    if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
     environment: production
 
     steps:
