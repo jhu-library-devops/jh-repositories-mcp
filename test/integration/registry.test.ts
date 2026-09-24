@@ -39,19 +39,17 @@ function detail(repository: RepositoryId): ItemDetail {
       retrievedAt: "2026-07-30T00:00:00.000Z",
     },
   });
-  return createItemDetail(
-    record,
-    [],
-    [
+  return createItemDetail(record, [], {
+    metadata: [
       { field: "dc.description.sponsorship", values: ["National Science Foundation"] },
       { field: "dc.subject", values: ["Wetlands", "Climate"] },
     ],
-  );
+  });
 }
 
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   const item = detail(repository);
-  const { files: _files, metadata: _metadata, ...summary } = item;
+  const { files: _files, filesStatus: _filesStatus, metadata: _metadata, ...summary } = item;
   return {
     id: repository,
     async validateSchema() {
@@ -258,6 +256,7 @@ describe("MCP registry over stateless HTTP", () => {
     expect(text).toContain("Metadata:");
     expect(text).toContain("dc.description.sponsorship: National Science Foundation");
     expect(text).toContain("dc.subject: Wetlands | Climate");
+    expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("complete");
   });
 
   test("search_items returns structuredContent, compact text, and resource links", async () => {

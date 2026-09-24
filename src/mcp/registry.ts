@@ -118,11 +118,14 @@ function searchText(output: SearchItemsOutput): string {
 function itemText(item: ItemDetail): string {
   const creators = item.creators.map((c) => c.name).join("; ") || "Unknown";
   const pid = item.persistentId?.url ?? item.landingPageUrl;
+  const filesKnown = item.filesStatus === "complete";
   return [
     `${item.title}`,
     `Creators: ${creators}`,
-    `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository} | Access: ${item.access.status}`,
-    `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`,
+    `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository} | Access: ${filesKnown ? item.access.status : "unknown"}`,
+    filesKnown
+      ? `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`
+      : "Public files: unavailable — the file list could not be retrieved; try again shortly.",
     `Cite: ${item.citation ?? pid}`,
     `Link: ${pid}`,
     ...metadataText(item),

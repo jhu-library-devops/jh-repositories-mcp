@@ -416,8 +416,54 @@ describe("get_item: identifier routing and resolution", () => {
         operation: "bundles",
         errorName: "DSpaceRequestError",
         status: 500,
+        effect: "backend_unavailable",
       });
       expect(JSON.stringify(faults[0])).not.toContain("10.0.3.17");
     }
+  });
+});
+
+describe("get_item: degraded file listing", () => {
+  test("returns metadata with filesStatus unavailable and logs files_omitted", async () => {
+    const degraded = createItemDetail(summary("jscholarship", 1), [], {
+      filesStatus: "unavailable",
+      metadata: [{ field: "dc.title", values: ["Sample"] }],
+    });
+    const base = context({ getResult: degraded });
+    const adapter = base.adapters.get("jscholarship");
+    if (!adapter) throw new Error("expected adapter");
+    const faults: BackendFaultLog[] = [];
+    const ctx: ToolContext = {
+      adapters: new Map([
+        [
+          "jscholarship",
+          {
+            ...adapter,
+            async get(_identifier, options) {
+              options?.onDegraded?.(
+                Object.assign(new Error("HTTP 500"), {
+                  name: "DSpaceRequestError",
+                  status: 500,
+                  operation: "bundles",
+                }),
+              );
+              return degraded;
+            },
+          },
+        ],
+      ]),
+      onBackendFault: (fault) => faults.push(fault),
+    };
+    const output = await getItem(ctx, { repository: "jscholarship", identifier: "1774.2/99999" });
+    expect(output.filesStatus).toBe("unavailable");
+    expect(output.metadata).toEqual([{ field: "dc.title", values: ["Sample"] }]);
+    expect(getItemOutputSchema.safeParse(output).success).toBe(true);
+    expect(faults).toHaveLength(1);
+    expect(faults[0]).toMatchObject({
+      tool: "get_item",
+      operation: "bundles",
+      status: 500,
+      effect: "files_omitted",
+    });
   });
 });

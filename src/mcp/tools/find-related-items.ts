@@ -52,7 +52,10 @@ export async function findRelatedItems(
 
   let source: ItemDetail | null;
   try {
-    source = await sourceAdapter.get(identifier);
+    source = await sourceAdapter.get(identifier, {
+      onDegraded: (cause) =>
+        reportBackendFault(context, "find_related_items", input.repository, cause, "files_omitted"),
+    });
   } catch (cause) {
     if (cause instanceof ToolFailure) {
       throw cause;

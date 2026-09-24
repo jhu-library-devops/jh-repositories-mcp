@@ -224,7 +224,7 @@ export class DataverseClient {
       fileCount: publicCount,
       formats,
     });
-    return createItemDetail(record, files, canonicalMetadata(version));
+    return createItemDetail(record, files, { metadata: canonicalMetadata(version) });
   }
 
   private normalizeFiles(rawFiles: unknown): {

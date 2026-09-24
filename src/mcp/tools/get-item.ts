@@ -12,6 +12,7 @@
 import type { RepositoryIdentifier } from "../../models/index";
 import { parseRecordId } from "../../models/index";
 import type { GetItemInput, ItemDetail, RepositoryId } from "../../models/index";
+import type { BackendFaultLog } from "../../observability/index";
 import { ToolFailure, backendUnavailable, invalidInput, notFound } from "../errors";
 import type { ToolContext } from "./search-items";
 
@@ -64,6 +65,7 @@ export function reportBackendFault(
   tool: string,
   repository: RepositoryId,
   cause: unknown,
+  effect: BackendFaultLog["effect"] = "backend_unavailable",
 ): void {
   if (context.onBackendFault === undefined) {
     return;
@@ -80,6 +82,7 @@ export function reportBackendFault(
     operation: typeof fault.operation === "string" ? fault.operation : "unknown",
     errorName: typeof fault.name === "string" ? fault.name : "Error",
     status: typeof fault.status === "number" ? fault.status : null,
+    effect,
   });
 }
 
@@ -98,7 +101,10 @@ export async function getItem(context: ToolContext, input: GetItemInput): Promis
 
   let item: ItemDetail | null;
   try {
-    item = await adapter.get(identifier);
+    item = await adapter.get(identifier, {
+      onDegraded: (cause) =>
+        reportBackendFault(context, "get_item", input.repository, cause, "files_omitted"),
+    });
   } catch (cause) {
     if (cause instanceof ToolFailure) {
       throw cause;

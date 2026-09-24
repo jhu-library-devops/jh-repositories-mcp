@@ -1,0 +1,1 @@
+get_item no longer fails when DSpace cannot list an item's files: it returns the metadata with an empty file list and filesStatus "unavailable" (never cached), logs a backend_fault with effect files_omitted, and the smoke test warns on it

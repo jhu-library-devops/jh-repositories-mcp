@@ -279,39 +279,83 @@ describe("backend faults throw instead of masquerading as not-found", () => {
     ).rejects.toThrow(DSpaceRequestError);
   });
 
-  test("faults name the failing call so operators can tell item from bundles", async () => {
-    const cases: Array<[RouteTable, string, number | undefined]> = [
-      [{ [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse({}, 500) }, "item", 500],
-      [
+  test("an item fault throws, named by the failing call", async () => {
+    const error = await makeClient({
+      [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse({}, 500),
+    })
+      .resolveItem({ type: "uuid", value: PUBLIC_UUID }, { expandFiles: true })
+      .then(() => null)
+      .catch((cause: unknown) => cause);
+    expect(error).toBeInstanceOf(DSpaceRequestError);
+    expect((error as DSpaceRequestError).operation).toBe("item");
+    expect((error as DSpaceRequestError).status).toBe(500);
+  });
+});
+
+describe("a failed file listing degrades to metadata without files", () => {
+  const bundlesKey = `GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`;
+  const failures: Array<[string, () => Response, number | undefined]> = [
+    ["HTTP 500", () => jsonResponse({}, 500), 500],
+    ["HTTP 400", () => jsonResponse({}, 400), 400],
+    ["malformed JSON", () => new Response("not json", { status: 200 }), undefined],
+  ];
+
+  for (const [label, bundles, status] of failures) {
+    test(`${label}: item returned with filesStatus unavailable, cause reported`, async () => {
+      const log: string[] = [];
+      const faults: DSpaceRequestError[] = [];
+      const item = await makeClient(
         {
           [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse(dspaceItem),
-          [`GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`]: () =>
-            jsonResponse({}, 400),
+          [bundlesKey]: bundles,
         },
-        "bundles",
-        400,
-      ],
-      [
-        {
-          [`GET /server/api/core/items/${PUBLIC_UUID}`]: () => jsonResponse(dspaceItem),
-          [`GET /server/api/core/items/${PUBLIC_UUID}/bundles?embed=bitstreams`]: () =>
-            new Response("not json", { status: 200 }),
-        },
-        "bundles",
-        undefined,
-      ],
-    ];
-    for (const [routes, operation, status] of cases) {
-      const error = await makeClient(routes)
-        .resolveItem({ type: "uuid", value: PUBLIC_UUID }, { expandFiles: true })
-        .then(() => null)
-        .catch((cause: unknown) => cause);
-      expect(error).toBeInstanceOf(DSpaceRequestError);
-      expect((error as DSpaceRequestError).operation).toBe(operation as never);
-      expect((error as DSpaceRequestError).status).toBe(status);
-    }
+        log,
+      ).resolveItem(
+        { type: "uuid", value: PUBLIC_UUID },
+        { expandFiles: true, onFilesFault: (cause) => faults.push(cause) },
+      );
+      if (!item) throw new Error("expected item");
+      expect(item.filesStatus).toBe("unavailable");
+      expect(item.files).toEqual([]);
+      expect(item.title).toBe("Climate Adaptation Strategies for Chesapeake Bay Wetlands");
+      expect(item.metadata.length).toBeGreaterThan(0);
+      expect(faults).toHaveLength(1);
+      expect(faults[0]?.operation).toBe("bundles");
+      expect(faults[0]?.status).toBe(status);
+      // Best-effort listing: one attempt, no retry, so metadata beats the deadline.
+      expect(log.filter((entry) => entry === bundlesKey)).toHaveLength(1);
+    });
+  }
+
+  test("a network failure on the listing also degrades", async () => {
+    const client = new DSpaceClient({
+      apiBaseUrl: new URL("http://dspace.internal:8080/server/api"),
+      publicBaseUrl: new URL("https://jscholarship.library.jhu.edu"),
+      requestTimeoutMs: 1000,
+      fetchImpl: async (url) => {
+        if (url.pathname.endsWith("/bundles")) {
+          throw new Error("connect ECONNREFUSED");
+        }
+        return jsonResponse(dspaceItem);
+      },
+    });
+    const item = await client.resolveItem(
+      { type: "uuid", value: PUBLIC_UUID },
+      { expandFiles: true },
+    );
+    expect(item?.filesStatus).toBe("unavailable");
   });
 
+  test("a successful listing reports filesStatus complete", async () => {
+    const item = await makeClient(happyRoutes).resolveItem(
+      { type: "uuid", value: PUBLIC_UUID },
+      { expandFiles: true },
+    );
+    expect(item?.filesStatus).toBe("complete");
+  });
+});
+
+describe("backend faults, continued", () => {
   test("malformed JSON throws DSpaceRequestError", async () => {
     const client = makeClient({
       [`GET /server/api/core/items/${PUBLIC_UUID}`]: () =>

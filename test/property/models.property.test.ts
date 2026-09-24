@@ -457,7 +457,9 @@ describe("Canonical metadata is bounded, ordered, and schema-valid", () => {
             retrievedAt: "2026-01-01T00:00:00.000Z",
           },
         });
-        expect(itemDetailSchema.safeParse(createItemDetail(record, [], input)).success).toBe(true);
+        expect(
+          itemDetailSchema.safeParse(createItemDetail(record, [], { metadata: input })).success,
+        ).toBe(true);
       }),
       { numRuns: NUM_RUNS },
     );

@@ -228,6 +228,7 @@ const metadataFieldSchema = z
 export const itemDetailSchema = repositoryRecordSchema
   .extend({
     files: z.array(publicFileSummarySchema).max(100),
+    filesStatus: z.enum(["complete", "unavailable"]),
     metadata: z.array(metadataFieldSchema).max(MAX_METADATA_FIELDS),
   })
   .strict();

@@ -15,6 +15,7 @@ import type {
   CollectionContext,
   Creator,
   DateValue,
+  FilesStatus,
   ItemDetail,
   MetadataField,
   PersistentId,
@@ -147,23 +148,32 @@ export function boundMetadata(fields: readonly MetadataField[]): MetadataField[]
     .map(([field, values]) => ({ field, values }));
 }
 
+export interface ItemDetailExtras {
+  /** Canonical metadata fields; bounded and ordered by the factory. */
+  metadata?: readonly MetadataField[];
+  /** Defaults to `complete`; `unavailable` requires `files` to be empty. */
+  filesStatus?: FilesStatus;
+}
+
 /**
  * Create an ItemDetail from a RepositoryRecord, public file summaries, and
  * the record's full public canonical metadata.
  *
  * @param record - The base RepositoryRecord.
  * @param files - The public file summaries to attach.
- * @param metadata - Canonical metadata fields; bounded and ordered here.
+ * @param extras - Canonical metadata and the file-listing status.
  * @returns A complete ItemDetail.
  */
 export function createItemDetail(
   record: RepositoryRecord,
   files: PublicFileSummary[],
-  metadata: readonly MetadataField[] = [],
+  extras: ItemDetailExtras = {},
 ): ItemDetail {
+  const filesStatus = extras.filesStatus ?? "complete";
   return {
     ...record,
-    files,
-    metadata: boundMetadata(metadata),
+    files: filesStatus === "unavailable" ? [] : files,
+    filesStatus,
+    metadata: boundMetadata(extras.metadata ?? []),
   };
 }

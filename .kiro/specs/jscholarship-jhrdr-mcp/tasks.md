@@ -180,6 +180,8 @@
     - _Requirements: 5.1, 5.6, 8.6_
   - [x] 12.5 Log a closed-shape backend-fault event behind every <code>backend_unavailable</code> from canonical resolution
     - _Requirements: 5.5, 15.5-15.6, 15.10_
+  - [x] 12.6 Degrade a failed file listing to metadata with <code>filesStatus: "unavailable"</code>, uncached, instead of failing the lookup
+    - _Requirements: 5.7, 15.4, 15.10_
 
 - [x] 13. Implement <code>list_facets</code>
   - [x] 13.1 Map common facet concepts to each adapter and execute selected repositories concurrently

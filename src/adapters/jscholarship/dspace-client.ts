@@ -19,6 +19,7 @@ import type {
   AccessInfo,
   Creator,
   DateValue,
+  FilesStatus,
   ItemDetail,
   MetadataField,
   PublicFileSummary,
@@ -118,7 +119,7 @@ export class DSpaceClient {
    */
   async resolveItem(
     identifier: DSpaceItemIdentifier,
-    options: { expandFiles: boolean },
+    options: { expandFiles: boolean; onFilesFault?: (cause: DSpaceRequestError) => void },
   ): Promise<ItemDetail | null> {
     const item = await this.fetchItem(identifier);
     if (item === null) {
@@ -132,14 +133,32 @@ export class DSpaceClient {
     let files: PublicFileSummary[] = [];
     let fileCount = 0;
     let formats: string[] = [];
+    let filesStatus: FilesStatus = "complete";
     if (options.expandFiles) {
-      const expanded = await this.fetchOriginalBitstreams(uuid);
-      files = expanded.files;
-      fileCount = expanded.totalCount;
-      formats = expanded.formats;
+      // The item already passed the public gate, so a failed file listing
+      // degrades to metadata without files rather than failing the lookup.
+      // Omitting files is fail-closed: nothing unvalidated is returned.
+      try {
+        const expanded = await this.fetchOriginalBitstreams(uuid);
+        files = expanded.files;
+        fileCount = expanded.totalCount;
+        formats = expanded.formats;
+      } catch (cause) {
+        if (!(cause instanceof DSpaceRequestError)) {
+          throw cause;
+        }
+        filesStatus = "unavailable";
+        options.onFilesFault?.(cause);
+      }
     }
 
-    return normalizeItem(item, { files, fileCount, formats, publicBaseUrl: this.publicBaseUrl });
+    return normalizeItem(item, {
+      files,
+      fileCount,
+      formats,
+      filesStatus,
+      publicBaseUrl: this.publicBaseUrl,
+    });
   }
 
   /**
@@ -273,7 +292,9 @@ export class DSpaceClient {
   }> {
     const target = new URL(`core/items/${uuid}/bundles`, this.apiBaseUrl);
     target.searchParams.set("embed", "bitstreams");
-    const response = await this.request(target, "GET", "bundles");
+    // One attempt only: the listing is best-effort, and skipping the retry
+    // keeps a slow bundles endpoint from pushing get_item past its deadline.
+    const response = await this.request(target, "GET", "bundles", "error", false);
     if (response.status === 401 || response.status === 403 || response.status === 404) {
       return { files: [], totalCount: 0, formats: [] };
     }
@@ -331,29 +352,31 @@ export class DSpaceClient {
     method: "GET" | "HEAD",
     operation: DSpaceOperation,
     redirect: "error" | "manual" = "error",
+    retry = true,
   ): Promise<Response> {
+    const attemptOnce = async () => {
+      const attempt = await this.fetchImpl(target, {
+        method,
+        headers: { accept: "application/json" },
+        redirect,
+        signal: AbortSignal.timeout(this.requestTimeoutMs),
+      });
+      if (attempt.status >= 500) {
+        throw new DSpaceRequestError(`DSpace returned HTTP ${attempt.status}`, attempt.status);
+      }
+      return attempt;
+    };
     try {
+      if (!retry) {
+        return await attemptOnce();
+      }
       // Idempotent read: at most one retry for network faults and 5xx.
-      return await withRetry(
-        async () => {
-          const attempt = await this.fetchImpl(target, {
-            method,
-            headers: { accept: "application/json" },
-            redirect,
-            signal: AbortSignal.timeout(this.requestTimeoutMs),
-          });
-          if (attempt.status >= 500) {
-            throw new DSpaceRequestError(`DSpace returned HTTP ${attempt.status}`, attempt.status);
-          }
-          return attempt;
-        },
-        {
-          isTransient: (error) =>
-            !(error instanceof DSpaceRequestError) ||
-            error.status === undefined ||
-            error.status >= 500,
-        },
-      );
+      return await withRetry(attemptOnce, {
+        isTransient: (error) =>
+          !(error instanceof DSpaceRequestError) ||
+          error.status === undefined ||
+          error.status >= 500,
+      });
     } catch (cause) {
       if (cause instanceof DSpaceRequestError) {
         throw tagged(cause, operation);
@@ -394,6 +417,7 @@ function normalizeItem(
     files: PublicFileSummary[];
     fileCount: number;
     formats: string[];
+    filesStatus: FilesStatus;
     publicBaseUrl: URL;
   },
 ): ItemDetail {
@@ -449,7 +473,10 @@ function normalizeItem(
     fileCount: context.fileCount,
     formats: context.formats,
   });
-  return createItemDetail(record, context.files, canonicalMetadata(metadata));
+  return createItemDetail(record, context.files, {
+    metadata: canonicalMetadata(metadata),
+    filesStatus: context.filesStatus,
+  });
 }
 
 /** Every public metadata field on the item except the withheld ones. */

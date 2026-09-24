@@ -132,6 +132,7 @@ describe("Property 14: logs exclude content", () => {
 
 describe("Backend-fault lines carry only closed-shape tokens", () => {
   const FAULT_KEYS = [
+    "effect",
     "errorName",
     "operation",
     "repository",
@@ -183,6 +184,7 @@ describe("Backend-fault lines carry only closed-shape tokens", () => {
       operation: "bundles",
       errorName: "DSpaceRequestError",
       status: 500,
+      effect: "files_omitted",
     });
     expect(JSON.parse(lines[0] ?? "{}")).toEqual({
       type: "backend_fault",
@@ -192,6 +194,7 @@ describe("Backend-fault lines carry only closed-shape tokens", () => {
       operation: "bundles",
       errorName: "DSpaceRequestError",
       status: 500,
+      effect: "files_omitted",
     });
   });
 });

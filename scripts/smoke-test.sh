@@ -232,6 +232,11 @@ if [[ -n "$record_id" ]]; then
   get_response=$(mcp_call "$get_payload")
   if tool_call_ok "$get_response" && echo "$get_response" | grep -q '"metadata"'; then
     pass "get_item resolved ${record_id} with metadata"
+    # Metadata still returns when DSpace cannot list files; flag it without
+    # failing the deploy, since the fault is in DSpace, not this service.
+    if echo "$get_response" | grep -q '"filesStatus":"unavailable"'; then
+      warn "get_item returned ${record_id} without its file list (DSpace bundles call failed)"
+    fi
   else
     fail "get_item failed for ${record_id}"
     echo "  Response: $(echo "$get_response" | head -c 300)"

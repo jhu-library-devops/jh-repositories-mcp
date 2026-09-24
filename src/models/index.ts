@@ -23,6 +23,7 @@ export {
   MAX_METADATA_VALUES_PER_FIELD,
   MAX_METADATA_VALUE_LENGTH,
   MAX_METADATA_FIELD_NAME_LENGTH,
+  type ItemDetailExtras,
   type RepositoryRecordInput,
 } from "./factories";
 
@@ -155,8 +156,16 @@ export interface MetadataField {
   values: string[];
 }
 
+/**
+ * Whether `files`, `fileCount`, `formats`, and `access.status` reflect the
+ * canonical file listing. `unavailable` means the listing could not be
+ * retrieved: `files` is empty and those fields are not authoritative.
+ */
+export type FilesStatus = "complete" | "unavailable";
+
 export interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
+  filesStatus: FilesStatus;
   /** Full public canonical metadata, ordered by field name. */
   metadata: MetadataField[];
 }
