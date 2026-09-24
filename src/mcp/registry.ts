@@ -118,19 +118,32 @@ function searchText(output: SearchItemsOutput): string {
 function itemText(item: ItemDetail): string {
   const creators = item.creators.map((c) => c.name).join("; ") || "Unknown";
   const pid = item.persistentId?.url ?? item.landingPageUrl;
-  const filesKnown = item.filesStatus === "complete";
+  if (item.filesStatus === "unavailable") {
+    // Written for the researcher, not the operator: no status names or codes.
+    return [
+      `${item.title}`,
+      `Creators: ${creators}`,
+      `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository}`,
+      FILES_UNAVAILABLE_NOTE,
+      `Cite: ${item.citation ?? pid}`,
+      `Link: ${pid}`,
+      ...metadataText(item),
+    ].join("\n");
+  }
   return [
     `${item.title}`,
     `Creators: ${creators}`,
-    `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository} | Access: ${filesKnown ? item.access.status : "unknown"}`,
-    filesKnown
-      ? `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`
-      : "Public files: unavailable — the file list could not be retrieved; try again shortly.",
+    `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository} | Access: ${item.access.status}`,
+    `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`,
     `Cite: ${item.citation ?? pid}`,
     `Link: ${pid}`,
     ...metadataText(item),
   ].join("\n");
 }
+
+/** Shown in place of the file summary when the file list could not be loaded. */
+export const FILES_UNAVAILABLE_NOTE =
+  "Files: The list of files for this item couldn't be loaded right now. The details below are complete. To see or download the files, open the item page at the link below, or try again in a few minutes.";
 
 /** Per-value and overall bounds for the metadata section of the text block. */
 const MAX_TEXT_METADATA_VALUE = 1_000;

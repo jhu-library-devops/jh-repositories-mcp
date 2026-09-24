@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { RepositoryAdapter } from "../../src/adapters/index";
 import { SERVER_INSTRUCTIONS } from "../../src/mcp/instructions";
-import { createRepositoryServer } from "../../src/mcp/registry";
+import { FILES_UNAVAILABLE_NOTE, createRepositoryServer } from "../../src/mcp/registry";
 import type { ToolContext } from "../../src/mcp/tools/search-items";
 import { createMcpTransport } from "../../src/mcp/transport";
 import { createItemDetail, createRepositoryRecord } from "../../src/models/index";
@@ -22,6 +22,8 @@ import type { ItemDetail, RepositoryId } from "../../src/models/index";
 import { deadlineMiddleware, edgeMiddleware } from "../../src/security/index";
 
 // ─── Stub context ────────────────────────────────────────────────────────────
+
+const DEGRADED_ID = "jscholarship:99999999-9999-9999-9999-999999999999";
 
 function detail(repository: RepositoryId): ItemDetail {
   const record = createRepositoryRecord({
@@ -71,7 +73,11 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
         warnings: [],
       };
     },
-    async get() {
+    async get(identifier) {
+      // One sentinel ID stands in for an item whose file list failed to load.
+      if (identifier.value === DEGRADED_ID) {
+        return createItemDetail(item, [], { metadata: item.metadata, filesStatus: "unavailable" });
+      }
       return item;
     },
     async facets() {
@@ -204,6 +210,10 @@ describe("MCP registry over stateless HTTP", () => {
     // Referral is the ceiling: the host model hands over a URL rather than
     // querying other JHU systems for the researcher.
     expect(instructions).toContain("Refer, do not retrieve");
+
+    // Failures reach the researcher in plain language, not as internal codes.
+    expect(instructions).toContain("Explain problems in plain language");
+    expect(instructions).toContain("file list couldn't be loaded");
   });
 
   test("server instructions mention the retired digital collections host only as retired", () => {
@@ -257,6 +267,31 @@ describe("MCP registry over stateless HTTP", () => {
     expect(text).toContain("dc.description.sponsorship: National Science Foundation");
     expect(text).toContain("dc.subject: Wetlands | Climate");
     expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("complete");
+  });
+
+  test("get_item with an unloadable file list shows metadata and a plain-language note", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "get_item",
+      arguments: { repository: "jscholarship", identifier: DEGRADED_ID },
+    });
+    // Not an error: the record itself resolved.
+    expect(result.isError).toBeUndefined();
+    const text = String((result.content as Array<Record<string, unknown>>)[0]?.text);
+    expect(text).toContain(FILES_UNAVAILABLE_NOTE);
+    expect(text).toContain("dc.description.sponsorship: National Science Foundation");
+    // No operator vocabulary reaches the chat.
+    for (const term of [
+      "filesStatus",
+      "unavailable",
+      "backend",
+      "bundles",
+      "HTTP",
+      "DSpace",
+      "Access: ",
+    ]) {
+      expect(text).not.toContain(term);
+    }
+    expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("unavailable");
   });
 
   test("search_items returns structuredContent, compact text, and resource links", async () => {
