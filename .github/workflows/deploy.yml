@@ -151,17 +151,20 @@ jobs:
     name: Deploy to Production
     runs-on: ubuntu-latest
     if: github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+    # Pass inputs through the environment, never interpolated into scripts
+    env:
+      IMAGE_DIGEST: ${{ inputs.image-digest }}
+      APPROVER: ${{ inputs.approver }}
 
     steps:
       - name: Validate inputs
         run: |
-          DIGEST="${{ inputs.image-digest }}"
+          DIGEST="${IMAGE_DIGEST}"
           if [[ ! "$DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
             echo "::error::Invalid image digest format. Expected sha256:<64 hex chars>"
             exit 1
           fi
 
-          APPROVER="${{ inputs.approver }}"
           if [ -z "$APPROVER" ]; then
             echo "::error::Approver is required for production deployments"
             exit 1
@@ -185,12 +188,12 @@ jobs:
           # Verify the digest exists
           RESULT=$(aws ecr batch-get-image \
             --repository-name "${{ env.ECR_REPOSITORY }}" \
-            --image-ids imageDigest="${{ inputs.image-digest }}" \
+            --image-ids imageDigest="${IMAGE_DIGEST}" \
             --query 'images[0].imageId.imageDigest' \
             --output text)
 
           if [ "$RESULT" = "None" ] || [ -z "$RESULT" ]; then
-            echo "::error::Image with digest ${{ inputs.image-digest }} not found in ECR"
+            echo "::error::Image with digest ${IMAGE_DIGEST} not found in ECR"
             exit 1
           fi
 
@@ -201,7 +204,7 @@ jobs:
             --query 'images[0].imageId.imageDigest' \
             --output text)
 
-          if [ "$STAGE_DIGEST" != "${{ inputs.image-digest }}" ]; then
+          if [ "$STAGE_DIGEST" != "${IMAGE_DIGEST}" ]; then
             echo "::warning::Promoted digest does not match current stage tag. Ensure this image was tested in stage."
           fi
 
@@ -211,7 +214,7 @@ jobs:
         run: |
           MANIFEST=$(aws ecr batch-get-image \
             --repository-name "${{ env.ECR_REPOSITORY }}" \
-            --image-ids imageDigest="${{ inputs.image-digest }}" \
+            --image-ids imageDigest="${IMAGE_DIGEST}" \
             --query 'images[0].imageManifest' \
             --output text)
 
@@ -245,7 +248,7 @@ jobs:
           echo "| **Cluster** | \`${{ env.ECS_CLUSTER }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Service** | \`jhu-repo-mcp-prod-service\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Image Tag** | \`prod\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Digest** | \`${{ inputs.image-digest }}\` |" >> "$GITHUB_STEP_SUMMARY"
-          echo "| **Approver** | \`${{ inputs.approver }}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Digest** | \`${IMAGE_DIGEST}\` |" >> "$GITHUB_STEP_SUMMARY"
+          echo "| **Approver** | \`${APPROVER}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Deployed by** | \`${{ github.actor }}\` |" >> "$GITHUB_STEP_SUMMARY"
           echo "| **Timestamp** | \`$(date -u +%Y-%m-%dT%H:%M:%SZ)\` |" >> "$GITHUB_STEP_SUMMARY"
