@@ -1,0 +1,1 @@
+Fix JScholarship citation URLs: the 1774.2 handle prefix is not registered in the global Handle.net registry, so persistent IDs now cite the repository landing page instead of a dead hdl.handle.net link

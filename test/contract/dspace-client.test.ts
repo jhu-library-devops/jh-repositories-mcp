@@ -102,7 +102,9 @@ describe("public item resolution", () => {
     expect(item.persistentId).toEqual({
       type: "handle",
       value: HANDLE,
-      url: `https://hdl.handle.net/${HANDLE}`,
+      // The 1774.2 prefix is absent from the global Handle registry, so the
+      // citation URL is the repository landing page.
+      url: `https://jscholarship.library.jhu.edu/handle/${HANDLE}`,
     });
     expect(item.landingPageUrl).toBe(`https://jscholarship.library.jhu.edu/handle/${HANDLE}`);
     expect(item.provenance.canonicalApi).toBe("dspace_rest");
