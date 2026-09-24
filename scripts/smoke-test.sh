@@ -13,6 +13,8 @@
 # Environment:
 #   SMOKE_TIMEOUT  — total script timeout in seconds (default: 60)
 #   REQUEST_TIMEOUT — per-request timeout in seconds (default: 10)
+#   SMOKE_QUERY    — search_items query expected to match public JScholarship
+#                    records (default: Baltimore)
 #
 # Exit codes:
 #   0 — all checks passed
@@ -28,6 +30,7 @@ set -uo pipefail
 BASE_URL="${1:-}"
 SMOKE_TIMEOUT="${SMOKE_TIMEOUT:-60}"
 REQUEST_TIMEOUT="${REQUEST_TIMEOUT:-10}"
+SMOKE_QUERY="${SMOKE_QUERY:-Baltimore}"
 
 EXPECTED_TOOLS=("search_items" "get_item" "list_facets" "find_related_items" "explain_search")
 
@@ -55,6 +58,21 @@ fail() {
 
 warn() {
   echo -e "${YELLOW}WARN${NC} $1"
+}
+
+# POST one JSON-RPC payload to /mcp and print the response body ("" on failure).
+mcp_call() {
+  curl -s --max-time "$REQUEST_TIMEOUT" \
+    -X POST \
+    -H "Content-Type: application/json" \
+    -H "Accept: application/json, text/event-stream" \
+    -d "$1" \
+    "${BASE_URL}/mcp" 2>/dev/null || echo ""
+}
+
+# A tools/call response is healthy when it has a result that is not a tool error.
+tool_call_ok() {
+  echo "$1" | grep -q '"result"' && ! echo "$1" | grep -q '"isError":true'
 }
 
 # ---------------------------------------------------------------------------
@@ -119,7 +137,7 @@ init_payload='{"jsonrpc":"2.0","id":1,"method":"initialize","params":{"protocolV
 init_response=$(curl -s --max-time "$REQUEST_TIMEOUT" \
   -X POST \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d "$init_payload" \
   "${BASE_URL}/mcp" 2>/dev/null || echo "")
 
@@ -161,7 +179,7 @@ tools_payload='{"jsonrpc":"2.0","id":2,"method":"tools/list","params":{}}'
 tools_response=$(curl -s --max-time "$REQUEST_TIMEOUT" \
   -X POST \
   -H "Content-Type: application/json" \
-  -H "Accept: application/json" \
+  -H "Accept: application/json, text/event-stream" \
   -d "$tools_payload" \
   "${BASE_URL}/mcp" 2>/dev/null || echo "")
 
@@ -181,6 +199,67 @@ else
     fail "tools/list missing tools: ${missing_tools[*]}"
     echo "  Response: $(echo "$tools_response" | head -c 300)"
   fi
+fi
+
+# ---------------------------------------------------------------------------
+# Check 6: search_items returns a canonical JScholarship record
+# (Solr candidates re-validated through DSpace REST)
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "--- Canonical Resolution ---"
+
+search_payload="{\"jsonrpc\":\"2.0\",\"id\":3,\"method\":\"tools/call\",\"params\":{\"name\":\"search_items\",\"arguments\":{\"query\":\"${SMOKE_QUERY}\",\"repositories\":\"jscholarship\",\"limit\":1}}}"
+search_response=$(mcp_call "$search_payload")
+
+record_id=$(echo "$search_response" | grep -o '"id":"jscholarship:[0-9a-f-]\{36\}"' | head -1 | cut -d'"' -f4)
+record_handle=$(echo "$search_response" | grep -o '"type":"handle","value":"[^"]*"' | head -1 | cut -d'"' -f8)
+
+if [[ -n "$record_id" ]] && tool_call_ok "$search_response"; then
+  pass "search_items returned ${record_id}"
+else
+  fail "search_items returned no JScholarship record for \"${SMOKE_QUERY}\""
+  echo "  Response: $(echo "$search_response" | head -c 300)"
+fi
+
+# ---------------------------------------------------------------------------
+# Check 7: get_item resolves that record by ID, with files and full metadata
+# (DSpace item + bundles endpoints)
+# ---------------------------------------------------------------------------
+
+if [[ -n "$record_id" ]]; then
+  get_payload="{\"jsonrpc\":\"2.0\",\"id\":4,\"method\":\"tools/call\",\"params\":{\"name\":\"get_item\",\"arguments\":{\"repository\":\"jscholarship\",\"identifier\":\"${record_id}\"}}}"
+  get_response=$(mcp_call "$get_payload")
+  if tool_call_ok "$get_response" && echo "$get_response" | grep -q '"metadata"'; then
+    pass "get_item resolved ${record_id} with metadata"
+    # Metadata still returns when DSpace cannot list files; flag it without
+    # failing the deploy, since the fault is in DSpace, not this service.
+    if echo "$get_response" | grep -q '"filesStatus":"unavailable"'; then
+      warn "get_item returned ${record_id} without its file list (DSpace bundles call failed)"
+    fi
+  else
+    fail "get_item failed for ${record_id}"
+    echo "  Response: $(echo "$get_response" | head -c 300)"
+  fi
+else
+  fail "get_item by ID skipped — no record from search_items"
+fi
+
+# ---------------------------------------------------------------------------
+# Check 8: get_item resolves the same record by Handle (DSpace pid/find)
+# ---------------------------------------------------------------------------
+
+if [[ -n "$record_handle" ]]; then
+  handle_payload="{\"jsonrpc\":\"2.0\",\"id\":5,\"method\":\"tools/call\",\"params\":{\"name\":\"get_item\",\"arguments\":{\"repository\":\"jscholarship\",\"identifier\":\"${record_handle}\"}}}"
+  handle_response=$(mcp_call "$handle_payload")
+  if tool_call_ok "$handle_response"; then
+    pass "get_item resolved Handle ${record_handle}"
+  else
+    fail "get_item failed for Handle ${record_handle}"
+    echo "  Response: $(echo "$handle_response" | head -c 300)"
+  fi
+else
+  warn "get_item by Handle skipped — search result carried no Handle"
 fi
 
 # ---------------------------------------------------------------------------

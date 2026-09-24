@@ -7,6 +7,7 @@
  * only approved metadata keys; hostile fields smuggled onto the event object
  * and research-content values smuggled into known fields never survive.
  * EMF metric lines carry only numeric aggregates and the tool dimension.
+ * Backend-fault lines carry only closed-shape tokens, never messages or URLs.
  */
 
 import { describe, expect, test } from "bun:test";
@@ -15,9 +16,10 @@ import {
   METRICS_NAMESPACE,
   createLogger,
   emitToolMetrics,
+  serializeBackendFault,
   serializeToolInvocation,
 } from "../../src/observability/index";
-import type { ToolInvocationLog } from "../../src/observability/index";
+import type { BackendFaultLog, ToolInvocationLog } from "../../src/observability/index";
 
 const NUM_RUNS = 150;
 
@@ -125,5 +127,74 @@ describe("Property 14: logs exclude content", () => {
       }),
       { numRuns: 50 },
     );
+  });
+});
+
+describe("Backend-fault lines carry only closed-shape tokens", () => {
+  const FAULT_KEYS = [
+    "effect",
+    "errorName",
+    "operation",
+    "repository",
+    "status",
+    "timestamp",
+    "tool",
+    "type",
+  ];
+
+  test("hostile operation, name, status, and smuggled fields never survive", () => {
+    fc.assert(
+      fc.property(
+        fc.string({ maxLength: 300 }),
+        fc.string({ maxLength: 300 }),
+        fc.oneof(fc.integer(), fc.double(), fc.constant(null)),
+        fc.constantFrom(...RESEARCH_CONTENT),
+        (operation, errorName, status, hostile) => {
+          const event = {
+            timestamp: "2026-01-01T00:00:00.000Z",
+            tool: "get_item",
+            repository: "jscholarship",
+            operation,
+            errorName,
+            status,
+            message: hostile,
+            url: "http://internal-private-dspace-stage-alb/server/api",
+          } as BackendFaultLog & { message: string; url: string };
+          const serialized = serializeBackendFault(event);
+          expect(Object.keys(serialized).sort()).toEqual(FAULT_KEYS);
+          expect(serialized.operation).toMatch(/^([a-z_]{1,40}|unknown)$/);
+          expect(serialized.errorName).toMatch(/^[A-Za-z]{1,60}$/);
+          const s = serialized.status;
+          expect(
+            s === null || (Number.isInteger(s) && (s as number) >= 100 && (s as number) <= 599),
+          ).toBe(true);
+          expect(JSON.stringify(serialized)).not.toContain("internal-private");
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
+  });
+
+  test("the logger emits the serialized shape", () => {
+    const lines: string[] = [];
+    createLogger((line) => lines.push(line)).backendFault({
+      timestamp: "2026-01-01T00:00:00.000Z",
+      tool: "get_item",
+      repository: "jscholarship",
+      operation: "bundles",
+      errorName: "DSpaceRequestError",
+      status: 500,
+      effect: "files_omitted",
+    });
+    expect(JSON.parse(lines[0] ?? "{}")).toEqual({
+      type: "backend_fault",
+      timestamp: "2026-01-01T00:00:00.000Z",
+      tool: "get_item",
+      repository: "jscholarship",
+      operation: "bundles",
+      errorName: "DSpaceRequestError",
+      status: 500,
+      effect: "files_omitted",
+    });
   });
 });

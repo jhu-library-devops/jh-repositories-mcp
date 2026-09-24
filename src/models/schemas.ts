@@ -9,6 +9,12 @@
  */
 
 import { z } from "zod";
+import {
+  MAX_METADATA_FIELDS,
+  MAX_METADATA_FIELD_NAME_LENGTH,
+  MAX_METADATA_VALUES_PER_FIELD,
+  MAX_METADATA_VALUE_LENGTH,
+} from "./factories";
 
 // ─── Shared Constants ────────────────────────────────────────────────────────
 
@@ -209,9 +215,22 @@ const publicFileSummarySchema = z
   })
   .strict();
 
+const metadataFieldSchema = z
+  .object({
+    field: z.string().min(1).max(MAX_METADATA_FIELD_NAME_LENGTH),
+    label: z.string().min(1).max(MAX_METADATA_FIELD_NAME_LENGTH),
+    values: z
+      .array(z.string().min(1).max(MAX_METADATA_VALUE_LENGTH))
+      .min(1)
+      .max(MAX_METADATA_VALUES_PER_FIELD),
+  })
+  .strict();
+
 export const itemDetailSchema = repositoryRecordSchema
   .extend({
     files: z.array(publicFileSummarySchema).max(100),
+    filesStatus: z.enum(["complete", "unavailable"]),
+    metadata: z.array(metadataFieldSchema).max(MAX_METADATA_FIELDS),
   })
   .strict();
 

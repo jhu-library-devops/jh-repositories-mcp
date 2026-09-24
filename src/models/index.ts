@@ -18,6 +18,13 @@ export {
 export {
   createRepositoryRecord,
   createItemDetail,
+  boundMetadata,
+  MAX_METADATA_FIELDS,
+  MAX_METADATA_VALUES_PER_FIELD,
+  MAX_METADATA_VALUE_LENGTH,
+  MAX_METADATA_FIELD_NAME_LENGTH,
+  type ItemDetailExtras,
+  type MetadataFieldInput,
   type RepositoryRecordInput,
 } from "./factories";
 
@@ -140,8 +147,30 @@ export interface RepositoryRecord {
 
 // ─── Item Detail (Full Record) ───────────────────────────────────────────────
 
+/**
+ * One canonical metadata field as the platform's public API returned it,
+ * named by the platform's own field identifier (e.g. `dc.description.sponsorship`
+ * for DSpace, `authorAffiliation` for Dataverse) and carrying a reader-facing
+ * label (e.g. `Sponsor`, `Author affiliation`). Values are untrusted data.
+ */
+export interface MetadataField {
+  field: string;
+  label: string;
+  values: string[];
+}
+
+/**
+ * Whether `files`, `fileCount`, `formats`, and `access.status` reflect the
+ * canonical file listing. `unavailable` means the listing could not be
+ * retrieved: `files` is empty and those fields are not authoritative.
+ */
+export type FilesStatus = "complete" | "unavailable";
+
 export interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
+  filesStatus: FilesStatus;
+  /** Full public canonical metadata, in the platform's display order. */
+  metadata: MetadataField[];
 }
 
 // ─── Search Request ──────────────────────────────────────────────────────────

@@ -14,7 +14,7 @@ import { afterAll, beforeAll, describe, expect, test } from "bun:test";
 import { Hono } from "hono";
 import type { RepositoryAdapter } from "../../src/adapters/index";
 import { SERVER_INSTRUCTIONS } from "../../src/mcp/instructions";
-import { createRepositoryServer } from "../../src/mcp/registry";
+import { FILES_UNAVAILABLE_NOTE, createRepositoryServer } from "../../src/mcp/registry";
 import type { ToolContext } from "../../src/mcp/tools/search-items";
 import { createMcpTransport } from "../../src/mcp/transport";
 import { createItemDetail, createRepositoryRecord } from "../../src/models/index";
@@ -22,6 +22,8 @@ import type { ItemDetail, RepositoryId } from "../../src/models/index";
 import { deadlineMiddleware, edgeMiddleware } from "../../src/security/index";
 
 // ─── Stub context ────────────────────────────────────────────────────────────
+
+const DEGRADED_ID = "jscholarship:99999999-9999-9999-9999-999999999999";
 
 function detail(repository: RepositoryId): ItemDetail {
   const record = createRepositoryRecord({
@@ -39,12 +41,23 @@ function detail(repository: RepositoryId): ItemDetail {
       retrievedAt: "2026-07-30T00:00:00.000Z",
     },
   });
-  return createItemDetail(record, []);
+  return createItemDetail(record, [], {
+    metadata: [
+      // Repeats the summary title line, so text should not show it twice.
+      { field: "dc.title", label: "Title", values: [`Sample ${repository} record`], order: 0 },
+      {
+        field: "dc.description.sponsorship",
+        label: "Sponsor",
+        values: ["National Science Foundation"],
+      },
+      { field: "dc.subject", label: "Subject", values: ["Wetlands", "Climate"] },
+    ],
+  });
 }
 
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   const item = detail(repository);
-  const { files: _files, ...summary } = item;
+  const { files: _files, filesStatus: _filesStatus, metadata: _metadata, ...summary } = item;
   return {
     id: repository,
     async validateSchema() {
@@ -66,7 +79,11 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
         warnings: [],
       };
     },
-    async get() {
+    async get(identifier) {
+      // One sentinel ID stands in for an item whose file list failed to load.
+      if (identifier.value === DEGRADED_ID) {
+        return createItemDetail(item, [], { metadata: item.metadata, filesStatus: "unavailable" });
+      }
       return item;
     },
     async facets() {
@@ -199,6 +216,10 @@ describe("MCP registry over stateless HTTP", () => {
     // Referral is the ceiling: the host model hands over a URL rather than
     // querying other JHU systems for the researcher.
     expect(instructions).toContain("Refer, do not retrieve");
+
+    // Failures reach the researcher in plain language, not as internal codes.
+    expect(instructions).toContain("Explain problems in plain language");
+    expect(instructions).toContain("file list couldn't be loaded");
   });
 
   test("server instructions mention the retired digital collections host only as retired", () => {
@@ -232,6 +253,66 @@ describe("MCP registry over stateless HTTP", () => {
     }
   });
 
+  test("get_item returns full metadata in structuredContent and the text block", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "get_item",
+      arguments: {
+        repository: "jscholarship",
+        identifier: "jscholarship:11111111-1111-1111-1111-111111111111",
+      },
+    });
+    expect(result.isError).toBeUndefined();
+    const structured = result.structuredContent as { metadata: unknown };
+    expect(structured.metadata).toEqual([
+      { field: "dc.title", label: "Title", values: ["Sample jscholarship record"] },
+      {
+        field: "dc.description.sponsorship",
+        label: "Sponsor",
+        values: ["National Science Foundation"],
+      },
+      { field: "dc.subject", label: "Subject", values: ["Wetlands", "Climate"] },
+    ]);
+    const content = result.content as Array<Record<string, unknown>>;
+    const text = String(content[0]?.text);
+    expect(text).toContain("Details:");
+    expect(text).toContain("Sponsor: National Science Foundation");
+    expect(text).toContain("Subject: Wetlands | Climate");
+    // The summary already shows the title; Details does not repeat it.
+    expect(text).not.toContain("Title: Sample jscholarship record");
+    expect(text.indexOf("Sample jscholarship record")).toBe(
+      text.lastIndexOf("Sample jscholarship record"),
+    );
+    // Platform field names stay in structuredContent, out of the chat text.
+    expect(text).not.toContain("dc.");
+    expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("complete");
+  });
+
+  test("get_item with an unloadable file list shows metadata and a plain-language note", async () => {
+    const result = await rpcResult("tools/call", {
+      name: "get_item",
+      arguments: { repository: "jscholarship", identifier: DEGRADED_ID },
+    });
+    // Not an error: the record itself resolved.
+    expect(result.isError).toBeUndefined();
+    const text = String((result.content as Array<Record<string, unknown>>)[0]?.text);
+    expect(text).toContain(FILES_UNAVAILABLE_NOTE);
+    expect(text).toContain("Sponsor: National Science Foundation");
+    // No operator vocabulary reaches the chat.
+    for (const term of [
+      "filesStatus",
+      "unavailable",
+      "backend",
+      "bundles",
+      "HTTP",
+      "DSpace",
+      "Access: ",
+      "dc.",
+    ]) {
+      expect(text).not.toContain(term);
+    }
+    expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("unavailable");
+  });
+
   test("search_items returns structuredContent, compact text, and resource links", async () => {
     const result = await rpcResult("tools/call", {
       name: "search_items",
@@ -243,6 +324,10 @@ describe("MCP registry over stateless HTTP", () => {
     const content = result.content as Array<Record<string, unknown>>;
     expect(content[0]?.type).toBe("text");
     expect(String(content[0]?.text)).toContain("Sample jscholarship record");
+    // Full metadata belongs to get_item only; search results stay summaries.
+    for (const record of structured.results as Array<Record<string, unknown>>) {
+      expect(record).not.toHaveProperty("metadata");
+    }
     const links = content.filter((c) => c.type === "resource_link");
     expect(links.length).toBeGreaterThan(0);
     expect(String(links[0]?.uri)).toStartWith("jhu-repo://");

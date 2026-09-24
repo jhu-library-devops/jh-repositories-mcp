@@ -241,6 +241,29 @@ describe("withCaching", () => {
     inner.probeResult = new Error("probe backend down");
     await expect(cached.get(IDENTIFIER)).rejects.toThrow("probe backend down");
   });
+
+  test("a degraded record is served but never cached, and its cause passes through", async () => {
+    const inner = instrumentedAdapter();
+    const degraded = createItemDetail(itemDetail(), [], { filesStatus: "unavailable" });
+    const seen: unknown[] = [];
+    inner.get = async (_identifier, options) => {
+      inner.getCalls += 1;
+      options?.onDegraded?.(new Error("bundles down"));
+      return degraded;
+    };
+    const cached = withCaching(inner, {
+      searchTtlMs: 60_000,
+      canonicalRecordTtlMs: 300_000,
+      maxEntries: 50,
+    });
+    const onDegraded = (cause: unknown) => seen.push(cause);
+    expect((await cached.get(IDENTIFIER, { onDegraded }))?.filesStatus).toBe("unavailable");
+    await cached.get(IDENTIFIER, { onDegraded });
+    // Both calls went to the canonical API: nothing was cached, nothing probed.
+    expect(inner.getCalls).toBe(2);
+    expect(inner.probeCalls).toBe(0);
+    expect(seen).toHaveLength(2);
+  });
 });
 
 // ─── Concurrency semaphore (Requirement 14.6) ───────────────────────────────

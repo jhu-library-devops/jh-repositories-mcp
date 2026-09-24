@@ -532,6 +532,14 @@ interface RepositoryRecord {
 
 interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
+  filesStatus: "complete" | "unavailable";
+  metadata: MetadataField[];         // full public canonical metadata, in display order
+}
+
+interface MetadataField {
+  field: string;                     // platform field id: "dc.description.sponsorship", "authorAffiliation"
+  label: string;                     // reader-facing: "Sponsor", "Author affiliation"
+  values: string[];
 }
 
 interface Creator {
@@ -551,6 +559,10 @@ interface PublicFileSummary {
 ~~~
 
 Search and related tools return `RepositoryRecord` summaries (the SearchResult projection). `get_item` and item resources return `ItemDetail` with the expanded `files` array. Optional values are required-but-nullable so clients receive a stable object shape. Files are capped at 100; `fileCount` records the public count reported by the canonical platform and may exceed the returned file-summary length. (Requirements 4, 5)
+
+`metadata` carries every field the Canonical_API returns to an anonymous caller, so a researcher sees the whole record, not just the normalized projection. The DSpace client passes through the item's `metadata` map; the Dataverse client flattens every metadata block, emitting compound values as their leaf sub-fields (`authorName`, `authorAffiliation`). Each client withholds fields that carry submitter or contact email addresses (`dc.description.provenance`, `datasetContactEmail`). The shared factory merges repeated names, drops empty values, sorts by the adapter-supplied display position and then by field name, and caps at 200 fields (after sorting, so the least important fields are the ones dropped), 100 values per field, and 10,000 characters per value. Each adapter labels and orders the fields it knows through its own display table (`jscholarship/metadata-labels.ts`, `jhrdr/metadata-labels.ts`). JScholarship follows DSpace's simple item view: title, people, dates, abstract and subjects, type and publication, identifiers, rights, then any unlisted fields, and the repository's record-keeping dates (accessioned, available) last. JHRDR follows the Dataverse citation block as the dataset page shows it, then the geospatial block, then unlisted fields. In the text block, a field whose values all repeat a summary line (title, creators, date, citation, link) is skipped, compared by value so the MCP layer needs no platform field names. The structured result keeps every field. Any other field gets a label generated from its name, with DSpace's schema prefix dropped (`dc.date.embargo` → `Date embargo`). The `get_item` text block lists the fields under a "Details" heading by label only, never by platform identifier, with each value cut to 1,000 characters and the section to 20,000 characters. Canonicalization strips `metadata` along with `files`, so search and related results remain SearchResult summaries. Values are untrusted data and never enter prompt or instruction roles. (Requirements 5.6, 8.6)
+
+The file listing is best-effort once the record itself has passed the public gate. For DSpace it is a separate `bundles` call, made with a single attempt so a slow endpoint cannot push `get_item` past its deadline. If that call faults, the ItemDetail is still returned with `files: []` and `filesStatus: "unavailable"`, and the text block replaces the access and file lines with a plain-language note: the file list couldn't be loaded, the details shown are complete, and the researcher can open the item page or try again shortly. No status names or error codes appear in text, and the server instructions tell the host model to relay the note the same way. In that state `fileCount`, `formats`, and `access.status` are not authoritative. This stays fail-closed, because omitting files returns nothing unvalidated. The caching decorator serves a degraded record but never stores it, so the next call retries the listing. Dataverse returns files in the same version response, so its records are always `complete`. (Requirement 5.7)
 
 #### Search Response
 
@@ -714,6 +726,23 @@ Each tool invocation emits one structured summary event:
   "build": "git-sha"
 }
 ~~~
+
+When `get_item`, a resource read, or `find_related_items` resolves a source and the Canonical_API faults, the client receives only the opaque `backend_unavailable` error, and the server logs one closed-shape event for operators:
+
+~~~json
+{
+  "type": "backend_fault",
+  "timestamp": "2026-07-14T15:00:00Z",
+  "tool": "get_item",
+  "repository": "jscholarship",
+  "operation": "bundles",
+  "errorName": "DSpaceRequestError",
+  "effect": "files_omitted",
+  "status": 500
+}
+~~~
+
+`operation` names the failing canonical call (`item`, `handle_lookup`, `bundles`, `probe` for DSpace). `effect` is `backend_unavailable` when the client got the opaque error, or `files_omitted` when it got the record without its file listing. No URL, identifier, or error message is logged. (Requirement 15.10)
 
 Raw query text and filter values are absent. For aggregate zero-result analysis, the system may log a one-way, rotating-salt query hash only after privacy review; it is not part of v1 by default. (Requirement 15)
 

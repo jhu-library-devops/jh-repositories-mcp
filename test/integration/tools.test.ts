@@ -13,6 +13,7 @@ import { describe, expect, test } from "bun:test";
 import type { RepositoryAdapter } from "../../src/adapters/index";
 import { computeQueryHash, decodeCursor, encodeCursor } from "../../src/federation/index";
 import { ToolFailure } from "../../src/mcp/errors";
+import { findRelatedItems } from "../../src/mcp/tools/find-related-items";
 import { classifyIdentifier, getItem } from "../../src/mcp/tools/get-item";
 import { searchItems } from "../../src/mcp/tools/search-items";
 import type { ToolContext } from "../../src/mcp/tools/search-items";
@@ -29,6 +30,7 @@ import type {
   RepositoryPage,
   RepositorySearchRequest,
 } from "../../src/models/index";
+import type { BackendFaultLog } from "../../src/observability/index";
 
 // ─── Stub adapters ───────────────────────────────────────────────────────────
 
@@ -379,5 +381,89 @@ describe("get_item: identifier routing and resolution", () => {
     expect(failure?.code).toBe("backend_unavailable");
     expect(failure?.message).not.toContain("10.0.3.17");
     expect(failure?.message).not.toContain("ETIMEDOUT");
+  });
+
+  test("backend faults reach the operator hook with the failing call, not the message", async () => {
+    const cause = Object.assign(new Error("DSpace returned HTTP 500 at 10.0.3.17"), {
+      name: "DSpaceRequestError",
+      status: 500,
+      operation: "bundles",
+    });
+    for (const run of [
+      (ctx: ToolContext) =>
+        getItem(ctx, { repository: "jscholarship", identifier: "1774.2/99999" }),
+      (ctx: ToolContext) =>
+        findRelatedItems(ctx, {
+          repository: "jscholarship",
+          identifier: "1774.2/99999",
+          targetRepositories: "all",
+          limit: 5,
+        }),
+    ]) {
+      const faults: BackendFaultLog[] = [];
+      const ctx = {
+        ...context({ getResult: cause }),
+        onBackendFault: (f: BackendFaultLog) => faults.push(f),
+      };
+      const code = await run(ctx).then(
+        () => null,
+        (e: ToolFailure) => e.toolError.code,
+      );
+      expect(code).toBe("backend_unavailable");
+      expect(faults).toHaveLength(1);
+      expect(faults[0]).toMatchObject({
+        repository: "jscholarship",
+        operation: "bundles",
+        errorName: "DSpaceRequestError",
+        status: 500,
+        effect: "backend_unavailable",
+      });
+      expect(JSON.stringify(faults[0])).not.toContain("10.0.3.17");
+    }
+  });
+});
+
+describe("get_item: degraded file listing", () => {
+  test("returns metadata with filesStatus unavailable and logs files_omitted", async () => {
+    const degraded = createItemDetail(summary("jscholarship", 1), [], {
+      filesStatus: "unavailable",
+      metadata: [{ field: "dc.title", label: "Title", values: ["Sample"] }],
+    });
+    const base = context({ getResult: degraded });
+    const adapter = base.adapters.get("jscholarship");
+    if (!adapter) throw new Error("expected adapter");
+    const faults: BackendFaultLog[] = [];
+    const ctx: ToolContext = {
+      adapters: new Map([
+        [
+          "jscholarship",
+          {
+            ...adapter,
+            async get(_identifier, options) {
+              options?.onDegraded?.(
+                Object.assign(new Error("HTTP 500"), {
+                  name: "DSpaceRequestError",
+                  status: 500,
+                  operation: "bundles",
+                }),
+              );
+              return degraded;
+            },
+          },
+        ],
+      ]),
+      onBackendFault: (fault) => faults.push(fault),
+    };
+    const output = await getItem(ctx, { repository: "jscholarship", identifier: "1774.2/99999" });
+    expect(output.filesStatus).toBe("unavailable");
+    expect(output.metadata).toEqual([{ field: "dc.title", label: "Title", values: ["Sample"] }]);
+    expect(getItemOutputSchema.safeParse(output).success).toBe(true);
+    expect(faults).toHaveLength(1);
+    expect(faults[0]).toMatchObject({
+      tool: "get_item",
+      operation: "bundles",
+      status: 500,
+      effect: "files_omitted",
+    });
   });
 });

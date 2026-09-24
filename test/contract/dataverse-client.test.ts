@@ -231,3 +231,85 @@ describe("minimal-GET revalidation probe (Requirement 15.9)", () => {
     await expect(client.probeDatasetPublic(DOI)).rejects.toThrow(DataverseRequestError);
   });
 });
+
+describe("full canonical metadata passthrough", () => {
+  test("flattens every block and compound sub-field, withholding the contact email", async () => {
+    const version = dataverseDataset.data;
+    const withExtras = {
+      ...dataverseDataset,
+      data: {
+        ...version,
+        metadataBlocks: {
+          ...version.metadataBlocks,
+          citation: {
+            ...version.metadataBlocks.citation,
+            fields: [
+              ...version.metadataBlocks.citation.fields,
+              {
+                typeName: "datasetContact",
+                multiple: true,
+                typeClass: "compound",
+                value: [
+                  {
+                    datasetContactName: {
+                      typeName: "datasetContactName",
+                      multiple: false,
+                      typeClass: "primitive",
+                      value: "Data Services",
+                    },
+                    datasetContactEmail: {
+                      typeName: "datasetContactEmail",
+                      multiple: false,
+                      typeClass: "primitive",
+                      value: "contact@example.edu",
+                    },
+                  },
+                ],
+              },
+            ],
+          },
+          geospatial: {
+            displayName: "Geospatial Metadata",
+            fields: [
+              {
+                typeName: "geographicUnit",
+                multiple: true,
+                typeClass: "primitive",
+                value: ["County", "State"],
+              },
+            ],
+          },
+        },
+      },
+    };
+    const client = makeClient({ [happyKey]: () => json(withExtras) });
+    const item = await client.resolveDataset(DOI, { expandFiles: true });
+    if (!item) throw new Error("expected dataset");
+
+    const byField = new Map(item.metadata.map((entry) => [entry.field, entry.values]));
+    // Citation-block order as on the dataset page, then the geospatial block.
+    const expectedOrder = [
+      "title",
+      "authorName",
+      "authorAffiliation",
+      "datasetContactName",
+      "dsDescriptionValue",
+      "subject",
+      "keywordValue",
+      "geographicUnit",
+    ];
+    expect([...byField.keys()].filter((field) => expectedOrder.includes(field))).toEqual(
+      expectedOrder,
+    );
+    expect(byField.get("title")).toEqual([item.title]);
+    expect(byField.get("authorName")).toEqual(item.creators.map((c) => c.name));
+    expect(byField.get("geographicUnit")).toEqual(["County", "State"]);
+    expect(byField.get("datasetContactName")).toEqual(["Data Services"]);
+    expect(byField.has("datasetContactEmail")).toBe(false);
+    const labels = new Map(item.metadata.map((entry) => [entry.field, entry.label]));
+    expect(labels.get("authorName")).toBe("Author");
+    expect(labels.get("geographicUnit")).toBe("Geographic unit");
+    expect(labels.get("datasetContactName")).toBe("Contact");
+    expect(JSON.stringify(item)).not.toContain("contact@example.edu");
+  });
+});

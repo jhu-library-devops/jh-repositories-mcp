@@ -22,11 +22,13 @@ import type {
   Creator,
   DateValue,
   ItemDetail,
+  MetadataFieldInput,
   PersistentId,
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
 import { withRetry } from "../retry";
+import { dataverseFieldDisplay } from "./metadata-labels";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -223,7 +225,7 @@ export class DataverseClient {
       fileCount: publicCount,
       formats,
     });
-    return createItemDetail(record, files);
+    return createItemDetail(record, files, { metadata: canonicalMetadata(version) });
   }
 
   private normalizeFiles(rawFiles: unknown): {
@@ -309,6 +311,66 @@ export class DataverseClient {
 }
 
 // ─── Normalization helpers ───────────────────────────────────────────────────
+
+/**
+ * Leaf fields withheld from the metadata passthrough. Dataverse returns the
+ * dataset contact's email address to anonymous callers unless
+ * `:ExcludeEmailFromExport` is set; the landing page offers a contact form
+ * instead, so the address is never passed through.
+ */
+const WITHHELD_METADATA_FIELDS: ReadonlySet<string> = new Set(["datasetContactEmail"]);
+
+interface DataverseField {
+  readonly typeName?: unknown;
+  readonly value?: unknown;
+}
+
+/**
+ * Flatten every metadata block (citation, geospatial, social science, ...)
+ * into leaf fields named by Dataverse's own `typeName`. Compound values
+ * contribute one entry per sub-field (`authorName`, `authorAffiliation`, ...).
+ */
+function canonicalMetadata(version: Record<string, unknown>): MetadataFieldInput[] {
+  const blocks = version.metadataBlocks;
+  if (typeof blocks !== "object" || blocks === null) {
+    return [];
+  }
+  const fields: MetadataFieldInput[] = [];
+  for (const block of Object.values(blocks as Record<string, { fields?: unknown }>)) {
+    if (!Array.isArray(block?.fields)) {
+      continue;
+    }
+    for (const field of block.fields as DataverseField[]) {
+      collectField(field, fields);
+    }
+  }
+  return fields;
+}
+
+function collectField(field: DataverseField, out: MetadataFieldInput[]): void {
+  if (typeof field?.typeName !== "string" || WITHHELD_METADATA_FIELDS.has(field.typeName)) {
+    return;
+  }
+  const entries = Array.isArray(field.value) ? field.value : [field.value];
+  const strings: string[] = [];
+  for (const entry of entries) {
+    if (typeof entry === "string") {
+      strings.push(entry);
+    } else if (typeof entry === "object" && entry !== null) {
+      // Compound value: an object of sub-fields keyed by their typeName.
+      for (const sub of Object.values(entry as Record<string, DataverseField>)) {
+        collectField(sub, out);
+      }
+    }
+  }
+  if (strings.length > 0) {
+    out.push({
+      field: field.typeName,
+      ...dataverseFieldDisplay(field.typeName),
+      values: strings,
+    });
+  }
+}
 
 function citationFields(version: Record<string, unknown>): CitationField[] {
   const blocks = version.metadataBlocks as { citation?: { fields?: unknown } } | undefined;

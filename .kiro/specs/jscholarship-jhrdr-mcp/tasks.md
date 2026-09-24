@@ -176,6 +176,12 @@
     - _Requirements: 4, 5.2, 8.4_
   - [x] 12.3 Enforce indistinguishable not-found behavior and backend-safe errors
     - _Requirements: 5.4-5.5, 9.5_
+  - [x] 12.4 Return full public canonical metadata in ItemDetail and resolve DSpace Handles through the <code>pid/find</code> redirect
+    - _Requirements: 5.1, 5.6, 8.6_
+  - [x] 12.5 Log a closed-shape backend-fault event behind every <code>backend_unavailable</code> from canonical resolution
+    - _Requirements: 5.5, 15.5-15.6, 15.10_
+  - [x] 12.6 Degrade a failed file listing to metadata with <code>filesStatus: "unavailable"</code>, uncached, instead of failing the lookup
+    - _Requirements: 5.7, 15.4, 15.10_
 
 - [x] 13. Implement <code>list_facets</code>
   - [x] 13.1 Map common facet concepts to each adapter and execute selected repositories concurrently
@@ -293,6 +299,7 @@
     - _Requirements: 13, 16.8_
   - [x] 22.4 Add post-deployment smoke tests and target-health rollback behavior
     - _Requirements: 12, 13.9, 16.6_
+    - NOTE (2026-09-24): the smoke test now sends the <code>Accept</code> header the Streamable HTTP transport requires and exercises <code>search_items</code> plus <code>get_item</code> by ID and by Handle, so a broken canonical path fails the deploy.
 
 - [x] 23. Complete protocol, security, and failure verification
   - [x] 23.1 Run a real MCP client through every tool, resource reads, prompt retrieval, malformed protocol messages, and graceful shutdown against the Bun production container

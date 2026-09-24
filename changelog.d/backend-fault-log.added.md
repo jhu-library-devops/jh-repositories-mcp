@@ -1,0 +1,1 @@
+Log a backend_fault line (tool, repository, failing call, HTTP status) whenever get_item or find_related_items returns backend_unavailable, so the cause is visible to operators without reaching clients

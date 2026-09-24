@@ -101,6 +101,8 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 3. IF the identifier is malformed, THEN THE MCP_Server SHALL reject it before calling Solr or a Canonical_API.
 4. IF the identifier does not exist or identifies a non-public record, THEN THE MCP_Server SHALL return the same <code>not_found</code> response shape in both cases.
 5. IF the Canonical_API is unavailable, THEN THE MCP_Server SHALL return a structured <code>backend_unavailable</code> tool error without exposing internal URLs or stack traces.
+6. THE MCP_Server SHALL include in every ItemDetail the record's full public canonical metadata as returned by the Canonical_API to an anonymous caller, named by the platform's own field identifier, carrying a reader-facing label, and ordered for display (the platform's familiar order for known fields, then other fields by name, with repository record-keeping dates last), bounded to 200 fields, 100 values per field, and 10,000 characters per value. Fields that record submitter or contact email addresses (DSpace <code>dc.description.provenance</code>, Dataverse <code>datasetContactEmail</code>) SHALL be withheld even when the Canonical_API returns them. The text representation SHALL show each field by its label rather than its platform identifier, and SHALL NOT repeat a field whose values the summary lines already show. SearchResult projections SHALL NOT carry this metadata.
+7. IF a Public_Record resolves but its public file listing cannot be retrieved, THEN THE MCP_Server SHALL still return the ItemDetail with its metadata, an empty file array, and <code>filesStatus</code> set to <code>unavailable</code>, and SHALL NOT cache that degraded record; otherwise <code>filesStatus</code> SHALL be <code>complete</code>. The text representation SHALL tell the user in plain language, without internal codes or field names, that the file list could not be loaded and how to reach the files.
 
 ### Requirement 6: Faceted Refinement
 
@@ -246,6 +248,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 7. THE MCP_Server SHALL publish CloudWatch metrics for invocation count, latency, errors, zero-result searches, Partial_Result responses, backend availability, validation omissions, cache hits, and rate-limit events.
 8. THE MCP_Server SHALL expose build version and commit identifier in health metadata and logs.
 9. BEFORE returning a cached Canonical_Record from <code>get_item</code> or a resource read, THE MCP_Server SHALL perform a lightweight revalidation probe against the Canonical_API to confirm the record remains publicly accessible; IF the probe indicates the record is no longer public, THE MCP_Server SHALL evict the cache entry and return the same <code>not_found</code> response as for a nonexistent record.
+10. WHEN a Canonical_API lookup surfaces as <code>backend_unavailable</code> or returns an ItemDetail with <code>filesStatus</code> <code>unavailable</code>, THE MCP_Server SHALL log a backend-fault event containing only the timestamp, tool, Repository, the failing canonical call's name, the error class name, the HTTP status when one was received, and which of those two effects the client saw.
 
 ### Requirement 16: Verification and Pilot Evaluation
 

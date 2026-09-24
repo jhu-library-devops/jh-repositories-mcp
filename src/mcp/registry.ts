@@ -118,6 +118,18 @@ function searchText(output: SearchItemsOutput): string {
 function itemText(item: ItemDetail): string {
   const creators = item.creators.map((c) => c.name).join("; ") || "Unknown";
   const pid = item.persistentId?.url ?? item.landingPageUrl;
+  if (item.filesStatus === "unavailable") {
+    // Written for the researcher, not the operator: no status names or codes.
+    return [
+      `${item.title}`,
+      `Creators: ${creators}`,
+      `Date: ${item.date.display ?? "n.d."} | Repository: ${item.repository}`,
+      FILES_UNAVAILABLE_NOTE,
+      `Cite: ${item.citation ?? pid}`,
+      `Link: ${pid}`,
+      ...metadataText(item),
+    ].join("\n");
+  }
   return [
     `${item.title}`,
     `Creators: ${creators}`,
@@ -125,7 +137,80 @@ function itemText(item: ItemDetail): string {
     `Public files: ${item.fileCount}${item.formats.length > 0 ? ` (${item.formats.join(", ")})` : ""}`,
     `Cite: ${item.citation ?? pid}`,
     `Link: ${pid}`,
+    ...metadataText(item),
   ].join("\n");
+}
+
+/** Shown in place of the file summary when the file list could not be loaded. */
+export const FILES_UNAVAILABLE_NOTE =
+  "Files: The list of files for this item couldn't be loaded right now. The details below are complete. To see or download the files, open the item page at the link below, or try again in a few minutes.";
+
+/**
+ * Values the summary lines above Details already show: title, creators,
+ * date, citation, and links. A Details field whose every value is among
+ * these is skipped in text so nothing is said twice; structuredContent
+ * keeps it. Compared by value, so no platform field names are needed here.
+ */
+function summaryValues(item: ItemDetail): Set<string> {
+  return new Set(
+    [
+      item.title,
+      ...item.creators.map((creator) => creator.name),
+      item.date.value,
+      item.date.display,
+      item.citation,
+      item.landingPageUrl,
+      item.persistentId?.url,
+    ]
+      .filter((value): value is string => typeof value === "string" && value.length > 0)
+      .map(normalizeForCompare),
+  );
+}
+
+function normalizeForCompare(value: string): string {
+  return value.replace(/\s+/g, " ").trim().toLowerCase();
+}
+
+/** Per-value and overall bounds for the metadata section of the text block. */
+const MAX_TEXT_METADATA_VALUE = 1_000;
+const MAX_TEXT_METADATA_CHARS = 20_000;
+
+/**
+ * The full metadata as `Label: value | value` lines under a "Details" heading,
+ * bounded so the text block stays usable; the complete set, with the
+ * platform field names, is always in structuredContent.
+ */
+function metadataText(item: ItemDetail): string[] {
+  if (item.metadata.length === 0) {
+    return [];
+  }
+  const repeated = summaryValues(item);
+  const shown = item.metadata.filter(
+    ({ values }) => !values.every((value) => repeated.has(normalizeForCompare(value))),
+  );
+  if (shown.length === 0) {
+    return [];
+  }
+  const lines = ["Details:"];
+  let used = 0;
+  for (const [index, { label, values }] of shown.entries()) {
+    const rendered = values
+      .map((value) =>
+        value.length > MAX_TEXT_METADATA_VALUE
+          ? `${value.slice(0, MAX_TEXT_METADATA_VALUE)}…`
+          : value,
+      )
+      .join(" | ")
+      .replace(/\s+/g, " ");
+    const line = `  ${label}: ${rendered}`;
+    if (used + line.length > MAX_TEXT_METADATA_CHARS) {
+      lines.push(`  … ${shown.length - index} more field(s) in the structured result.`);
+      break;
+    }
+    lines.push(line);
+    used += line.length;
+  }
+  return lines;
 }
 
 function facetsText(output: ListFacetsOutput): string {

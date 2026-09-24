@@ -147,8 +147,8 @@ tools, registry, transport) may know that Solr, DSpace, or Dataverse exist.
 ## Commands
 
 - Install: `bun install --frozen-lockfile` (honors `.bun-version` and the
-  committed `bun.lock`). Don't use `bun ci`: it doesn't exist in the pinned
-  Bun 1.2.15 (`error: Script not found "ci"`).
+  committed `bun.lock`). The pinned Bun is 1.3.11, where `bun ci` is an
+  equivalent alias; CI and the Dockerfile use the long form.
 - Type-check: `bun run typecheck` (`tsc --noEmit` — Bun's bundler does not
   type-check)
 - Test: `bun test`
