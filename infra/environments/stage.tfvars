@@ -39,7 +39,7 @@ waf_rate_limit = 300
 # -----------------------------------------------------------------------------
 # JScholarship public URL (stage-specific)
 # -----------------------------------------------------------------------------
-jscholarship_public_url = "https://jscholarship-stage.library.jhu.edu"
+jscholarship_public_url = "https://dspace-stage.library.jhu.edu"
 
 # -----------------------------------------------------------------------------
 # Dataverse / JHRDR — not yet deployed
