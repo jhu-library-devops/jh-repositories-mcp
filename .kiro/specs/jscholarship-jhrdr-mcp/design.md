@@ -355,7 +355,7 @@ Both adapters use one generic query builder parameterized by a RepositoryProfile
 
 ~~~ts
 interface SafeSolrQuery {
-  path: "/select" | "/mlt";
+  path: "/select";                  // the only reachable request handler
   params: URLSearchParams;
   expectedFields: ReadonlySet<string>;
 }
@@ -597,11 +597,11 @@ Common facets are normalized by concept, not raw backend field:
 | resource type | DSpace type facet | Dataset type / metadata resource type |
 | collection | DSpace collection hierarchy | Parent Dataverse |
 
-Counts from separate repositories are returned with a per-repository breakdown and a summed total for labels that normalize to the same value after case-folding, whitespace collapsing, and punctuation removal (hyphens, parentheses, trailing periods). The display label uses the most frequently occurring original form. The response never implies that two differently controlled vocabularies are equivalent merely because they are similar beyond this normalization. (Requirement 6)
+Counts from separate repositories are returned with a per-repository breakdown and a summed total for labels that normalize to the same value after case-folding, whitespace collapsing, and punctuation removal (hyphens, parentheses, trailing periods). The display label uses the most frequently occurring original form. JScholarship facet values come from Discovery's <code>*_filter</code> fields, which index each value as <code>lowercase\n|||\nDisplay value</code> with an optional <code>###authority</code> suffix; the adapter decodes the display value before merging. Equality filters use the plain-valued <code>*_keyword</code> fields instead, as DSpace's own filter queries do. A blank query aggregates every record the immutable public filters allow (edismax <code>q.alt=*:*</code>), so <code>list_facets</code> without a query describes the whole public collection. The synthesized <code>repository</code> facet counts each repository's matching records (Solr <code>numFound</code>). The response never implies that two differently controlled vocabularies are equivalent merely because they are similar beyond this normalization. (Requirement 6)
 
 Related-record discovery is metadata-based:
 
-- JScholarship uses deployed DSpace <code>*_mlt</code> fields where available.
+- JScholarship uses deployed DSpace <code>*_mlt</code> fields through the MoreLikeThis search component on <code>/select</code> (<code>mlt=true</code>), as DSpace's own related-items query does; a dedicated <code>/mlt</code> handler is not assumed. Every similar document is still re-validated through DSpace REST.
 - JHRDR builds an allowlisted query from public citation metadata.
 - Cross-repository related search maps canonical source metadata to common concepts.
 - No embeddings or LLM-generated expansion occurs in v1.
@@ -742,7 +742,7 @@ When `get_item`, a resource read, or `find_related_items` resolves a source and 
 }
 ~~~
 
-`operation` names the failing canonical call (`item`, `handle_lookup`, `bundles`, `probe` for DSpace). `effect` is `backend_unavailable` when the client got the opaque error, or `files_omitted` when it got the record without its file listing. No URL, identifier, or error message is logged. (Requirement 15.10)
+`operation` names the failing canonical call (`item`, `handle_lookup`, `bundles`, `probe` for DSpace). `effect` is `backend_unavailable` when the client got the opaque error, `files_omitted` when it got the record without its file listing, or `partial_results` when another repository answered. `search_items`, `list_facets`, and `find_related_items` log each repository that failed; a Solr fault reports `operation: "solr_select"` with its HTTP status. No URL, identifier, or error message is logged. (Requirement 15.10)
 
 Raw query text and filter values are absent. For aggregate zero-result analysis, the system may log a one-way, rotating-salt query hash only after privacy review; it is not part of v1 by default. (Requirement 15)
 

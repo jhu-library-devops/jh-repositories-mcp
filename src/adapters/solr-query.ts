@@ -58,7 +58,7 @@ const DATE_VALUE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 // ─── Shared query assembly ───────────────────────────────────────────────────
 
 export interface SafeSolrQuery {
-  readonly path: "/select" | "/mlt";
+  readonly path: "/select";
   readonly params: URLSearchParams;
   readonly expectedFields: ReadonlySet<string>;
 }
@@ -199,7 +199,13 @@ export function buildSearchQuery(
   const rows = Math.min(request.limit * 3, MAX_ROWS);
   const params = new URLSearchParams();
   params.set("defType", "edismax");
-  params.set("q", escapeSolrValue(request.query));
+  if (request.query.trim().length === 0) {
+    // A blank edismax q matches nothing; q.alt makes "no query" mean every
+    // record the immutable public filters allow (list_facets without a query).
+    params.set("q.alt", "*:*");
+  } else {
+    params.set("q", escapeSolrValue(request.query));
+  }
   params.set(
     "qf",
     weightedFields
@@ -300,20 +306,28 @@ export function buildRelatedQuery(
     throw new UnsafeQueryError("limit must be a positive integer");
   }
 
+  // MoreLikeThis runs as the search component on /select (mlt=true), the way
+  // DSpace's own related-items query does; a dedicated /mlt handler is not
+  // guaranteed to be configured. The main query selects the one source
+  // document; similar documents come back in the `moreLikeThis` section.
   const params = new URLSearchParams();
   params.set("q", `${profile.identityFields.uuid}:${quoteEscaped(request.identityValue)}`);
+  params.set("mlt", "true");
   params.set("mlt.fl", profile.relatedFields.join(","));
   params.set("mlt.mintf", "1");
   params.set("mlt.mindf", "2");
+  params.set("mlt.count", String(Math.min(request.limit * 3, MAX_ROWS)));
   params.set("fl", profile.returnFields.join(","));
-  params.set("rows", String(Math.min(request.limit * 3, MAX_ROWS)));
+  params.set("rows", "1");
   params.set("timeAllowed", boundedTimeAllowed());
   params.set("wt", "json");
+  // Render named lists as objects so `moreLikeThis` is keyed by document.
+  params.set("json.nl", "map");
 
   appendImmutablePublicFilters(params, profile);
 
   return {
-    path: "/mlt",
+    path: "/select",
     params,
     expectedFields: new Set(profile.returnFields),
   };

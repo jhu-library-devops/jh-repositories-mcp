@@ -108,6 +108,7 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
             values: [{ label: "2024", count: 3, repositoryBreakdown: { [repository]: 3 } }],
           },
         ],
+        totalMatches: 5,
         warnings: [],
       };
     },

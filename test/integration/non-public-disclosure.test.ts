@@ -116,7 +116,7 @@ function gatedAdapter(repository: RepositoryId): RepositoryAdapter {
       return null;
     },
     async facets() {
-      return { repository, facets: [], warnings: [] };
+      return { repository, facets: [], totalMatches: 0, warnings: [] };
     },
     async related() {
       return {

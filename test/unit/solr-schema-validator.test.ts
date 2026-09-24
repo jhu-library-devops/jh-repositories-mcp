@@ -168,6 +168,31 @@ describe("validateSolrSchema", () => {
     expect(result.disabledFeatures).toEqual(["related_records_dc.title"]);
   });
 
+  test("a missing year field is reported as the year_facet feature", async () => {
+    const profile = createTestProfile({ optionalSchemaFields: ["dateIssued.year"] });
+    const mockFetch = createMockFetch([
+      "search.resourceid",
+      "search.resourcetype",
+      "handle",
+      "withdrawn",
+      "discoverable",
+    ]);
+    const result = await validateSolrSchema(createOptions(profile, mockFetch));
+    expect(result.valid).toBe(true);
+    expect(result.missingOptional).toEqual(["dateIssued.year"]);
+    expect(result.disabledFeatures).toEqual(["year_facet"]);
+  });
+
+  test("the year field is present when the *.year dynamic pattern exists", async () => {
+    const profile = createTestProfile({ optionalSchemaFields: ["dateIssued.year"] });
+    const mockFetch = createMockFetch(
+      ["search.resourceid", "search.resourcetype", "handle", "withdrawn", "discoverable"],
+      ["*.year"],
+    );
+    const result = await validateSolrSchema(createOptions(profile, mockFetch));
+    expect(result.missingOptional).toEqual([]);
+  });
+
   test("dynamic fields (e.g. *_mlt) are recognized when pattern exists", async () => {
     const profile = createTestProfile({
       optionalSchemaFields: ["dc.title_mlt", "dc.subject_mlt"],

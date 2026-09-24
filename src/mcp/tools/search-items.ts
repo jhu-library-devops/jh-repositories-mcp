@@ -28,7 +28,8 @@ import type {
   SearchItemsOutput,
 } from "../../models/index";
 import type { BackendFaultLog } from "../../observability/index";
-import { backendUnavailable, invalidInput } from "../errors";
+import { backendUnavailable, invalidInput, repositoryNotAvailable } from "../errors";
+import { reportBackendFault } from "./get-item";
 
 const MAX_OUTPUT_WARNINGS = 10;
 
@@ -70,7 +71,7 @@ export async function searchItems(
 ): Promise<SearchItemsOutput> {
   const requested = selectRepositories(context, input.repositories);
   if (requested.length === 0) {
-    throw invalidInput("No requested repository is available on this server.");
+    throw repositoryNotAvailable(input.repositories, [...context.adapters.keys()]);
   }
 
   const queryHash = computeQueryHash({
@@ -125,6 +126,7 @@ export async function searchItems(
   const pages = new Map<RepositoryId, RepositoryPage>();
   const succeeded: RepositoryId[] = [];
   const failed: RepositoryId[] = [];
+  const faults: Array<[RepositoryId, unknown]> = [];
   settled.forEach((result, index) => {
     const repository = requested[index];
     if (repository === undefined) {
@@ -135,8 +137,18 @@ export async function searchItems(
       succeeded.push(repository);
     } else {
       failed.push(repository);
+      faults.push([repository, result.reason]);
     }
   });
+  for (const [repository, cause] of faults) {
+    reportBackendFault(
+      context,
+      "search_items",
+      repository,
+      cause,
+      succeeded.length > 0 ? "partial_results" : "backend_unavailable",
+    );
+  }
 
   if (succeeded.length === 0) {
     throw backendUnavailable();

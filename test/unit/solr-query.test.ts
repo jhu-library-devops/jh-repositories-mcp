@@ -96,8 +96,10 @@ describe("buildSearchQuery()", () => {
       filters: { creators: ["Smith, Jane"], subjects: ["Housing"] },
     });
     const fqs = query.params.getAll("fq");
-    expect(fqs).toContain('author_filter:("Smith, Jane")');
-    expect(fqs).toContain('subject_filter:("Housing")');
+    // Equality filters use the plain-valued *_keyword fields, not the
+    // DSpace-encoded *_filter fields used for faceting.
+    expect(fqs).toContain('author_keyword:("Smith, Jane")');
+    expect(fqs).toContain('subject_keyword:("Housing")');
     expect(appliedFilters).toContain("creators");
     expect(appliedFilters).toContain("subjects");
   });
@@ -197,13 +199,57 @@ describe("buildFacetQuery()", () => {
   });
 });
 
+describe("blank queries", () => {
+  test("a blank query matches every public record via q.alt instead of an empty q", () => {
+    for (const blank of ["", "   "]) {
+      const { query } = buildSearchQuery(jscholarshipProfile, {
+        query: blank,
+        limit: 5,
+        offset: 0,
+      });
+      expect(query.params.has("q")).toBe(false);
+      expect(query.params.get("q.alt")).toBe("*:*");
+      for (const filter of jscholarshipProfile.immutablePublicFilters) {
+        expect(query.params.getAll("fq")).toContain(filter.fq);
+      }
+    }
+  });
+
+  test("a non-blank query uses q and no q.alt", () => {
+    const { query } = buildSearchQuery(jscholarshipProfile, {
+      query: "wetlands",
+      limit: 5,
+      offset: 0,
+    });
+    expect(query.params.get("q")).toBe("wetlands");
+    expect(query.params.has("q.alt")).toBe(false);
+  });
+
+  test("facet queries without a query still apply filters over all public records", () => {
+    const query = buildFacetQuery(jscholarshipProfile, {
+      query: "",
+      filters: { dateFrom: "2020", dateTo: "2023" },
+      facets: ["year"],
+      limit: 10,
+      offset: 0,
+    });
+    expect(query.params.get("q.alt")).toBe("*:*");
+    expect(query.params.getAll("facet.field")).toEqual(["dateIssued.year"]);
+    expect(query.params.getAll("fq").some((fq) => fq.includes("2020"))).toBe(true);
+  });
+});
+
 describe("buildRelatedQuery()", () => {
-  test("builds an MLT query over allowlisted related fields", () => {
+  test("builds a /select MoreLikeThis query over allowlisted related fields", () => {
     const query = buildRelatedQuery(jscholarshipProfile, {
       identityValue: "0a1b2c3d-1111-2222-3333-444455556666",
       limit: 5,
     });
-    expect(query.path).toBe("/mlt");
+    expect(query.path).toBe("/select");
+    expect(query.params.get("mlt")).toBe("true");
+    expect(query.params.get("mlt.count")).toBe("15");
+    expect(query.params.get("rows")).toBe("1");
+    expect(query.params.get("json.nl")).toBe("map");
     expect(query.params.get("q")).toBe(
       'search.resourceid:"0a1b2c3d\\-1111\\-2222\\-3333\\-444455556666"',
     );

@@ -13,7 +13,7 @@
 import { explainRepositoryStrategy } from "../../adapters/explain";
 import { UnsafeQueryError } from "../../adapters/solr-query";
 import type { ExplainSearchInput, ExplainSearchOutput } from "../../models/index";
-import { invalidInput } from "../errors";
+import { invalidInput, repositoryNotAvailable } from "../errors";
 import { type ToolContext, selectRepositories } from "./search-items";
 
 export function explainSearch(
@@ -22,7 +22,7 @@ export function explainSearch(
 ): ExplainSearchOutput {
   const requested = selectRepositories(context, input.repositories);
   if (requested.length === 0) {
-    throw invalidInput("No requested repository is available on this server.");
+    throw repositoryNotAvailable(input.repositories, [...context.adapters.keys()]);
   }
 
   const strategies = requested.map((repository) => {

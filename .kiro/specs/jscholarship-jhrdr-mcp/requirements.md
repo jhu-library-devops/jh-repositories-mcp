@@ -248,7 +248,7 @@ The first release is intentionally retrieval-only. It contains no embedded langu
 7. THE MCP_Server SHALL publish CloudWatch metrics for invocation count, latency, errors, zero-result searches, Partial_Result responses, backend availability, validation omissions, cache hits, and rate-limit events.
 8. THE MCP_Server SHALL expose build version and commit identifier in health metadata and logs.
 9. BEFORE returning a cached Canonical_Record from <code>get_item</code> or a resource read, THE MCP_Server SHALL perform a lightweight revalidation probe against the Canonical_API to confirm the record remains publicly accessible; IF the probe indicates the record is no longer public, THE MCP_Server SHALL evict the cache entry and return the same <code>not_found</code> response as for a nonexistent record.
-10. WHEN a Canonical_API lookup surfaces as <code>backend_unavailable</code> or returns an ItemDetail with <code>filesStatus</code> <code>unavailable</code>, THE MCP_Server SHALL log a backend-fault event containing only the timestamp, tool, Repository, the failing canonical call's name, the error class name, the HTTP status when one was received, and which of those two effects the client saw.
+10. WHEN a Canonical_API lookup or a repository's Solr query surfaces as <code>backend_unavailable</code>, reduces a federated response to a Partial_Result, or returns an ItemDetail with <code>filesStatus</code> <code>unavailable</code>, THE MCP_Server SHALL log a backend-fault event containing only the timestamp, tool, Repository, the failing canonical call's name, the error class name, the HTTP status when one was received, and which of those two effects the client saw.
 
 ### Requirement 16: Verification and Pilot Evaluation
 

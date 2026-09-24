@@ -151,6 +151,9 @@ export const jscholarshipProfile = {
     "dc.contributor.author_mlt",
     "dc.creator_mlt",
     "dc.subject_mlt",
+    // Year facet (Discovery's integer year for dc.date.issued); reported
+    // missing in readiness rather than surfacing as silently empty facets.
+    "dateIssued.year",
   ],
 
   // ── Query Fields ───────────────────────────────────────────────────────────
@@ -171,13 +174,17 @@ export const jscholarshipProfile = {
   },
 
   // ── Filter Fields ──────────────────────────────────────────────────────────
-  // Maps MCP filter concepts to Discovery-generated filter fields (*_filter).
+  // Maps MCP filter concepts to Discovery-generated filter fields. Equality
+  // filters use *_keyword, which holds the plain value; DSpace's own
+  // "equals" filter queries do the same. The *_filter fields hold
+  // "lowercase\n|||\nValue[###authority]" for faceting, so a plain value
+  // never matches them.
   filterFields: {
-    subject: "subject_filter",
+    subject: "subject_keyword",
     dateIssued: "dateIssued_filter",
-    author: "author_filter",
-    resourceType: "itemtype_filter",
-    entityType: "entityType_filter",
+    author: "author_keyword",
+    resourceType: "itemtype_keyword",
+    entityType: "entityType_keyword",
     hasContent: "has_content_in_original_bundle_filter",
     accessStatus: "access_status_filter",
     collection: "location.coll",
@@ -186,6 +193,7 @@ export const jscholarshipProfile = {
 
   // ── Facet Fields ───────────────────────────────────────────────────────────
   // Maps MCP facet concepts to Discovery-generated facet/filter fields.
+  // *_filter values are DSpace-encoded; the adapter decodes the display value.
   facetFields: {
     creator: "author_filter",
     subject: "subject_filter",

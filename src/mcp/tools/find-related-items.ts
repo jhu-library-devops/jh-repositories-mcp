@@ -19,7 +19,7 @@ import type {
   RepositoryId,
   RepositoryPage,
 } from "../../models/index";
-import { backendUnavailable, invalidInput, notFound } from "../errors";
+import { backendUnavailable, invalidInput, notFound, repositoryNotAvailable } from "../errors";
 import { ToolFailure } from "../errors";
 import { classifyIdentifier, reportBackendFault } from "./get-item";
 import { type ToolContext, selectRepositories } from "./search-items";
@@ -47,7 +47,7 @@ export async function findRelatedItems(
   }
   const sourceAdapter = context.adapters.get(input.repository);
   if (sourceAdapter === undefined) {
-    throw invalidInput("The source repository is not available on this server.");
+    throw repositoryNotAvailable(input.repository, [...context.adapters.keys()]);
   }
 
   let source: ItemDetail | null;
@@ -124,6 +124,7 @@ export async function findRelatedItems(
 
   const pages = new Map<RepositoryId, RepositoryPage>();
   const failed: RepositoryId[] = [];
+  const faults: Array<[RepositoryId, unknown]> = [];
   let anySucceeded = false;
   settled.forEach((result, index) => {
     const repository = targets[index];
@@ -135,8 +136,18 @@ export async function findRelatedItems(
       anySucceeded = true;
     } else {
       failed.push(repository);
+      faults.push([repository, result.reason]);
     }
   });
+  for (const [repository, cause] of faults) {
+    reportBackendFault(
+      context,
+      "find_related_items",
+      repository,
+      cause,
+      anySucceeded ? "partial_results" : "backend_unavailable",
+    );
+  }
   if (!anySucceeded) {
     throw backendUnavailable();
   }

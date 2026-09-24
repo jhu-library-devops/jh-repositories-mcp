@@ -189,10 +189,8 @@ export class JhrdrAdapter implements RepositoryAdapter {
       }
       supported.push(concept);
     }
-    if (supported.length === 0) {
-      return { repository: this.id, facets: [], warnings };
-    }
-
+    // Queried even when only the synthesized `repository` facet was asked
+    // for: its count is this repository's match total.
     const query = buildFacetQuery(jhrdrProfile, {
       query: request.query,
       field: request.field,
@@ -203,6 +201,8 @@ export class JhrdrAdapter implements RepositoryAdapter {
     });
     const body = (await this.solr.execute(query)) as SolrSearchBody;
     const facetFields = body.facet_counts?.facet_fields ?? {};
+    const totalMatches =
+      typeof body.response?.numFound === "number" ? Math.max(0, body.response.numFound) : 0;
 
     const facets: FacetResult[] = [];
     for (const concept of supported) {
@@ -212,7 +212,7 @@ export class JhrdrAdapter implements RepositoryAdapter {
       }
       facets.push({ facet: concept, values: parseFacetPairs(facetFields[solrField]) });
     }
-    return { repository: this.id, facets, warnings };
+    return { repository: this.id, facets, totalMatches, warnings };
   }
 
   /**
