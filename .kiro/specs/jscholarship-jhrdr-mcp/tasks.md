@@ -18,8 +18,8 @@
     - _Requirements: 9, 16.1-16.2_
 
 - [x] 2. Establish the cross-repository MCP application
-  - [x] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod v4, linting, and formatting
-    - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun ci</code> for reproducible installs.
+  - [x] 2.1 Create the <code>jhu-repository-mcp</code> project with strict TypeScript, Bun, Hono, the official MCP TypeScript SDK, zod 3, linting, and formatting
+    - Pin Bun in <code>.bun-version</code>, commit <code>bun.lock</code>, and use <code>bun install --frozen-lockfile</code> for reproducible installs.
     - Configure Bun as the runtime, package manager, bundler, and test runner while retaining <code>tsc --noEmit</code> for type-checking.
     - _Requirements: 12.1, 12.4, 12.7-12.8, 17_
   - [x] 2.4 Verify stateless MCP Streamable HTTP multi-task operation
@@ -247,7 +247,7 @@
 
 - [x] 19. Containerize and secure the runtime
   - [x] 19.1 Create a multi-stage Docker build that uses the same pinned Bun version for install, type-check, test, build, and runtime
-    - Install with <code>bun ci</code>, run <code>tsc --noEmit</code> and <code>bun test</code>, and produce a Bun-targeted production bundle.
+    - Install with <code>bun install --frozen-lockfile</code>, run <code>tsc --noEmit</code> and <code>bun test</code>, and produce a Bun-targeted production bundle.
     - Pin the official <code>oven/bun</code> base image by version and digest; run the final image as the non-root <code>bun</code> user.
     - Include OCI labels, build version, health check, and an appropriate stop timeout.
     - _Requirements: 12.6-12.8, 13.8-13.9, 15.8_
@@ -285,7 +285,7 @@
 
 - [x] 22. Build CI/CD and supply-chain checks
   - [x] 22.1 Add workflows for lint, typecheck, unit/property/contract/integration tests, dependency audit, and OpenTofu validation
-    - Install the pinned Bun version with the official setup action, use <code>bun ci</code>, retain <code>tsc --noEmit</code>, and run tests with <code>bun test</code>.
+    - Install the pinned Bun version with the official setup action, use <code>bun install --frozen-lockfile</code>, retain <code>tsc --noEmit</code>, and run tests with <code>bun test</code>.
     - _Requirements: 12.7, 16.1-16.2_
   - [x] 22.2 Generate an SBOM, scan the container, push immutable images, and record the image digest
     - _Requirements: 13, 16_

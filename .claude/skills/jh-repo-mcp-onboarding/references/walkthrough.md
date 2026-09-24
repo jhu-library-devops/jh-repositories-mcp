@@ -170,7 +170,7 @@ bun test
 ```
 
 Two things worth saying while that runs: `bun install --frozen-lockfile` is the
-real command (`bun ci`, which appears in some docs here, is not a Bun command),
+real command (`bun ci` doesn't exist in the pinned Bun 1.2.15),
 and `bun run typecheck` is not redundant with the build — Bun's bundler strips
 types without checking them.
 

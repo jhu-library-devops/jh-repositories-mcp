@@ -19,9 +19,7 @@ export interface HostValidationConfig {
 
 /**
  * Validate the Host header against the configured allowlist.
- * Returns true if the host is allowed.
- *
- * TODO: Implement as Hono middleware (task 16.4)
+ * Returns true if the host is allowed. Applied per request by `edgeMiddleware`.
  */
 export function isHostAllowed(host: string, config: HostValidationConfig): boolean {
   return config.allowedHosts.includes(host);
@@ -40,9 +38,8 @@ export interface OriginValidationConfig {
 /**
  * Validate the Origin header when present.
  * Missing Origin is valid (non-browser MCP clients).
- * Returns true if the origin is allowed or absent.
- *
- * TODO: Implement as Hono middleware (task 16.4)
+ * Returns true if the origin is allowed or absent. Applied per request by
+ * `edgeMiddleware`.
  */
 export function isOriginAllowed(
   origin: string | null | undefined,
