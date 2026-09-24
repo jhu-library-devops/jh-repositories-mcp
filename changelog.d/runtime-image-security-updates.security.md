@@ -1,0 +1,1 @@
+The container image now applies Debian security updates to its runtime layer at build time, fixing two critical GnuTLS vulnerabilities (CVE-2026-33845, CVE-2026-42010) inherited from the pinned Bun base image.

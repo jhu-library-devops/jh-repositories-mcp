@@ -57,7 +57,6 @@ jobs:
     name: "Smoke Test (${{ inputs.environment }})"
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    environment: ${{ inputs.environment }}
 
     steps:
       - name: Checkout
