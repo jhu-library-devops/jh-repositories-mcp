@@ -21,12 +21,12 @@ import type {
   DateValue,
   FilesStatus,
   ItemDetail,
-  MetadataField,
+  MetadataFieldInput,
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
 import { withRetry } from "../retry";
-import { dspaceMetadataLabel } from "./metadata-labels";
+import { dspaceFieldDisplay } from "./metadata-labels";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -481,13 +481,13 @@ function normalizeItem(
 }
 
 /** Every public metadata field on the item except the withheld ones. */
-function canonicalMetadata(metadata: DspaceMetadata): MetadataField[] {
-  const fields: MetadataField[] = [];
+function canonicalMetadata(metadata: DspaceMetadata): MetadataFieldInput[] {
+  const fields: MetadataFieldInput[] = [];
   for (const [field, entries] of Object.entries(metadata)) {
     if (WITHHELD_METADATA_FIELDS.has(field) || !Array.isArray(entries)) {
       continue;
     }
-    fields.push({ field, label: dspaceMetadataLabel(field), values: allValues(metadata, field) });
+    fields.push({ field, ...dspaceFieldDisplay(field), values: allValues(metadata, field) });
   }
   return fields;
 }

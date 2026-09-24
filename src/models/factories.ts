@@ -123,20 +123,34 @@ export const MAX_METADATA_VALUE_LENGTH = 10_000;
 export const MAX_METADATA_FIELD_NAME_LENGTH = 200;
 
 /**
- * Bound and order canonical metadata: repeated field names merge, empty
- * values and empty fields drop, fields sort by name, and every dimension is
- * capped so a pathological record cannot blow up the response.
+ * A metadata field as an adapter supplies it: `order` is the field's
+ * position in the platform's display order; fields without one follow all
+ * ordered fields.
  */
-export function boundMetadata(fields: readonly MetadataField[]): MetadataField[] {
-  const merged = new Map<string, { label: string; values: string[] }>();
-  for (const { field, label, values } of fields) {
+export interface MetadataFieldInput extends MetadataField {
+  order?: number;
+}
+
+/**
+ * Bound and order canonical metadata: repeated field names merge, empty
+ * values and empty fields drop, fields sort by display order then name, and
+ * every dimension is capped so a pathological record cannot blow up the
+ * response. Capping after sorting keeps the most important fields.
+ */
+export function boundMetadata(fields: readonly MetadataFieldInput[]): MetadataField[] {
+  const merged = new Map<string, { label: string; order: number; values: string[] }>();
+  for (const { field, label, values, order } of fields) {
     if (field.length === 0 || field.length > MAX_METADATA_FIELD_NAME_LENGTH) {
       continue;
     }
     // The first label seen for a field wins; an unusable one falls back to the name.
     const usableLabel =
       label.length > 0 && label.length <= MAX_METADATA_FIELD_NAME_LENGTH ? label : field;
-    const bucket = merged.get(field) ?? { label: usableLabel, values: [] };
+    const bucket = merged.get(field) ?? {
+      label: usableLabel,
+      order: Number.isFinite(order) ? (order as number) : Number.POSITIVE_INFINITY,
+      values: [],
+    };
     for (const value of values) {
       if (value.length > 0 && bucket.values.length < MAX_METADATA_VALUES_PER_FIELD) {
         bucket.values.push(value.slice(0, MAX_METADATA_VALUE_LENGTH));
@@ -146,14 +160,16 @@ export function boundMetadata(fields: readonly MetadataField[]): MetadataField[]
   }
   return [...merged.entries()]
     .filter(([, entry]) => entry.values.length > 0)
-    .sort(([a], [b]) => (a < b ? -1 : a > b ? 1 : 0))
+    .sort(([a, x], [b, y]) =>
+      x.order !== y.order ? (x.order < y.order ? -1 : 1) : a < b ? -1 : a > b ? 1 : 0,
+    )
     .slice(0, MAX_METADATA_FIELDS)
     .map(([field, { label, values }]) => ({ field, label, values }));
 }
 
 export interface ItemDetailExtras {
   /** Canonical metadata fields; bounded and ordered by the factory. */
-  metadata?: readonly MetadataField[];
+  metadata?: readonly MetadataFieldInput[];
   /** Defaults to `complete`; `unavailable` requires `files` to be empty. */
   filesStatus?: FilesStatus;
 }

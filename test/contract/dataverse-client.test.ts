@@ -287,7 +287,20 @@ describe("full canonical metadata passthrough", () => {
     if (!item) throw new Error("expected dataset");
 
     const byField = new Map(item.metadata.map((entry) => [entry.field, entry.values]));
-    expect([...byField.keys()]).toEqual([...byField.keys()].sort());
+    // Citation-block order as on the dataset page, then the geospatial block.
+    const expectedOrder = [
+      "title",
+      "authorName",
+      "authorAffiliation",
+      "datasetContactName",
+      "dsDescriptionValue",
+      "subject",
+      "keywordValue",
+      "geographicUnit",
+    ];
+    expect([...byField.keys()].filter((field) => expectedOrder.includes(field))).toEqual(
+      expectedOrder,
+    );
     expect(byField.get("title")).toEqual([item.title]);
     expect(byField.get("authorName")).toEqual(item.creators.map((c) => c.name));
     expect(byField.get("geographicUnit")).toEqual(["County", "State"]);

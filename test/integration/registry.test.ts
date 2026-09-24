@@ -43,6 +43,8 @@ function detail(repository: RepositoryId): ItemDetail {
   });
   return createItemDetail(record, [], {
     metadata: [
+      // Repeats the summary title line, so text should not show it twice.
+      { field: "dc.title", label: "Title", values: [`Sample ${repository} record`], order: 0 },
       {
         field: "dc.description.sponsorship",
         label: "Sponsor",
@@ -262,6 +264,7 @@ describe("MCP registry over stateless HTTP", () => {
     expect(result.isError).toBeUndefined();
     const structured = result.structuredContent as { metadata: unknown };
     expect(structured.metadata).toEqual([
+      { field: "dc.title", label: "Title", values: ["Sample jscholarship record"] },
       {
         field: "dc.description.sponsorship",
         label: "Sponsor",
@@ -274,6 +277,11 @@ describe("MCP registry over stateless HTTP", () => {
     expect(text).toContain("Details:");
     expect(text).toContain("Sponsor: National Science Foundation");
     expect(text).toContain("Subject: Wetlands | Climate");
+    // The summary already shows the title; Details does not repeat it.
+    expect(text).not.toContain("Title: Sample jscholarship record");
+    expect(text.indexOf("Sample jscholarship record")).toBe(
+      text.lastIndexOf("Sample jscholarship record"),
+    );
     // Platform field names stay in structuredContent, out of the chat text.
     expect(text).not.toContain("dc.");
     expect((result.structuredContent as { filesStatus: unknown }).filesStatus).toBe("complete");

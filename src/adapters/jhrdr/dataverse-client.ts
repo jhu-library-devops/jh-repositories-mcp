@@ -22,13 +22,13 @@ import type {
   Creator,
   DateValue,
   ItemDetail,
-  MetadataField,
+  MetadataFieldInput,
   PersistentId,
   PublicFileSummary,
 } from "../../models/index";
 import { createItemDetail, createRepositoryRecord } from "../../models/index";
 import { withRetry } from "../retry";
-import { dataverseMetadataLabel } from "./metadata-labels";
+import { dataverseFieldDisplay } from "./metadata-labels";
 
 // ─── Public constants ────────────────────────────────────────────────────────
 
@@ -330,12 +330,12 @@ interface DataverseField {
  * into leaf fields named by Dataverse's own `typeName`. Compound values
  * contribute one entry per sub-field (`authorName`, `authorAffiliation`, ...).
  */
-function canonicalMetadata(version: Record<string, unknown>): MetadataField[] {
+function canonicalMetadata(version: Record<string, unknown>): MetadataFieldInput[] {
   const blocks = version.metadataBlocks;
   if (typeof blocks !== "object" || blocks === null) {
     return [];
   }
-  const fields: MetadataField[] = [];
+  const fields: MetadataFieldInput[] = [];
   for (const block of Object.values(blocks as Record<string, { fields?: unknown }>)) {
     if (!Array.isArray(block?.fields)) {
       continue;
@@ -347,7 +347,7 @@ function canonicalMetadata(version: Record<string, unknown>): MetadataField[] {
   return fields;
 }
 
-function collectField(field: DataverseField, out: MetadataField[]): void {
+function collectField(field: DataverseField, out: MetadataFieldInput[]): void {
   if (typeof field?.typeName !== "string" || WITHHELD_METADATA_FIELDS.has(field.typeName)) {
     return;
   }
@@ -366,7 +366,7 @@ function collectField(field: DataverseField, out: MetadataField[]): void {
   if (strings.length > 0) {
     out.push({
       field: field.typeName,
-      label: dataverseMetadataLabel(field.typeName),
+      ...dataverseFieldDisplay(field.typeName),
       values: strings,
     });
   }

@@ -24,6 +24,7 @@ export {
   MAX_METADATA_VALUE_LENGTH,
   MAX_METADATA_FIELD_NAME_LENGTH,
   type ItemDetailExtras,
+  type MetadataFieldInput,
   type RepositoryRecordInput,
 } from "./factories";
 
@@ -168,7 +169,7 @@ export type FilesStatus = "complete" | "unavailable";
 export interface ItemDetail extends RepositoryRecord {
   files: PublicFileSummary[];
   filesStatus: FilesStatus;
-  /** Full public canonical metadata, ordered by field name. */
+  /** Full public canonical metadata, in the platform's display order. */
   metadata: MetadataField[];
 }
 

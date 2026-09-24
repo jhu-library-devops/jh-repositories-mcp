@@ -171,7 +171,7 @@ describe("public item resolution", () => {
     }
   });
 
-  test("returns every public metadata field except provenance, ordered by name", async () => {
+  test("returns every public metadata field except provenance, in display order", async () => {
     const client = makeClient({
       ...happyRoutes,
       [`GET /server/api/core/items/${PUBLIC_UUID}`]: () =>
@@ -182,6 +182,7 @@ describe("public item resolution", () => {
             "dc.description.sponsorship": [{ value: "National Science Foundation" }],
             "dc.description.provenance": [{ value: "Submitted by someone@jhu.edu" }],
             "dc.relation.ispartof": [{ value: "" }],
+            "local.funding.note": [{ value: "Internal award 42" }],
           },
         }),
     });
@@ -191,7 +192,24 @@ describe("public item resolution", () => {
     );
     if (!item) throw new Error("expected item");
     const fields = item.metadata.map((entry) => entry.field);
-    expect(fields).toEqual([...fields].sort());
+    // Display order: what, who, when, about, publication, identifiers, rights,
+    // then unlisted fields, and the repository's record-keeping dates last.
+    expect(fields).toEqual([
+      "dc.title",
+      "dc.contributor.author",
+      "dc.date.issued",
+      "dc.description.abstract",
+      "dc.subject",
+      "dc.description.sponsorship",
+      "dc.type",
+      "dc.publisher",
+      "dc.identifier.uri",
+      "dc.rights",
+      "dc.rights.uri",
+      "local.funding.note",
+      "dc.date.accessioned",
+    ]);
+    expect(item.metadata.find((m) => m.field === "local.funding.note")?.label).toBe("Funding note");
     for (const key of Object.keys(dspaceItem.metadata)) {
       expect(fields).toContain(key);
     }
