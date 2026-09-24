@@ -1,0 +1,1 @@
+find_related_items no longer depends on a Solr /mlt handler: JScholarship related records use the MoreLikeThis component on /select (mlt=true), as DSpace does, and /mlt is removed from the Solr path allowlist

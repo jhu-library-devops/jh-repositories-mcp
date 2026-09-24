@@ -1,0 +1,1 @@
+Date-range filters now run over each repository's typed date field (JScholarship dc.date.issued_dt, JHRDR dateSort) with whole-period bounds, so dateTo=2023 includes all of 2023; impossible dates such as 2023-02-30 are rejected as invalid input

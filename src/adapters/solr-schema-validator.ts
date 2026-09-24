@@ -53,6 +53,9 @@ function featureForOptionalField(fieldName: string): string {
   if (fieldName.endsWith("_mlt")) {
     return `related_records_${fieldName.replace("_mlt", "")}`;
   }
+  if (fieldName.endsWith(".year")) {
+    return "year_facet";
+  }
   return `feature_${fieldName}`;
 }
 

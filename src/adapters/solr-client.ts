@@ -4,7 +4,7 @@
  * Executes SafeSolrQuery requests against one fixed collection base URL.
  * The URL is set at construction from validated environment configuration;
  * the client sends bounded POST form bodies, never follows redirects, and
- * can only reach the /select and /mlt paths of its collection — Solr admin,
+ * can only reach the /select path of its collection — Solr admin,
  * update, and schema-write endpoints are unreachable by construction.
  *
  * Requirements: 10.5-10.7, 13.2-13.3
@@ -23,6 +23,9 @@ export interface SolrClientOptions {
 }
 
 export class SolrRequestError extends Error {
+  /** The failing call, for the operator fault log; /select is the only path. */
+  readonly operation = "solr_select";
+
   constructor(
     message: string,
     readonly status?: number,
@@ -54,12 +57,12 @@ export class SolrClient {
   }
 
   /**
-   * Executes a built query. The only reachable paths are the two literal
-   * members of SafeSolrQuery["path"]; anything else fails type-checking and,
+   * Executes a built query. The only reachable path is the literal
+   * SafeSolrQuery["path"], `/select`; anything else fails type-checking and,
    * defensively, this runtime guard.
    */
   async execute(query: SafeSolrQuery, signal?: AbortSignal): Promise<unknown> {
-    if (query.path !== "/select" && query.path !== "/mlt") {
+    if (query.path !== "/select") {
       throw new SolrRequestError(`Refusing non-allowlisted Solr path: ${query.path}`);
     }
 

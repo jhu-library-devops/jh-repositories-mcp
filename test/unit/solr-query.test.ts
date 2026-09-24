@@ -9,11 +9,13 @@
  */
 
 import { describe, expect, test } from "bun:test";
+import { jhrdrProfile } from "../../config/repositories/jhrdr-profile";
 import { jscholarshipProfile } from "../../config/repositories/jscholarship-profile";
 import {
   MAX_ROWS,
   MAX_START,
   MAX_TIME_ALLOWED_MS,
+  UnsafeQueryError,
   buildFacetQuery,
   buildRelatedQuery,
   buildSearchQuery,
@@ -96,19 +98,55 @@ describe("buildSearchQuery()", () => {
       filters: { creators: ["Smith, Jane"], subjects: ["Housing"] },
     });
     const fqs = query.params.getAll("fq");
-    expect(fqs).toContain('author_filter:("Smith, Jane")');
-    expect(fqs).toContain('subject_filter:("Housing")');
+    // Equality filters use the plain-valued *_keyword fields, not the
+    // DSpace-encoded *_filter fields used for faceting.
+    expect(fqs).toContain('author_keyword:("Smith, Jane")');
+    expect(fqs).toContain('subject_keyword:("Housing")');
     expect(appliedFilters).toContain("creators");
     expect(appliedFilters).toContain("subjects");
   });
 
-  test("builds a bounded date range filter", () => {
+  test("builds a half-open range over the typed date field", () => {
     const { query } = buildSearchQuery(jscholarshipProfile, {
       ...baseRequest,
       filters: { dateFrom: "1990", dateTo: "2000-06-15" },
     });
     const fqs = query.params.getAll("fq");
-    expect(fqs).toContain('dateIssued_filter:["1990" TO "2000-06-15"]');
+    expect(fqs).toContain("dc.date.issued_dt:[1990-01-01T00:00:00Z TO 2000-06-16T00:00:00Z}");
+  });
+
+  test("dateTo covers its whole year, month, or day", () => {
+    const range = (dateFrom: string | undefined, dateTo: string | undefined) =>
+      buildSearchQuery(jscholarshipProfile, { ...baseRequest, filters: { dateFrom, dateTo } })
+        .query.params.getAll("fq")
+        .find((fq) => fq.startsWith("dc.date.issued_dt:"));
+    expect(range("2020", "2023")).toBe(
+      "dc.date.issued_dt:[2020-01-01T00:00:00Z TO 2024-01-01T00:00:00Z}",
+    );
+    expect(range("2023-02", "2023-02")).toBe(
+      "dc.date.issued_dt:[2023-02-01T00:00:00Z TO 2023-03-01T00:00:00Z}",
+    );
+    expect(range(undefined, "2023-12-31")).toBe("dc.date.issued_dt:[* TO 2024-01-01T00:00:00Z}");
+    expect(range("0850", undefined)).toBe("dc.date.issued_dt:[0850-01-01T00:00:00Z TO *}");
+    expect(range(undefined, "9999")).toBe("dc.date.issued_dt:[* TO *}");
+  });
+
+  test("impossible calendar dates are rejected before any query", () => {
+    for (const dateTo of ["2023-02-30", "2023-13", "2023-00"]) {
+      expect(() =>
+        buildSearchQuery(jscholarshipProfile, { ...baseRequest, filters: { dateTo } }),
+      ).toThrow(UnsafeQueryError);
+    }
+  });
+
+  test("JHRDR ranges use its typed dateSort field, not the publicationDate string", () => {
+    const { query } = buildSearchQuery(jhrdrProfile, {
+      ...baseRequest,
+      filters: { dateFrom: "2021", dateTo: "2022" },
+    });
+    expect(query.params.getAll("fq")).toContain(
+      "dateSort:[2021-01-01T00:00:00Z TO 2023-01-01T00:00:00Z}",
+    );
   });
 
   test("reports filters the profile cannot apply instead of guessing", () => {
@@ -197,13 +235,57 @@ describe("buildFacetQuery()", () => {
   });
 });
 
+describe("blank queries", () => {
+  test("a blank query matches every public record via q.alt instead of an empty q", () => {
+    for (const blank of ["", "   "]) {
+      const { query } = buildSearchQuery(jscholarshipProfile, {
+        query: blank,
+        limit: 5,
+        offset: 0,
+      });
+      expect(query.params.has("q")).toBe(false);
+      expect(query.params.get("q.alt")).toBe("*:*");
+      for (const filter of jscholarshipProfile.immutablePublicFilters) {
+        expect(query.params.getAll("fq")).toContain(filter.fq);
+      }
+    }
+  });
+
+  test("a non-blank query uses q and no q.alt", () => {
+    const { query } = buildSearchQuery(jscholarshipProfile, {
+      query: "wetlands",
+      limit: 5,
+      offset: 0,
+    });
+    expect(query.params.get("q")).toBe("wetlands");
+    expect(query.params.has("q.alt")).toBe(false);
+  });
+
+  test("facet queries without a query still apply filters over all public records", () => {
+    const query = buildFacetQuery(jscholarshipProfile, {
+      query: "",
+      filters: { dateFrom: "2020", dateTo: "2023" },
+      facets: ["year"],
+      limit: 10,
+      offset: 0,
+    });
+    expect(query.params.get("q.alt")).toBe("*:*");
+    expect(query.params.getAll("facet.field")).toEqual(["dateIssued.year"]);
+    expect(query.params.getAll("fq").some((fq) => fq.includes("2020"))).toBe(true);
+  });
+});
+
 describe("buildRelatedQuery()", () => {
-  test("builds an MLT query over allowlisted related fields", () => {
+  test("builds a /select MoreLikeThis query over allowlisted related fields", () => {
     const query = buildRelatedQuery(jscholarshipProfile, {
       identityValue: "0a1b2c3d-1111-2222-3333-444455556666",
       limit: 5,
     });
-    expect(query.path).toBe("/mlt");
+    expect(query.path).toBe("/select");
+    expect(query.params.get("mlt")).toBe("true");
+    expect(query.params.get("mlt.count")).toBe("15");
+    expect(query.params.get("rows")).toBe("1");
+    expect(query.params.get("json.nl")).toBe("map");
     expect(query.params.get("q")).toBe(
       'search.resourceid:"0a1b2c3d\\-1111\\-2222\\-3333\\-444455556666"',
     );

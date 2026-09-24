@@ -129,6 +129,13 @@ describe("filtersSchema", () => {
     expect(result.success).toBe(false);
   });
 
+  test("impossible calendar dates are rejected before any backend call", () => {
+    for (const value of ["2023-02-30", "2023-13", "2023-00", "2023-04-31"]) {
+      expect(filtersSchema.safeParse({ dateTo: value }).success).toBe(false);
+    }
+    expect(filtersSchema.safeParse({ dateFrom: "2024-02-29", dateTo: "0850" }).success).toBe(true);
+  });
+
   test("invalid date format is rejected (dateFrom)", () => {
     const result = filtersSchema.safeParse({ dateFrom: "20-01-2024" });
     expect(result.success).toBe(false);
