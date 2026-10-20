@@ -91,6 +91,12 @@ Naming: `camelCase` functions and variables, `PascalCase` types and classes,
 lowercase repository ids (`jscholarship`, `jhrdr`), and the fixed snake_case MCP
 tool names (`search_items`) exactly as the registry declares them.
 
+### Documentation checks
+
+Run `bun run docs:lint` for Markdown style, `bun run docs:links` for local file,
+image, and heading references, or `bun run docs:check` for both. Link validation is
+repository-local and does not probe external URLs, so the CI gate is deterministic.
+
 ## Changelog
 
 Describe changes with a fragment rather than editing [`CHANGELOG.md`](CHANGELOG.md)

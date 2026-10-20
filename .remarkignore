@@ -1,0 +1,7 @@
+CHANGELOG.md
+node_modules/
+dist/
+.worktrees/
+.agents/
+infra/.terraform/
+infra/**/.terraform/
