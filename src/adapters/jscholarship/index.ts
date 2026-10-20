@@ -36,7 +36,7 @@ import type {
 } from "../../models/index";
 import { parseRecordId } from "../../models/index";
 import { canonicalizeInOrder } from "../canonicalize";
-import type { RepositoryAdapter } from "../index";
+import type { GetOptions, RepositoryAdapter } from "../index";
 import { SolrClient } from "../solr-client";
 import { buildFacetQuery, buildRelatedQuery, buildSearchQuery } from "../solr-query";
 import { type FetchFn, validateSolrSchema } from "../solr-schema-validator";
@@ -167,12 +167,15 @@ export class JScholarshipAdapter implements RepositoryAdapter {
     return this.dspace.probeItemPublic(record.provenance.platformRecordId);
   }
 
-  async get(identifier: RepositoryIdentifier): Promise<ItemDetail | null> {
+  async get(identifier: RepositoryIdentifier, options?: GetOptions): Promise<ItemDetail | null> {
     const resolved = this.toDspaceIdentifier(identifier);
     if (resolved === null) {
       return null;
     }
-    return this.dspace.resolveItem(resolved, { expandFiles: true });
+    return this.dspace.resolveItem(resolved, {
+      expandFiles: true,
+      onFilesFault: options?.onDegraded,
+    });
   }
 
   async facets(request: RepositoryFacetRequest): Promise<RepositoryFacets> {

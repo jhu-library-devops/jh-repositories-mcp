@@ -1,0 +1,1 @@
+get_item lists metadata in the platform's familiar display order (DSpace simple item view; Dataverse citation block) with record-keeping dates last, and the Details text no longer repeats the title, creators, date, citation, or link shown above it

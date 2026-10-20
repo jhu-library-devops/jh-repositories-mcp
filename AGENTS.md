@@ -8,7 +8,7 @@ Layout: `src/adapters/{jscholarship,jhrdr}/` for platform-specific behavior behi
 
 ## Build, Test, and Development Commands
 
-- `bun install --frozen-lockfile` — install the committed lockfile with the pinned Bun version (`.bun-version`). Don't use `bun ci`; it does not exist in the pinned release.
+- `bun install --frozen-lockfile` — install the committed lockfile with the pinned Bun version (`.bun-version`). `bun ci` is an equivalent alias in the pinned 1.3.11; CI and the Dockerfile use the long form.
 - `bun run typecheck` — strict TypeScript checks (`tsc --noEmit`; Bun's bundler does not type-check).
 - `bun test` — run unit, property, contract, and integration tests.
 - `bun run lint` / `bun run format` — Biome check and format.

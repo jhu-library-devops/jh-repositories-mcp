@@ -29,6 +29,12 @@ import type {
  * The federation and MCP layers cannot name a Solr field, construct a repository
  * URL, or decide whether a platform record is public.
  */
+/** Per-call options for RepositoryAdapter.get. */
+export interface GetOptions {
+  /** Receives the backend fault behind a degraded (files-unavailable) record. */
+  onDegraded?: (cause: unknown) => void;
+}
+
 export interface RepositoryAdapter {
   readonly id: RepositoryId;
 
@@ -47,8 +53,10 @@ export interface RepositoryAdapter {
   /**
    * Resolve a single record by identifier through the canonical API.
    * Returns null for nonexistent or non-public records (indistinguishable).
+   * A record whose file listing could not be retrieved is still returned,
+   * with `filesStatus: "unavailable"`; the cause goes to `onDegraded`.
    */
-  get(identifier: RepositoryIdentifier): Promise<ItemDetail | null>;
+  get(identifier: RepositoryIdentifier, options?: GetOptions): Promise<ItemDetail | null>;
 
   /**
    * Retrieve facet counts for the given query and filters.

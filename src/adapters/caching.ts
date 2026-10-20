@@ -30,7 +30,7 @@ import type {
   RepositorySearchRequest,
   SchemaValidationResult,
 } from "../models/index";
-import type { RepositoryAdapter } from "./index";
+import type { GetOptions, RepositoryAdapter } from "./index";
 
 export interface CachingOptions {
   searchTtlMs: number;
@@ -87,7 +87,7 @@ export function withCaching(
       return page;
     },
 
-    async get(identifier: RepositoryIdentifier): Promise<ItemDetail | null> {
+    async get(identifier: RepositoryIdentifier, options?: GetOptions): Promise<ItemDetail | null> {
       const key = stableKey({ repository: identifier.repository, value: identifier.value });
       const hit = recordCache.get(key);
       if (hit !== undefined) {
@@ -104,8 +104,10 @@ export function withCaching(
           return null;
         }
       }
-      const item = await adapter.get(identifier);
-      if (item !== null) {
+      const item = await adapter.get(identifier, options);
+      // A degraded record is served once but never cached, so the next call
+      // retries the file listing instead of repeating the gap for a full TTL.
+      if (item !== null && item.filesStatus === "complete") {
         recordCache.set(key, item);
       }
       return item;

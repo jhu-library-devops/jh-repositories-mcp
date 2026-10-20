@@ -1,0 +1,1 @@
+When an item's file list can't be loaded, get_item's text now shows the metadata with a plain-language note (open the item page or try again shortly) instead of status wording, and the server instructions tell the host model to explain problems without internal codes

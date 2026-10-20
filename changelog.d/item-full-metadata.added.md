@@ -1,0 +1,1 @@
+get_item and item resources now return the record's full public canonical metadata as a bounded, name-ordered metadata array (DSpace metadata map; every Dataverse metadata block flattened to leaf fields), in structuredContent and the text block; dc.description.provenance and datasetContactEmail are withheld

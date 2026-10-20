@@ -1,0 +1,1 @@
+get_item shows metadata under readable labels (Author, Date issued, Sponsor, Funding agency) in a Details section instead of platform field names such as dc.contributor.author; structuredContent keeps the field name and adds the label

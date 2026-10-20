@@ -2,7 +2,7 @@
 #
 # jhu-repository-mcp — multi-stage production image
 #
-# Every stage uses the SAME pinned Bun release (.bun-version = 1.2.15),
+# Every stage uses the SAME pinned Bun release (.bun-version = 1.3.11),
 # pinned by version AND digest so local, CI, and production builds use the
 # same toolchain; the runtime stage additionally applies Debian security
 # updates at build time. The final image contains only the Bun-targeted
@@ -18,7 +18,7 @@
 #
 # Requirements: 12.6-12.8, 13.8-13.9, 14, 15.8, 17
 
-ARG BUN_IMAGE=oven/bun:1.2.15@sha256:8b5e8d3b6a734ae438c7c6f1bdc23e54eb9c35a0e2e3099ea2ca0ef781aca23b
+ARG BUN_IMAGE=oven/bun:1.3.11@sha256:0733e50325078969732ebe3b15ce4c4be5082f18c4ac1a0f0ca4839c2e4e42a7
 
 # ─── Stage 1: install ────────────────────────────────────────────────────────
 FROM ${BUN_IMAGE} AS install

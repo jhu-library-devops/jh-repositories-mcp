@@ -287,9 +287,9 @@ Mention these when relevant — they're the things that cost a newcomer an
 afternoon. Verify each against current code before asserting it, since some may
 have been fixed since this was written.
 
-- **Use `bun install --frozen-lockfile`, not `bun ci`.** `bun ci` exists only in
-  Bun releases newer than the pinned 1.2.15, where it fails with
-  `Script not found "ci"`.
+- **Use `bun install --frozen-lockfile`.** It is what CI and the Dockerfile run.
+  `bun ci` is an equivalent alias in the pinned Bun 1.3.11 (it did not exist in
+  the previously pinned 1.2.15).
 - **`zod-to-json-schema` is imported in `src/mcp/registry.ts` but is not a
   declared dependency** in `package.json`. It resolves transitively today, which
   is fragile.
