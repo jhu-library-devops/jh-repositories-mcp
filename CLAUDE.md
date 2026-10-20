@@ -6,9 +6,10 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 The service is implemented. `src/`, `config/`, `test/`, `infra/`, `Dockerfile`,
 `package.json`, and CI workflows all exist. Per
-`.kiro/specs/jscholarship-jhrdr-mcp/tasks.md`, tasks 1–19 and 22–24 are
-complete; the open work is task 20 (OpenTofu stack), 21 (public edge), 25
-(pilot evaluation), and 26 (production release).
+`.kiro/specs/jscholarship-jhrdr-mcp/tasks.md`, task 24 is complete. Remaining
+work is full container-image verification (19.3), OpenTofu plan tests (20.4),
+Origin and complete public-path validation (21.3–21.4), pilot evaluation (25),
+and production release (26). Tasks 20 and 21 are otherwise implemented.
 
 **Code is ground truth.** Where a document in this repo disagrees with the
 source, believe the source and say so rather than silently reconciling.
@@ -19,7 +20,7 @@ authority for intent and scope:
 - `requirements.md` — user stories and numbered acceptance criteria
   (Requirements 1–17) plus a glossary of domain terms. Treat the glossary as
   authoritative terminology.
-- `design.md` — architecture, component interfaces, data models, the 15
+- `design.md` — architecture, component interfaces, data models, the 16
   correctness properties, and rollout phases.
 - `tasks.md` — the dependency-ordered implementation checklist (1–26), with
   completion state.
@@ -64,13 +65,16 @@ behavior, from a single file — trace the path end to end.
   `probePublic`) is implemented once per platform, and only adapters may know
   Solr field names or construct repository URLs. There is deliberately no shared
   `isPublic()`. (ADR-004)
-- **Solr for candidates, Canonical API for truth.** Every adapter queries its
-  private Solr collection for fast candidate retrieval, but every record
-  returned is re-fetched and re-validated through the platform's own public API.
-  A candidate that fails validation is silently dropped; Solr-only metadata is
-  never returned. Implemented in `src/adapters/canonicalize.ts`
-  (`canonicalizeInOrder`) plus each platform client's public gate. (ADR-005,
-  Requirement 9)
+- **Solr for candidates, Canonical API for truth.** Adapters query their private
+  Solr collections for fast candidate retrieval, but only records validated
+  through the platform's public API should enter results; failures are silently
+  dropped and Solr-only metadata is never returned. Requirement 15.4 and the
+  design require cached search candidates to be revalidated before return.
+  Current `src/adapters/caching.ts` instead reuses bounded-TTL pages that passed
+  canonicalization when first cached; treat this as known implementation drift,
+  not an exception to the public gate. Cached direct-item records are re-probed
+  through the public API before they are emitted. (ADR-005, Requirements 9,
+  15.4, and 15.9)
 - **Immutable public filters.** Each `RepositoryProfile` bakes in
   non-overridable filters (non-withdrawn/discoverable/latest/archived for
   DSpace; published/non-draft/non-deaccessioned for Dataverse). No client input

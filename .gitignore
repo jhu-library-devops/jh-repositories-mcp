@@ -8,6 +8,10 @@ infra/.terraform/*
 .terraform/*
 infra/.terraform.lock.hcl
 
+# Mac
+*/.DS_Store
+.DS_Store
+
 # Dependencies
 node_modules/
 
@@ -20,3 +24,5 @@ dist/
 .env.*
 !.env.example
 infra/.terraform/*
+
+

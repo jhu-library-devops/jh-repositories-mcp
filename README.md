@@ -40,10 +40,13 @@ everything else follows from.
 
 > **Solr finds candidates. The canonical API decides truth.**
 
-Every search hits a private Solr collection for fast candidate retrieval — but
-nothing Solr returns is trusted. Each candidate is re-fetched through the
-platform's own public API as an anonymous caller, and any candidate that fails
-that fetch is silently dropped. No Solr-sourced metadata ever reaches a client.
+On an uncached search, each adapter queries its private Solr collection for
+candidates, then re-fetches each selected candidate through the platform's public
+API as an anonymous caller. A candidate that fails that gate is silently dropped,
+and no Solr-sourced metadata reaches a client. Direct-item cache hits are
+re-probed before return. The current bounded search cache reuses pages validated
+when first cached, although Requirement 15.4 requires cached candidates to pass
+fresh canonical validation before return; this is known implementation drift.
 
 The Solr indexes are internal, they lag the platforms, and their copies of
 access-control fields have drifted from what the platforms actually enforce.
@@ -227,10 +230,12 @@ Post-deployment verification:
 
 ## Status
 
-Tasks 1–19 and 22–24 in [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md)
-are complete: the service is implemented, tested, containerized, and deployed to
-stage. Open work is task 20 (OpenTofu stack), 21 (public edge), 25 (pilot
-evaluation), and 26 (production release).
+Task 24 in [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md) is
+complete: the service is implemented, tested, containerized, and deployed to
+stage. Remaining work is full container-image verification (19.3), OpenTofu plan
+tests (20.4), Origin and complete public-path validation (21.3–21.4), pilot
+evaluation (25), and production release (26). Tasks 20 and 21 are otherwise
+implemented.
 
 ## License
 

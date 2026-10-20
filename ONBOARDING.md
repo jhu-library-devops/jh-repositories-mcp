@@ -358,9 +358,12 @@ outside Requirement 17) starts with **a spec change, not a PR**. See
 2. **Fix a known rough edge** from the list in
    [`CLAUDE.md`](CLAUDE.md#known-rough-edges). Each one is small, actually
    broken, and takes you through one module. Confirm it's still broken first.
-3. **Pick up open spec work** from
-   [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md). Tasks 20, 21, 25,
-   and 26 are open.
+3. **Pick up remaining spec work** from
+   [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md): full container-image
+   verification (19.3), OpenTofu plan tests (20.4), Origin and complete
+   public-path validation (21.3–21.4), pilot evaluation (25), or production
+   release (26). The infrastructure and public-edge tasks are otherwise
+   implemented.
 
 Go through the full loop once:
 

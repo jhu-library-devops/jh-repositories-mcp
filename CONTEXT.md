@@ -68,7 +68,7 @@ _Avoid_: metasearch, cross-search (library-specific connotations)
 ## Example dialogue
 
 > **Dev:** "When a search returns results, are those validated through the Canonical_API?"
-> **Domain expert:** "Yes — every Candidate must pass the public-access gate. The search cache only ever holds pages that already passed it, and its TTL is kept at or below Solr re-index lag. The record cache goes further: a cached ItemDetail is re-probed against the Canonical_API before it is served, and evicted as not found if it is no longer public."
+> **Domain expert:** "That is the required contract: every Candidate, including one from a search cache, must pass the public-access gate before return. The current search cache instead reuses pages validated when first cached, which is known implementation drift from Requirement 15.4. A cached ItemDetail is re-probed against the Canonical_API before it is served and evicted as not found if it is no longer public."
 
 > **Dev:** "What's the difference between a SearchResult and an ItemDetail?"
 > **Domain expert:** "Same canonical data, different projection depth. SearchResult omits the file list. ItemDetail includes it. Both come from the same Canonical_API call — ItemDetail just keeps more of the response."
