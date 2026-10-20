@@ -8,7 +8,7 @@
  * Requirements: 5.4-5.5, 9.5, 12.5, 15.3
  */
 
-import type { ToolError } from "../models/index";
+import type { RepositoryId, ToolError } from "../models/index";
 
 export class ToolFailure extends Error {
   constructor(readonly toolError: ToolError) {
@@ -19,6 +19,28 @@ export class ToolFailure extends Error {
 
 export function invalidInput(message: string): ToolFailure {
   return new ToolFailure({ code: "invalid_input", message });
+}
+
+const REPOSITORY_NAMES: Readonly<Record<RepositoryId, string>> = {
+  jscholarship: "JScholarship",
+  jhrdr: "JHRDR",
+};
+
+/**
+ * A repository this deployment does not serve (its adapter is not
+ * configured). Names what is available so the reader can tell a
+ * deployment's scope from an outage.
+ */
+export function repositoryNotAvailable(
+  requested: RepositoryId | "all",
+  available: readonly RepositoryId[],
+): ToolFailure {
+  const name = requested === "all" ? "No repository" : REPOSITORY_NAMES[requested];
+  const offered =
+    available.length > 0
+      ? ` Available here: ${available.map((id) => REPOSITORY_NAMES[id]).join(", ")}.`
+      : "";
+  return invalidInput(`${name} is not available on this server.${offered}`);
 }
 
 /**

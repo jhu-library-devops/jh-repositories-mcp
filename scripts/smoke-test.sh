@@ -263,6 +263,76 @@ else
 fi
 
 # ---------------------------------------------------------------------------
+# Check 9: find_related_items resolves the source and returns without error
+# (JScholarship MoreLikeThis via the /select search component)
+# ---------------------------------------------------------------------------
+
+echo ""
+echo "--- Related Records and Facets ---"
+
+if [[ -n "$record_id" ]]; then
+  related_payload="{\"jsonrpc\":\"2.0\",\"id\":6,\"method\":\"tools/call\",\"params\":{\"name\":\"find_related_items\",\"arguments\":{\"repository\":\"jscholarship\",\"identifier\":\"${record_id}\",\"targetRepositories\":\"jscholarship\",\"limit\":3}}}"
+  related_response=$(mcp_call "$related_payload")
+  if tool_call_ok "$related_response"; then
+    related_count=$(echo "$related_response" | grep -o '"count":[0-9]*' | head -1 | cut -d: -f2)
+    pass "find_related_items returned ${related_count:-0} related record(s) for ${record_id}"
+  else
+    fail "find_related_items failed for ${record_id}"
+    echo "  Response: $(echo "$related_response" | head -c 300)"
+  fi
+else
+  fail "find_related_items skipped — no record from search_items"
+fi
+
+# ---------------------------------------------------------------------------
+# Check 10: list_facets with no query aggregates every public record, and
+# facet labels carry no DSpace index encoding ("value|||Value")
+# ---------------------------------------------------------------------------
+
+facets_payload='{"jsonrpc":"2.0","id":7,"method":"tools/call","params":{"name":"list_facets","arguments":{"repositories":"jscholarship","facets":["repository","year","subject"]}}}'
+facets_response=$(mcp_call "$facets_payload")
+repo_total=$(echo "$facets_response" | grep -o '"label":"jscholarship","count":[0-9]*' | head -1 | cut -d: -f3)
+
+if ! tool_call_ok "$facets_response"; then
+  fail "list_facets without a query failed"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif [[ -z "$repo_total" || "$repo_total" -eq 0 ]]; then
+  fail "list_facets without a query matched no records"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif ! echo "$facets_response" | grep -q '"facet":"year","values":\[{'; then
+  fail "list_facets without a query returned no year values"
+  echo "  Response: $(echo "$facets_response" | head -c 300)"
+elif echo "$facets_response" | grep -q '|||'; then
+  fail "list_facets labels still carry DSpace index encoding (|||)"
+else
+  pass "list_facets without a query covered ${repo_total} records with year and subject values"
+fi
+
+# ---------------------------------------------------------------------------
+# Check 11: a date range returns only years inside it, including its last
+# year (dateTo=2023 covers all of 2023)
+# ---------------------------------------------------------------------------
+
+range_payload='{"jsonrpc":"2.0","id":8,"method":"tools/call","params":{"name":"list_facets","arguments":{"repositories":"jscholarship","facets":["year"],"filters":{"dateFrom":"2020","dateTo":"2023"}}}}'
+range_response=$(mcp_call "$range_payload")
+range_years=$(echo "$range_response" | grep -o '"label":"[0-9]\{4\}"' | cut -d'"' -f4 | sort -u | tr '\n' ' ')
+out_of_range=$(for y in $range_years; do if (( 10#$y < 2020 || 10#$y > 2023 )); then echo "$y"; fi; done)
+
+if ! tool_call_ok "$range_response"; then
+  fail "list_facets with a date range failed"
+  echo "  Response: $(echo "$range_response" | head -c 300)"
+elif [[ -z "$range_years" ]]; then
+  fail "list_facets with dateFrom=2020 dateTo=2023 returned no years"
+elif [[ -n "$out_of_range" ]]; then
+  fail "list_facets date range leaked years outside 2020-2023: ${out_of_range//$'\n'/ }"
+else
+  pass "list_facets dateFrom=2020 dateTo=2023 returned years: ${range_years% }"
+  if [[ " $range_years " != *" 2023 "* ]]; then
+    warn "no 2023 records in range — cannot confirm dateTo includes its final year"
+  fi
+fi
+
+# ---------------------------------------------------------------------------
 # Summary
 # ---------------------------------------------------------------------------
 

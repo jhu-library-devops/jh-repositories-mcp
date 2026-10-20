@@ -100,8 +100,11 @@ export interface BackendFaultLog {
   operation: string;
   errorName: string;
   status: number | null;
-  /** What the client got: the opaque error, or the record without its files. */
-  effect: "backend_unavailable" | "files_omitted";
+  /**
+   * What the client got: the opaque error, the record without its files, or
+   * results from the other repositories only.
+   */
+  effect: "backend_unavailable" | "files_omitted" | "partial_results";
 }
 
 const TOKEN_PATTERN = /^[a-z_]{1,40}$/;
@@ -121,7 +124,10 @@ export function serializeBackendFault(event: BackendFaultLog): Record<string, un
       typeof event.errorName === "string" && ERROR_NAME_PATTERN.test(event.errorName)
         ? event.errorName
         : "Error",
-    effect: event.effect === "files_omitted" ? "files_omitted" : "backend_unavailable",
+    effect:
+      event.effect === "files_omitted" || event.effect === "partial_results"
+        ? event.effect
+        : "backend_unavailable",
     status:
       Number.isInteger(event.status) &&
       (event.status as number) >= 100 &&

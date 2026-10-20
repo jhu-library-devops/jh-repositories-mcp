@@ -1,0 +1,1 @@
+search_items, list_facets, and find_related_items log a backend_fault line (failing call, HTTP status, partial_results or backend_unavailable) for each repository that fails; the smoke test now checks find_related_items and query-less list_facets; a missing year field is reported in readiness as year_facet; an unconfigured repository's error names what the server does offer

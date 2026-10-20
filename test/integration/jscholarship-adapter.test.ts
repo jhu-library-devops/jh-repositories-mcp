@@ -36,7 +36,6 @@ type Route = () => Response;
 function makeAdapter(overrides: Record<string, Route> = {}, log: string[] = []) {
   const routes: Record<string, Route> = {
     "POST /solr/search/select": () => json(solrSearch),
-    "POST /solr/search/mlt": () => json(solrSearch),
     [`GET /server/api/core/items/${UUID_1}`]: () => json(dspaceItem),
     [`GET /server/api/core/items/${UUID_2}`]: () => json(dspaceItem2),
     [`GET /server/api/core/items/${UUID_1}/bundles?embed=bitstreams`]: () => json(dspaceBundles),
@@ -193,6 +192,51 @@ describe("get: canonical resolution by identifier shape", () => {
 });
 
 describe("facets", () => {
+  test("decodes DSpace-encoded *_filter values to their display labels", async () => {
+    const adapter = makeAdapter({
+      "POST /solr/search/select": () =>
+        json({
+          response: { numFound: 30, docs: [] },
+          facet_counts: {
+            facet_fields: {
+              // Shapes seen on stage: sort key, separator, display value,
+              // optionally an authority key.
+              subject_filter: [
+                "portraits\n|||\nportraits",
+                13,
+                "people (agents)\n|||\npeople (agents)",
+                10,
+                "philadelphia\n|||\nPhiladelphia",
+                5,
+                "flags\n|||\nFlags###http://id.loc.gov/authorities/subjects/sh85049336",
+                3,
+              ],
+              "dateIssued.year": ["2022", 252, "2023", 212],
+            },
+          },
+        }),
+    });
+    const result = await adapter.facets({
+      query: "Philadelphia",
+      facets: ["subject", "year"],
+      limit: 10,
+      offset: 0,
+    });
+    const labels = (facet: string) =>
+      result.facets.find((f) => f.facet === facet)?.values.map((v) => [v.label, v.count]);
+    expect(labels("subject")).toEqual([
+      ["portraits", 13],
+      ["people (agents)", 10],
+      ["Philadelphia", 5],
+      ["Flags", 3],
+    ]);
+    // Values without the separator pass through unchanged.
+    expect(labels("year")).toEqual([
+      ["2022", 252],
+      ["2023", 212],
+    ]);
+  });
+
   test("maps allowlisted concepts and parses Solr facet pairs", async () => {
     const adapter = makeAdapter({
       "POST /solr/search/select": () =>
@@ -237,20 +281,64 @@ describe("facets", () => {
     });
     expect(result.facets.map((f) => f.facet)).toEqual(["subject"]);
   });
+
+  test("reports Solr's match count even when only the repository facet is requested", async () => {
+    const log: string[] = [];
+    const adapter = makeAdapter(
+      {
+        "POST /solr/search/select": () =>
+          json({ response: { numFound: 4821, docs: [] }, facet_counts: { facet_fields: {} } }),
+      },
+      log,
+    );
+    const result = await adapter.facets({
+      query: "",
+      facets: ["repository"],
+      limit: 10,
+      offset: 0,
+    });
+    expect(result.totalMatches).toBe(4821);
+    expect(result.facets).toEqual([]);
+    expect(log).toContain("POST /solr/search/select");
+  });
 });
 
 describe("related", () => {
-  test("excludes the source record and canonicalizes the rest", async () => {
-    const adapter = makeAdapter();
-    const source = await adapter.get({
-      repository: "jscholarship",
-      type: "uuid",
-      value: UUID_1,
-    });
-    if (!source) throw new Error("expected source item");
+  // The MoreLikeThis component answers on /select: the main response holds
+  // the source document, `moreLikeThis` holds the similar ones.
+  const mltSections: Array<[string, unknown]> = [
+    ["a map keyed by source (json.nl=map)", { [`Item-${UUID_1}`]: solrSearch.response }],
+    ["a flat [key, value] list", [`Item-${UUID_1}`, solrSearch.response]],
+  ];
 
-    const page = await adapter.related(source, { repositories: "all", limit: 5 });
-    expect(page.results.map((r) => r.id)).toEqual([`jscholarship:${UUID_2}`]);
-    expect(page.results.some((r) => r.id === source.id)).toBe(false);
+  for (const [shape, moreLikeThis] of mltSections) {
+    test(`reads similar documents from ${shape}, excluding the source`, async () => {
+      const log: string[] = [];
+      const adapter = makeAdapter({}, log);
+      const source = await adapter.get({ repository: "jscholarship", type: "uuid", value: UUID_1 });
+      if (!source) throw new Error("expected source item");
+
+      const related = makeAdapter(
+        {
+          "POST /solr/search/select": () =>
+            json({ response: { numFound: 1, docs: [solrSearch.response.docs[0]] }, moreLikeThis }),
+        },
+        log,
+      );
+      const page = await related.related(source, { repositories: "all", limit: 5 });
+      expect(page.results.map((r) => r.id)).toEqual([`jscholarship:${UUID_2}`]);
+      expect(page.results.some((r) => r.id === source.id)).toBe(false);
+      expect(log.some((entry) => entry.includes("/mlt"))).toBe(false);
+    });
+  }
+
+  test("no moreLikeThis section means no related records, not an error", async () => {
+    const adapter = makeAdapter();
+    const source = await adapter.get({ repository: "jscholarship", type: "uuid", value: UUID_1 });
+    if (!source) throw new Error("expected source item");
+    const page = await makeAdapter({
+      "POST /solr/search/select": () => json({ response: { numFound: 1, docs: [] } }),
+    }).related(source, { repositories: "all", limit: 5 });
+    expect(page.results).toEqual([]);
   });
 });

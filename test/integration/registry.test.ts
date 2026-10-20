@@ -95,6 +95,7 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
             values: [{ label: "Wetlands", count: 3, repositoryBreakdown: { [repository]: 3 } }],
           },
         ],
+        totalMatches: 3,
         warnings: [],
       };
     },

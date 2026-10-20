@@ -191,6 +191,10 @@
     - _Requirements: 6.3, 6.6_
   - [x] 13.3 Reject unknown facets before I/O and support empty and partial facet responses
     - _Requirements: 6.5-6.6, 15.3_
+  - [x] 13.4 Aggregate query-less facets over every public record, decode DSpace <code>*_filter</code> labels, filter on <code>*_keyword</code>, and count the <code>repository</code> facet from matches
+    - _Requirements: 6.1, 6.3-6.4, 1.4_
+  - [x] 13.5 Filter dates over each repository's typed date field with whole-period, half-open bounds, and reject impossible calendar dates before I/O
+    - _Requirements: 1.4, 10.1-10.2_
 
 - [x] 14. Implement <code>find_related_items</code>
   - [x] 14.1 Resolve the source through its Canonical_API before deriving terms
@@ -200,6 +204,8 @@
     - _Requirements: 7.2-7.6, 9, 10_
   - [x] 14.3 Return canonical SearchResult results with sourceRank, Repository, evidence fields, and no-result messaging
     - _Requirements: 4, 7.5-7.6_
+  - [x] 14.4 Query JScholarship MoreLikeThis through the <code>/select</code> search component, and log each failed repository's cause
+    - _Requirements: 7.2, 10.5, 15.10_
 
 - [x] 15. Implement explanations, resources, and prompts
   - [x] 15.1 Implement <code>explain_search</code> as a pure interpretation of validated domain concepts

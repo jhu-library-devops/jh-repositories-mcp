@@ -58,7 +58,7 @@ const DATE_VALUE = /^\d{4}(-\d{2}(-\d{2})?)?$/;
 // ─── Shared query assembly ───────────────────────────────────────────────────
 
 export interface SafeSolrQuery {
-  readonly path: "/select" | "/mlt";
+  readonly path: "/select";
   readonly params: URLSearchParams;
   readonly expectedFields: ReadonlySet<string>;
 }
@@ -147,9 +147,12 @@ function translateFilters(
     if (!field) {
       unsupported.push("date");
     } else {
-      const from = validatedDateBound(filters.dateFrom, "dateFrom");
-      const to = validatedDateBound(filters.dateTo, "dateTo");
-      fqs.push(`${field}:[${from} TO ${to}]`);
+      // Half-open range over a typed date field: from the start of
+      // dateFrom's period (inclusive) to the start of the period after
+      // dateTo (exclusive), so dateTo=2023 includes all of 2023.
+      const from = periodStart(filters.dateFrom, "dateFrom");
+      const to = periodEndExclusive(filters.dateTo, "dateTo");
+      fqs.push(`${field}:[${from} TO ${to}}`);
       applied.push("date");
     }
   }
@@ -164,14 +167,60 @@ function translateFilters(
   return { applied, unsupported, fqs };
 }
 
-function validatedDateBound(value: string | undefined, label: "dateFrom" | "dateTo"): string {
-  if (value === undefined) {
-    return "*";
-  }
+type DateBoundLabel = "dateFrom" | "dateTo";
+
+interface ParsedDate {
+  readonly start: Date;
+  readonly precision: "year" | "month" | "day";
+}
+
+/**
+ * Parse a YYYY, YYYY-MM, or YYYY-MM-DD bound into the UTC instant its period
+ * starts. Rejects impossible calendar dates (2023-02-30, 2023-13).
+ */
+function parseDateBound(value: string, label: DateBoundLabel): ParsedDate {
   if (!DATE_VALUE.test(value)) {
     throw new UnsafeQueryError(`${label} must be an ISO date (YYYY, YYYY-MM, or YYYY-MM-DD)`);
   }
-  return `"${value}"`;
+  const [year, month = 1, day = 1] = value.split("-").map(Number) as [number, number?, number?];
+  const start = new Date(0);
+  // setUTCFullYear, unlike Date.UTC, does not remap years 0-99 to 1900-1999.
+  start.setUTCFullYear(year, month - 1, day);
+  if (
+    start.getUTCFullYear() !== year ||
+    start.getUTCMonth() !== month - 1 ||
+    start.getUTCDate() !== day
+  ) {
+    throw new UnsafeQueryError(`${label} is not a valid calendar date`);
+  }
+  const parts = value.split("-").length;
+  return { start, precision: parts === 1 ? "year" : parts === 2 ? "month" : "day" };
+}
+
+/** Solr's ISO-8601 instant form, e.g. 2023-01-01T00:00:00Z. */
+function solrInstant(date: Date): string {
+  return `${date.toISOString().slice(0, 19)}Z`;
+}
+
+function periodStart(value: string | undefined, label: DateBoundLabel): string {
+  return value === undefined ? "*" : solrInstant(parseDateBound(value, label).start);
+}
+
+/** Start of the period after `value`'s period; open-ended past year 9999. */
+function periodEndExclusive(value: string | undefined, label: DateBoundLabel): string {
+  if (value === undefined) {
+    return "*";
+  }
+  const { start, precision } = parseDateBound(value, label);
+  const next = new Date(start.getTime());
+  if (precision === "year") {
+    next.setUTCFullYear(start.getUTCFullYear() + 1);
+  } else if (precision === "month") {
+    next.setUTCMonth(start.getUTCMonth() + 1);
+  } else {
+    next.setUTCDate(start.getUTCDate() + 1);
+  }
+  return next.getUTCFullYear() > 9999 ? "*" : solrInstant(next);
 }
 
 // ─── Search (Requirements 1.1-1.5, 10.1-10.7) ───────────────────────────────
@@ -199,7 +248,13 @@ export function buildSearchQuery(
   const rows = Math.min(request.limit * 3, MAX_ROWS);
   const params = new URLSearchParams();
   params.set("defType", "edismax");
-  params.set("q", escapeSolrValue(request.query));
+  if (request.query.trim().length === 0) {
+    // A blank edismax q matches nothing; q.alt makes "no query" mean every
+    // record the immutable public filters allow (list_facets without a query).
+    params.set("q.alt", "*:*");
+  } else {
+    params.set("q", escapeSolrValue(request.query));
+  }
   params.set(
     "qf",
     weightedFields
@@ -300,20 +355,28 @@ export function buildRelatedQuery(
     throw new UnsafeQueryError("limit must be a positive integer");
   }
 
+  // MoreLikeThis runs as the search component on /select (mlt=true), the way
+  // DSpace's own related-items query does; a dedicated /mlt handler is not
+  // guaranteed to be configured. The main query selects the one source
+  // document; similar documents come back in the `moreLikeThis` section.
   const params = new URLSearchParams();
   params.set("q", `${profile.identityFields.uuid}:${quoteEscaped(request.identityValue)}`);
+  params.set("mlt", "true");
   params.set("mlt.fl", profile.relatedFields.join(","));
   params.set("mlt.mintf", "1");
   params.set("mlt.mindf", "2");
+  params.set("mlt.count", String(Math.min(request.limit * 3, MAX_ROWS)));
   params.set("fl", profile.returnFields.join(","));
-  params.set("rows", String(Math.min(request.limit * 3, MAX_ROWS)));
+  params.set("rows", "1");
   params.set("timeAllowed", boundedTimeAllowed());
   params.set("wt", "json");
+  // Render named lists as objects so `moreLikeThis` is keyed by document.
+  params.set("json.nl", "map");
 
   appendImmutablePublicFilters(params, profile);
 
   return {
-    path: "/mlt",
+    path: "/select",
     params,
     expectedFields: new Set(profile.returnFields),
   };

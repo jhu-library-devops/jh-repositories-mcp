@@ -22,7 +22,8 @@ import type {
   RepositoryId,
   RepositoryWarning,
 } from "../../models/index";
-import { backendUnavailable, invalidInput } from "../errors";
+import { backendUnavailable, invalidInput, repositoryNotAvailable } from "../errors";
+import { reportBackendFault } from "./get-item";
 import { type ToolContext, selectRepositories } from "./search-items";
 
 const MAX_FACET_VALUES = 10;
@@ -43,7 +44,7 @@ export async function listFacets(
 ): Promise<ListFacetsOutput> {
   const requested = selectRepositories(context, input.repositories);
   if (requested.length === 0) {
-    throw invalidInput("No requested repository is available on this server.");
+    throw repositoryNotAvailable(input.repositories, [...context.adapters.keys()]);
   }
   const facetConcepts = input.facets ?? [...DEFAULT_FACETS];
 
@@ -51,7 +52,7 @@ export async function listFacets(
     requested.map(async (repository): Promise<RepositoryFacets> => {
       const adapter = context.adapters.get(repository);
       if (adapter === undefined) {
-        return { repository, facets: [], warnings: [] };
+        return { repository, facets: [], totalMatches: 0, warnings: [] };
       }
       return adapter.facets({
         query: input.query ?? "",
@@ -67,6 +68,7 @@ export async function listFacets(
   const perRepository: RepositoryFacets[] = [];
   const succeeded: RepositoryId[] = [];
   const failed: RepositoryId[] = [];
+  const faults: Array<[RepositoryId, unknown]> = [];
   settled.forEach((result, index) => {
     const repository = requested[index];
     if (repository === undefined) {
@@ -77,8 +79,18 @@ export async function listFacets(
       succeeded.push(repository);
     } else {
       failed.push(repository);
+      faults.push([repository, result.reason]);
     }
   });
+  for (const [repository, cause] of faults) {
+    reportBackendFault(
+      context,
+      "list_facets",
+      repository,
+      cause,
+      succeeded.length > 0 ? "partial_results" : "backend_unavailable",
+    );
+  }
   if (succeeded.length === 0) {
     throw backendUnavailable();
   }
@@ -115,22 +127,16 @@ export async function listFacets(
 
 /**
  * The `repository` facet is a constant-identity facet (design §11): one value
- * per succeeded repository whose count is the sum of its own facet counts'
- * best available signal — the repository's largest single facet-value total.
- * When a repository returned no facet data the value is present with count 0
- * so clients still see coverage.
+ * per succeeded repository, counting that repository's public records that
+ * match the query and filters. A repository with no matches is still listed,
+ * with count 0, so clients see coverage.
  */
 function synthesizeRepositoryFacet(perRepository: RepositoryFacets[]): FacetResult {
-  const values: FacetValue[] = perRepository.map((repo) => {
-    const largest = repo.facets
-      .flatMap((facet) => facet.values)
-      .reduce((max, value) => Math.max(max, value.count), 0);
-    return {
-      label: repo.repository,
-      count: largest,
-      repositoryBreakdown: { [repo.repository]: largest },
-    };
-  });
+  const values: FacetValue[] = perRepository.map((repo) => ({
+    label: repo.repository,
+    count: repo.totalMatches,
+    repositoryBreakdown: { [repo.repository]: repo.totalMatches },
+  }));
   return { facet: "repository", values: sortFacetValues(values) };
 }
 

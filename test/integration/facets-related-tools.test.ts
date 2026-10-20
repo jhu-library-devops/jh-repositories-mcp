@@ -29,6 +29,7 @@ import type {
   RepositoryPage,
   RepositorySearchRequest,
 } from "../../src/models/index";
+import type { BackendFaultLog } from "../../src/observability/index";
 
 // ─── Stubs ───────────────────────────────────────────────────────────────────
 
@@ -74,6 +75,7 @@ interface Behavior {
   facetsResult?: RepositoryFacets | Error;
   getResult?: ItemDetail | null | Error;
   relatedPage?: RepositoryPage;
+  relatedError?: Error;
   searchPage?: (request: RepositorySearchRequest) => RepositoryPage;
 }
 
@@ -110,9 +112,12 @@ function stub(repository: RepositoryId, behavior: Behavior = {}): RepositoryAdap
       if (behavior.facetsResult instanceof Error) {
         throw behavior.facetsResult;
       }
-      return behavior.facetsResult ?? { repository, facets: [], warnings: [] };
+      return behavior.facetsResult ?? { repository, facets: [], totalMatches: 0, warnings: [] };
     },
     async related() {
+      if (behavior.relatedError) {
+        throw behavior.relatedError;
+      }
       return behavior.relatedPage ?? emptyPage();
     },
   };
@@ -184,6 +189,7 @@ describe("list_facets: cross-repository merging", () => {
           values: [{ label: "Wetlands", count: 2, repositoryBreakdown: { jscholarship: 2 } }],
         },
       ],
+      totalMatches: 2,
       warnings: [],
     };
     const output = await listFacets(
@@ -194,6 +200,63 @@ describe("list_facets: cross-repository merging", () => {
     expect(output.facets[0]?.values[0]?.label).toBe("Wetlands");
     const warning = output.warnings.find((w) => w.code === "backend_unavailable");
     expect(warning?.message).not.toContain("10.1.2.3");
+  });
+
+  test("the repository facet counts each repository's matching records", async () => {
+    const js: RepositoryFacets = {
+      repository: "jscholarship",
+      facets: [],
+      totalMatches: 1234,
+      warnings: [],
+    };
+    const dv: RepositoryFacets = { repository: "jhrdr", facets: [], totalMatches: 0, warnings: [] };
+    const output = await listFacets(context({ facetsResult: js }, { facetsResult: dv }), {
+      repositories: "all",
+      facets: ["repository"],
+    });
+    expect(output.facets[0]?.values).toEqual([
+      { label: "jscholarship", count: 1234, repositoryBreakdown: { jscholarship: 1234 } },
+      { label: "jhrdr", count: 0, repositoryBreakdown: { jhrdr: 0 } },
+    ]);
+  });
+
+  test("a failed repository is logged for operators with the Solr status", async () => {
+    const solrDown = Object.assign(new Error("Solr returned HTTP 404 at 10.1.2.3"), {
+      name: "SolrRequestError",
+      status: 404,
+      operation: "solr_select",
+    });
+    const faults: BackendFaultLog[] = [];
+    const ctx = {
+      ...context({}, { facetsResult: solrDown }),
+      onBackendFault: (fault: BackendFaultLog) => faults.push(fault),
+    };
+    const output = await listFacets(ctx, { repositories: "all", facets: ["subject"] });
+    expect(output.repositories.failed).toEqual(["jhrdr"]);
+    expect(faults).toEqual([
+      expect.objectContaining({
+        tool: "list_facets",
+        repository: "jhrdr",
+        operation: "solr_select",
+        status: 404,
+        effect: "partial_results",
+      }),
+    ]);
+    expect(JSON.stringify(faults)).not.toContain("10.1.2.3");
+  });
+
+  test("an unconfigured repository is named, with what this server does offer", async () => {
+    const jscholarshipOnly: ToolContext = {
+      adapters: new Map<RepositoryId, RepositoryAdapter>([["jscholarship", stub("jscholarship")]]),
+    };
+    const error = await listFacets(jscholarshipOnly, { repositories: "jhrdr" }).then(
+      () => null,
+      (e: ToolFailure) => e.toolError,
+    );
+    expect(error).toEqual({
+      code: "invalid_input",
+      message: "JHRDR is not available on this server. Available here: JScholarship.",
+    });
   });
 
   test("all repositories failing throws backend_unavailable", async () => {
@@ -207,6 +270,40 @@ describe("list_facets: cross-repository merging", () => {
 // ─── find_related_items ──────────────────────────────────────────────────────
 
 describe("find_related_items: canonical-first related discovery", () => {
+  test("a failing related query is logged with its cause; the client sees only the opaque error", async () => {
+    const faults: BackendFaultLog[] = [];
+    const ctx = {
+      ...context({
+        getResult: sourceItem(),
+        relatedError: Object.assign(new Error("Solr returned HTTP 404"), {
+          name: "SolrRequestError",
+          status: 404,
+          operation: "solr_select",
+        }),
+      }),
+      onBackendFault: (fault: BackendFaultLog) => faults.push(fault),
+    };
+    const code = await findRelatedItems(ctx, {
+      repository: "jscholarship",
+      identifier: "jscholarship:11111111-1111-1111-1111-111111111111",
+      targetRepositories: "jscholarship",
+      limit: 5,
+    }).then(
+      () => null,
+      (e: ToolFailure) => e.toolError.code,
+    );
+    expect(code).toBe("backend_unavailable");
+    expect(faults).toEqual([
+      expect.objectContaining({
+        tool: "find_related_items",
+        repository: "jscholarship",
+        operation: "solr_select",
+        status: 404,
+        effect: "backend_unavailable",
+      }),
+    ]);
+  });
+
   test("resolves the source canonically, uses native related in-repo and derived search cross-repo", async () => {
     const requests: string[] = [];
     const output = await findRelatedItems(
