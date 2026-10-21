@@ -1,0 +1,308 @@
+/*
+ * Johns Hopkins brand layer for the VitePress default theme.
+ *
+ * Visual language follows the RSSN Provider Inventory
+ * (https://jhu-rssn.github.io/RSSN_Provider_Inventory/, MIT), which applies
+ * the Johns Hopkins visual identity (brand.jhu.edu/visual-identity/colors):
+ * Heritage Blue leads, secondary colors are small accents, Source Serif 4 and
+ * Work Sans are the typefaces, with Georgia and Tahoma as system fallbacks.
+ * Only the token values and patterns are reused; these rules are written for
+ * VitePress.
+ */
+
+:root {
+  /* Hopkins primary */
+  --jhu-heritage-blue: #002d72;
+  --jhu-spirit-blue: #68ace5;
+  /* Hopkins secondary, used sparingly */
+  --jhu-medium-blue: #0077d8;
+  --jhu-gold: #f1c400;
+  /* Interface tints derived from Heritage Blue */
+  --jhu-heritage-dark: #001e4d;
+  --jhu-page: #f5f7fb;
+  --jhu-surface: #ffffff;
+  --jhu-tint: #e9eef6;
+  --jhu-line: #d4dce8;
+  --jhu-ink: #16213a;
+  --jhu-muted: #4a5670;
+  --jhu-on-blue-muted: #d6e4f5;
+  --jhu-notice-bg: #fff6d1;
+  --jhu-notice-ink: #3d3200;
+  --jhu-notice-line: #ebd98a;
+
+  --jhu-font-display: "Source Serif 4", Georgia, "Times New Roman", serif;
+  --jhu-font-body: "Work Sans", Tahoma, "Segoe UI", sans-serif;
+  --jhu-radius: 6px;
+
+  /* VitePress tokens */
+  --vp-font-family-base: var(--jhu-font-body);
+
+  --vp-c-brand-1: var(--jhu-heritage-blue);
+  --vp-c-brand-2: var(--jhu-heritage-dark);
+  --vp-c-brand-3: var(--jhu-heritage-blue);
+  --vp-c-brand-soft: rgba(0, 45, 114, 0.08);
+
+  --vp-c-text-1: var(--jhu-ink);
+  --vp-c-text-2: var(--jhu-muted);
+  --vp-c-text-3: var(--jhu-muted);
+
+  --vp-c-bg: var(--jhu-surface);
+  --vp-c-bg-alt: var(--jhu-page);
+  --vp-c-bg-soft: var(--jhu-tint);
+  --vp-c-divider: var(--jhu-line);
+  --vp-c-gutter: var(--jhu-line);
+  --vp-sidebar-bg-color: var(--jhu-page);
+
+  --vp-button-brand-bg: var(--jhu-heritage-blue);
+  --vp-button-brand-border: var(--jhu-heritage-blue);
+  --vp-button-brand-hover-bg: var(--jhu-heritage-dark);
+  --vp-button-brand-hover-border: var(--jhu-heritage-dark);
+  --vp-button-brand-active-bg: var(--jhu-heritage-dark);
+  --vp-button-alt-bg: var(--jhu-surface);
+  --vp-button-alt-border: var(--jhu-line);
+  --vp-button-alt-text: var(--jhu-heritage-blue);
+  --vp-button-alt-hover-bg: var(--jhu-tint);
+  --vp-button-alt-hover-text: var(--jhu-heritage-dark);
+
+  --vp-home-hero-name-color: var(--jhu-heritage-blue);
+
+  --vp-nav-bg-color: var(--jhu-heritage-blue);
+  --vp-nav-height: 68px;
+
+  --vp-custom-block-tip-bg: var(--jhu-tint);
+  --vp-custom-block-tip-border: var(--jhu-line);
+  --vp-custom-block-warning-bg: var(--jhu-notice-bg);
+  --vp-custom-block-warning-border: var(--jhu-notice-line);
+  --vp-custom-block-warning-text: var(--jhu-notice-ink);
+}
+
+/* ---------- Focus and skip link ---------- */
+
+:focus-visible {
+  outline: 3px solid var(--jhu-medium-blue);
+  outline-offset: 2px;
+}
+
+.VPSkipLink {
+  background: var(--jhu-gold) !important;
+  color: var(--jhu-heritage-blue) !important;
+  font-weight: 600;
+  border-radius: 0;
+}
+
+/* ---------- Header: solid Heritage Blue with a Spirit Blue rule ---------- */
+
+.VPNav {
+  border-bottom: 4px solid var(--jhu-spirit-blue);
+}
+
+.VPNavBar,
+.VPNavBar.has-sidebar .title,
+.VPNavBar .content-body,
+.VPNavBar .divider {
+  background-color: var(--jhu-heritage-blue) !important;
+}
+
+.VPNavBar .divider-line {
+  background-color: transparent !important;
+}
+
+.VPNav :focus-visible {
+  outline-color: var(--jhu-gold);
+}
+
+.VPNavBarTitle .title {
+  flex-direction: column;
+  align-items: flex-start;
+  justify-content: center;
+  gap: 0;
+  border-bottom: 0 !important;
+  color: #ffffff;
+  font-family: var(--jhu-font-display);
+  font-weight: 700;
+  font-size: 1.15rem;
+  line-height: 1.2;
+}
+
+.VPNavBarTitle .title:hover {
+  opacity: 1;
+  color: #ffffff;
+}
+
+.brand__network {
+  font-family: var(--jhu-font-body);
+  font-size: 0.75rem;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  color: var(--jhu-on-blue-muted);
+}
+
+.VPNavBarMenuLink,
+.VPNavBarMenuGroup .button,
+.VPNavBarMenuGroup .text,
+.VPNavBarSocialLinks .VPSocialLink,
+.VPNavBarExtra .button {
+  color: #ffffff !important;
+}
+
+.VPNavBarMenuLink {
+  border-bottom: 2px solid transparent;
+  line-height: calc(var(--vp-nav-height) - 24px) !important;
+}
+
+.VPNavBarMenuLink:hover,
+.VPNavBarMenuLink.active {
+  color: #ffffff !important;
+  border-bottom-color: var(--jhu-spirit-blue);
+}
+
+.VPNavBarHamburger .top,
+.VPNavBarHamburger .middle,
+.VPNavBarHamburger .bottom {
+  background-color: #ffffff !important;
+}
+
+.VPNavBarSearch .DocSearch-Button {
+  background: rgba(255, 255, 255, 0.12);
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.35);
+}
+
+.VPNavBarSearch .DocSearch-Button:hover {
+  background: rgba(255, 255, 255, 0.2);
+  border-color: var(--jhu-spirit-blue);
+}
+
+.VPNavBarSearch .DocSearch-Button .DocSearch-Search-Icon,
+.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Placeholder {
+  color: #ffffff;
+}
+
+.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Key {
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.5);
+}
+
+/* ---------- Type ---------- */
+
+.vp-doc h1,
+.vp-doc h2,
+.vp-doc h3,
+.VPHero .name,
+.VPHero .text,
+.VPFeature .title {
+  font-family: var(--jhu-font-display);
+  text-wrap: balance;
+}
+
+.vp-doc h1 {
+  font-weight: 700;
+  color: var(--jhu-heritage-blue);
+}
+
+.vp-doc h2,
+.vp-doc h3 {
+  font-weight: 600;
+  color: var(--jhu-ink);
+}
+
+.vp-doc h2 {
+  border-top-color: var(--jhu-line);
+}
+
+.vp-doc a {
+  color: var(--jhu-heritage-blue);
+  text-underline-offset: 2px;
+}
+
+.vp-doc a:hover {
+  color: var(--jhu-heritage-dark);
+}
+
+/* Tables keep VitePress's block display so wide tables scroll on small screens. */
+.vp-doc table {
+  border-radius: var(--jhu-radius);
+}
+
+.vp-doc th {
+  background-color: var(--jhu-tint);
+  color: var(--jhu-ink);
+}
+
+/* ---------- Sidebar ---------- */
+
+.VPSidebarItem.level-0 > .item .text {
+  font-family: var(--jhu-font-display);
+  font-weight: 600;
+  color: var(--jhu-heritage-blue);
+}
+
+.VPSidebarItem.is-active > .item .link > .text {
+  color: var(--jhu-heritage-blue);
+  font-weight: 600;
+}
+
+.VPSidebarItem.is-active > .item .indicator {
+  background-color: var(--jhu-spirit-blue);
+}
+
+/* ---------- Home: tinted band, card accents ---------- */
+
+.VPHome .VPHero {
+  background: var(--jhu-tint);
+  border-bottom: 1px solid var(--jhu-line);
+  margin-bottom: 32px;
+  padding-bottom: 48px !important;
+}
+
+.VPHero .name,
+.VPHero .name .clip {
+  font-weight: 700;
+  color: var(--jhu-heritage-blue);
+  -webkit-text-fill-color: var(--jhu-heritage-blue);
+}
+
+.VPHero .text {
+  font-weight: 600;
+  color: var(--jhu-ink);
+}
+
+.VPHero .tagline {
+  color: var(--jhu-muted);
+}
+
+.VPFeature {
+  border: 1px solid var(--jhu-line) !important;
+  border-top: 4px solid var(--jhu-spirit-blue) !important;
+  border-radius: var(--jhu-radius) !important;
+  background-color: var(--jhu-surface) !important;
+}
+
+.VPFeature .title {
+  color: var(--jhu-heritage-blue);
+}
+
+.VPHome .vp-doc {
+  margin-top: 48px;
+}
+
+/* ---------- Footer ---------- */
+
+.VPFooter {
+  background: var(--jhu-heritage-blue) !important;
+  border-top: 0 !important;
+  color: var(--jhu-on-blue-muted);
+}
+
+.VPFooter .message,
+.VPFooter .copyright {
+  color: var(--jhu-on-blue-muted);
+}
+
+.VPFooter a {
+  color: #ffffff;
+}
+
+.VPFooter :focus-visible {
+  outline-color: var(--jhu-gold);
+}

@@ -376,8 +376,9 @@ Don't end on theory. Offer a concrete first change and let them pick:
    JHRDR env vars. Each is small, genuinely broken, and drags them through a
    module. (`references/architecture.md` has the full list; verify it's still
    true before promising it.)
-3. **Pick up open spec work** from `.kiro/specs/jscholarship-jhrdr-mcp/tasks.md`
-   — tasks 20, 21, 25, and 26 are the ones still open.
+3. **Pick up open spec work** from the unchecked items in
+   `.kiro/specs/*/tasks.md`. Read the file rather than assuming which tasks are
+   open.
 
 Then walk the loop once with them: `bun test`, `bun run typecheck`,
 `bun run lint`, a changelog fragment via `bun run changelog:new`, and a PR

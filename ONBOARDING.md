@@ -79,7 +79,7 @@ ENVIRONMENT=stage BUILD_VERSION=dev BUILD_COMMIT=local \
 JSCHOLARSHIP_SOLR_URL=http://localhost:8983/solr/search \
 JSCHOLARSHIP_API_URL=http://localhost:8080/server/api \
 JSCHOLARSHIP_PUBLIC_URL=https://jscholarship.library.jhu.edu \
-ALLOWED_HOSTS=localhost \
+ALLOWED_HOSTS=localhost:3000 \
 bun run dev
 ```
 
@@ -92,10 +92,10 @@ curl -i http://localhost:3000/health/ready   # 503: nothing to validate against
 
 The readiness endpoint returns 503 because the service won't take traffic until
 it confirms that each Solr index still has the fields its repository profile
-requires. Leaving the three `JHRDR_*` variables unset is normal. The JHRDR adapter
-is only created when all three are set, so the server runs with JScholarship
-alone. The full variable list and defaults are in
-[`src/config/env.ts`](src/config/env.ts).
+requires. Leaving the `JHRDR_*` variables unset is normal. The JHRDR adapter is only
+created when its Solr and API URLs are set, so the server runs with
+JScholarship alone. Every variable and default is in the
+[configuration reference](docs/reference/configuration.md).
 
 > The default port is 3000. Set `PORT` to use a different one.
 
@@ -358,12 +358,9 @@ outside Requirement 17) starts with **a spec change, not a PR**. See
 2. **Fix a known rough edge** from the list in
    [`CLAUDE.md`](CLAUDE.md#known-rough-edges). Each one is small, actually
    broken, and takes you through one module. Confirm it's still broken first.
-3. **Pick up remaining spec work** from
-   [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md): full container-image
-   verification (19.3), OpenTofu plan tests (20.4), Origin and complete
-   public-path validation (21.3–21.4), pilot evaluation (25), or production
-   release (26). The infrastructure and public-edge tasks are otherwise
-   implemented.
+3. **Pick up open spec work.** The unchecked items in each
+   `.kiro/specs/*/tasks.md` are the current plan. Read the task's requirement
+   references before starting.
 
 Go through the full loop once:
 
@@ -371,6 +368,10 @@ Go through the full loop once:
 bun test && bun run typecheck && bun run lint
 bun run changelog:new          # add a changelog.d/ fragment; never hand-edit CHANGELOG.md
 ```
+
+If you changed the MCP surface, configuration, a repository profile, error
+codes, or `infra/`, also run `bun run docs:generate` and commit the result. The
+PR will get an advisory comment listing developer-reference pages to recheck.
 
 Then open a PR that summarizes the scope, cites the requirement and task numbers,
 lists the checks you ran, and calls out any schema, security, config, or infra
@@ -409,7 +410,9 @@ person instead of misleading them.
 
 | Question | Read |
 | --- | --- |
-| What's the current state, and what are the invariants and commands? | [`CLAUDE.md`](CLAUDE.md) |
+| What does the MCP surface, configuration, or a repository support look like exactly? | The [developer reference](https://jhu-library-devops.github.io/jh-repositories-mcp/) ([`docs/`](docs/index.md)) |
+| What are the invariants and commands? | [`CLAUDE.md`](CLAUDE.md) |
+| What's left to build? | The unchecked items in `.kiro/specs/*/tasks.md` |
 | What does this term mean exactly? | [`CONTEXT.md`](CONTEXT.md) |
 | Why was it built this way? | [`docs/adr/`](docs/adr/README.md), starting with ADR-005 |
 | Is this behavior required or incidental? | [`requirements.md`](.kiro/specs/jscholarship-jhrdr-mcp/requirements.md) |

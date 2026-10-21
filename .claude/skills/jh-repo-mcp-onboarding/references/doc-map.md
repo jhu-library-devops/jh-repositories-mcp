@@ -16,6 +16,7 @@ fastest, because nothing fails when they're wrong.
 | Path | Authoritative for | Read it when |
 | --- | --- | --- |
 | `src/`, `config/`, `test/` | What the system actually does | Always, for behavior questions |
+| `docs/` (published at <https://jhu-library-devops.github.io/jh-repositories-mcp/>) | The developer reference: `docs/reference/` is generated from source (MCP surface, configuration, repository capabilities, errors, infrastructure); `docs/architecture/` and `docs/guides/` are hand-written and declare their `sources:` | Pointing someone at the canonical write-up of a behavior, or checking an exact schema or default |
 | `docs/adr/` (12 ADRs, MADR format) | **Why** a structural choice was made, and what it cost | Someone asks "why is it like this" or proposes reversing a decision |
 | `.kiro/specs/jscholarship-jhrdr-mcp/requirements.md` | Numbered acceptance criteria (Requirements 1–17) + the authoritative glossary | You need to know whether a behavior is required or incidental |
 | `.kiro/specs/jscholarship-jhrdr-mcp/design.md` | The intended architecture, component interfaces, the 15 correctness properties, rollout phases | Deep design questions; the property list is what `test/property/` implements |
@@ -59,14 +60,6 @@ it** — some may have been fixed, and a confident wrong claim about the docs is
 worse than no claim. When you confirm drift, say so explicitly to whoever you're
 onboarding; the habit of noticing it is part of what you're teaching.
 
-**Resolved in the onboarding-guide change** (listed so you don't re-report
-them): `AGENTS.md` describing the repo as spec-only; `bun ci` in the Dockerfile,
-ADR-002, `design.md`, and `tasks.md` (it doesn't exist in the pinned Bun
-1.2.15); `CONTEXT.md`'s search-cache description; the stale task 16.4 TODOs in
-`src/security/index.ts`; `tasks.md` naming zod v4 (the code imports zod 3); and
-`CONTRIBUTING.md` pointing at the gitignored `.claude/agents/`. If one of these
-reappears, it's a regression — say so.
-
 **Some `Requirements: N.N` comments in `src/` and design-section references in
 `src/federation/index.ts`** point into the Kiro spec. Those files do exist —
 follow the reference rather than assuming it's dangling.
@@ -76,6 +69,14 @@ placeholder security-group values, and JHRDR's Solr-side
 `discoverableBy:Anonymous` filter clause is commented out pending verification.
 Both are known-provisional, not bugs to "fix" without checking the spike docs in
 `docs/spike/` first.
+
+## How drift is tracked now
+
+Generated reference pages cannot drift: CI fails when they differ from the code.
+Hand-written pages under `docs/` are flagged by an advisory PR comment and a
+weekly freshness issue when their `sources:` change. Prefer pointing to those
+mechanisms, and to `docs/guides/maintaining-docs.md`, over keeping a drift list
+here.
 
 ## How to handle drift when you find new instances
 

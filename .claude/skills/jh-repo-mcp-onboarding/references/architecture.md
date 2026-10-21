@@ -275,11 +275,11 @@ One MCP service per environment (ADR-001).
 
 `.github/workflows/`: `ci.yml` (install → lint → typecheck → test → build, plus
 a dependency audit), `build-push.yml`, `deploy.yml`, `infra-validate.yml`,
-`smoke-test.yml`, `public-readiness.yml`.
+`smoke-test.yml`, and `docs.yml`, `docs-impact.yml`, `docs-freshness.yml` for the
+developer reference site.
 
-Per `.kiro/specs/…/tasks.md`, tasks 1–19 and 22–24 are complete; the open work
-is 20 (OpenTofu stack), 21 (public edge), 25 (pilot evaluation), and 26
-(production release).
+For what remains to be built, read the unchecked items in
+`.kiro/specs/*/tasks.md` directly rather than relying on a summary.
 
 ## Sharp edges worth knowing
 

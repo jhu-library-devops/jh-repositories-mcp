@@ -1,0 +1,61 @@
+name: Docs Impact
+
+# Advisory only: comments on a pull request with the hand-written docs pages
+# whose `sources:` it changes. Never fails the pull request.
+
+on:
+  pull_request:
+    branches: [main]
+    types: [opened, synchronize, reopened]
+
+permissions:
+  contents: read
+  pull-requests: write
+
+concurrency:
+  group: docs-impact-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  impact:
+    name: Documentation impact
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Build report
+        id: report
+        continue-on-error: true
+        env:
+          BASE_REF: ${{ github.base_ref }}
+        run: |
+          bun run scripts/docs/impact.ts --base "origin/${BASE_REF}" --output docs-impact.md
+          cat docs-impact.md >> "${GITHUB_STEP_SUMMARY}"
+
+      # Fork pull requests get a read-only token; the summary above still shows the report.
+      - name: Post or update comment
+        if: steps.report.outcome == 'success'
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          PR: ${{ github.event.pull_request.number }}
+        run: |
+          set -euo pipefail
+          marker='<!-- docs-impact-report -->'
+          existing=$(gh api "repos/${REPO}/issues/${PR}/comments" --paginate \
+            --jq ".[] | select(.user.login == \"github-actions[bot]\" and (.body | contains(\"${marker}\"))) | .id" \
+            | head -n 1)
+          if [ -n "${existing}" ]; then
+            gh api -X PATCH "repos/${REPO}/issues/comments/${existing}" -F body=@docs-impact.md > /dev/null
+          elif grep -q '^- \[ \]' docs-impact.md; then
+            gh api -X POST "repos/${REPO}/issues/${PR}/comments" -F body=@docs-impact.md > /dev/null
+          fi

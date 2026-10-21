@@ -1,6 +1,8 @@
 CHANGELOG.md
 node_modules/
 dist/
+docs/.vitepress/cache/
+docs/.vitepress/dist/
 .worktrees/
 .agents/
 infra/.terraform/

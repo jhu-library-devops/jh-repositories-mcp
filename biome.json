@@ -21,7 +21,7 @@
     }
   },
   "files": {
-    "include": ["src/**", "config/**", "test/**"],
-    "ignore": ["node_modules", "dist", "infra"]
+    "include": ["src/**", "config/**", "test/**", "scripts/docs/**", "docs/.vitepress/**"],
+    "ignore": ["node_modules", "dist", "infra", "docs/.vitepress/cache", "docs/.vitepress/dist"]
   }
 }

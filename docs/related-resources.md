@@ -1,3 +1,10 @@
+---
+title: Related resources
+sources:
+  - src/mcp/instructions.ts
+verified: 2026-10-21
+---
+
 # Related JHU research resources
 
 This is the maintained source for the onward-referral list in
