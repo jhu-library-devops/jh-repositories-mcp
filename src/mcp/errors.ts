@@ -37,15 +37,15 @@ export function repositoryNotAvailable(
 ): ToolFailure {
   let name: string;
   if (typeof requested !== "string") {
-    name = requested.map((id) => REPOSITORY_NAMES[id]).join(", ");
+    name = requested.map((id) => REPOSITORY_NAMES[id] ?? id).join(", ");
   } else if (requested === "all") {
     name = "No repository";
   } else {
-    name = REPOSITORY_NAMES[requested];
+    name = REPOSITORY_NAMES[requested] ?? requested;
   }
   const offered =
     available.length > 0
-      ? ` Available here: ${available.map((id) => REPOSITORY_NAMES[id]).join(", ")}.`
+      ? ` Available here: ${available.map((id) => REPOSITORY_NAMES[id] ?? id).join(", ")}.`
       : "";
   return invalidInput(`${name} is not available on this server.${offered}`);
 }

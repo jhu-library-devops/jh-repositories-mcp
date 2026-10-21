@@ -245,8 +245,9 @@ async function buildStartupRegistry(): Promise<void> {
     readinessState.registryBuilt = true;
     readinessState.ready = false;
     console.error("[startup] Adapter registry build threw:", readinessState.registryError.message);
-    process.exitCode = 1;
-    return;
+    // Halt the process so the schema-validation chain cannot run and flip
+    // readiness to healthy against a misconfigured registry.
+    process.exit(1);
   }
 
   if (result.fatalError !== null) {
@@ -256,9 +257,9 @@ async function buildStartupRegistry(): Promise<void> {
     console.error(
       `[startup] Adapter registry build failed (${result.fatalError.code}): ${result.fatalError.message}`,
     );
-    // Terminate with a non-zero exit so the task is not routed traffic.
-    process.exitCode = 1;
-    return;
+    // Terminate with a non-zero exit so the task is never routed traffic and the
+    // schema-validation chain below cannot flip readiness to healthy.
+    process.exit(1);
   }
 
   toolContext.registry = result.registry;
@@ -355,7 +356,18 @@ async function performSchemaValidation(): Promise<void> {
 // Build the registry first (the readiness gate + eligibility source), then run
 // the detailed schema validation that populates the readiness results payload.
 // Both complete before readiness reports healthy (Req 1.1).
-buildStartupRegistry().then(() => performSchemaValidation());
+buildStartupRegistry()
+  .then(() => performSchemaValidation())
+  .catch((error: unknown) => {
+    // Any unexpected rejection in the startup chain is unrecoverable: log it and
+    // exit non-zero rather than leaving the task stuck reporting not-ready with
+    // no diagnostic.
+    console.error(
+      "[startup] Unhandled startup failure:",
+      error instanceof Error ? error.message : String(error),
+    );
+    process.exit(1);
+  });
 
 // ─── Export ──────────────────────────────────────────────────────────────────
 

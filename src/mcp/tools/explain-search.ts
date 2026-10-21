@@ -62,9 +62,7 @@ export function explainSearch(
     }
   });
 
-  const repositoryNames = requested
-    .map((r) => (r === "jscholarship" ? "JScholarship (publications)" : "JHRDR (research data)"))
-    .join(" and ");
+  const repositoryNames = requested.map((r) => REPOSITORY_DESCRIPTIONS[r] ?? r).join(" and ");
   const filterNote = strategies.some((s) => s.filtersUnsupported.length > 0)
     ? " Some requested filters are not supported by every repository and are reported per repository."
     : "";
