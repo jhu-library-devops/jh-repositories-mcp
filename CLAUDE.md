@@ -4,12 +4,8 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Repository state
 
-The service is implemented. `src/`, `config/`, `test/`, `infra/`, `Dockerfile`,
-`package.json`, and CI workflows all exist. Per
-`.kiro/specs/jscholarship-jhrdr-mcp/tasks.md`, task 24 is complete. Remaining
-work is full container-image verification (19.3), OpenTofu plan tests (20.4),
-Origin and complete public-path validation (21.3–21.4), pilot evaluation (25),
-and production release (26). Tasks 20 and 21 are otherwise implemented.
+The service is implemented. For what remains to be built, read the unchecked
+items in `.kiro/specs/*/tasks.md` directly; this file does not track progress.
 
 **Code is ground truth.** Where a document in this repo disagrees with the
 source, believe the source and say so rather than silently reconciling.
@@ -20,13 +16,20 @@ authority for intent and scope:
 - `requirements.md` — user stories and numbered acceptance criteria
   (Requirements 1–17) plus a glossary of domain terms. Treat the glossary as
   authoritative terminology.
-- `design.md` — architecture, component interfaces, data models, the 16
+- `design.md` — architecture, component interfaces, data models, the
   correctness properties, and rollout phases.
 - `tasks.md` — the dependency-ordered implementation checklist (1–26), with
   completion state.
 
 Source comments cite these by number (`_Requirements: 2.4-2.6_`). When changing
 the spec, keep all three files mutually consistent.
+
+The published developer reference is `docs/` (built with VitePress, deployed
+to GitHub Pages). `docs/reference/` is generated from source by
+`bun run docs:generate`; never edit it by hand. Hand-written pages declare the
+code they describe in `sources:` front matter. When you change that code, check
+those pages and bump their `verified:` date. Pages describe the system as built:
+no task numbers, plans, or progress notes. See `docs/guides/maintaining-docs.md`.
 
 `CONTEXT.md` is the domain glossary (SearchResult, ItemDetail, Candidate,
 Public_Record, Canonical_API, Field_Allowlist, Immutable_Public_Filter, Cursor,
@@ -108,17 +111,19 @@ behavior, from a single file — trace the path end to end.
 
 ## MCP surface (v1, fixed scope)
 
+<!-- docs:inject mcp-surface-summary -->
 | Type | Name | Purpose |
 | --- | --- | --- |
-| Tool | `search_items` | Federated search across one or both repositories with filters + cursor pagination |
-| Tool | `get_item` | Resolve a single record through its canonical repository API |
-| Tool | `list_facets` | Return approved common/repository-qualified facets |
-| Tool | `find_related_items` | Related-record discovery within or across repositories |
-| Tool | `explain_search` | Human-readable explanation of interpreted query/filters (no backend syntax leaked) |
-| Resource | `jhu-repo://jscholarship/item/{encodedIdentifier}` | Read a canonical JScholarship record |
-| Resource | `jhu-repo://jhrdr/dataset/{encodedIdentifier}` | Read a canonical JHRDR dataset |
-| Prompt | `explore_research_topic` | Guided iterative cross-repository search |
-| Prompt | `find_reusable_data` | Guided dataset discovery/evaluation |
+| Tool | `search_items` | Search JScholarship (publications) and/or JHRDR (research datasets) with structured filters and cursor pagination. Returns citation-ready public records only. |
+| Tool | `get_item` | Resolve one public record by namespaced ID, UUID, Handle, DOI, or Dataverse persistent identifier, with full canonical metadata and public file summaries. |
+| Tool | `list_facets` | List approved facets (repository, creator, subject, year, resourceType, collection) with per-repository counts for refining a search. |
+| Tool | `find_related_items` | Find public records related to a known publication or dataset, within or across the two repositories. |
+| Tool | `explain_search` | Explain how a search would be interpreted per repository (concepts searched, filters applied or unsupported, sort) without executing it. |
+| Resource | `jhu-repo://jscholarship/item/{encodedIdentifier}` | Canonical public JScholarship record by encoded identifier |
+| Resource | `jhu-repo://jhrdr/dataset/{encodedIdentifier}` | Canonical public JHRDR dataset by encoded identifier |
+| Prompt | `explore_research_topic` | Iteratively explore JHU repository holdings (publications and datasets) on a research topic, with citations to persistent identifiers. |
+| Prompt | `find_reusable_data` | Discover and evaluate reusable JHRDR datasets for a research need, including related JScholarship publications. |
+<!-- /docs:inject -->
 
 `src/mcp/registry.ts` holds this as a closed static table with
 `additionalProperties: false` on every schema and no dynamic tool creation.
@@ -161,25 +166,27 @@ tools, registry, transport) may know that Solr, DSpace, or Dataverse exist.
 - Build: `bun run build`
 - Changelog: `bun run changelog:new` to add a `changelog.d/` fragment. Do not
   hand-edit `CHANGELOG.md`.
+- Docs: `bun run docs:generate` after changing the MCP surface, configuration,
+  repository profiles, error codes, or `infra/`; `bun run docs:check` before a
+  PR; `bun run docs:dev` to preview the site.
 
-CI (`.github/workflows/ci.yml`) runs install → lint → typecheck → test → build
-plus a dependency audit.
+CI (`.github/workflows/ci.yml`) runs install → lint → docs checks → typecheck →
+test → build plus a dependency audit.
 
 ## Environment
 
-Required (startup fails without them): `ENVIRONMENT` (`stage`|`production`),
-`BUILD_VERSION`, `BUILD_COMMIT`, `JSCHOLARSHIP_SOLR_URL`,
-`JSCHOLARSHIP_API_URL`, `JSCHOLARSHIP_PUBLIC_URL`, `ALLOWED_HOSTS` (comma list,
-at least one entry).
+<!-- docs:inject configuration-summary -->
+Required (startup fails without them): `ENVIRONMENT`, `BUILD_VERSION`, `BUILD_COMMIT`, `JSCHOLARSHIP_SOLR_URL`, `JSCHOLARSHIP_API_URL`, `JSCHOLARSHIP_PUBLIC_URL`, `ALLOWED_HOSTS`.
 
-Optional/defaulted: `PORT`, `JHRDR_SOLR_URL`, `JHRDR_API_URL`,
-`JHRDR_PUBLIC_URL`, `ALLOWED_ORIGINS`, `TIMEOUT_SOLR_MS`, `TIMEOUT_API_MS`,
-`TIMEOUT_DEADLINE_MS`, `MAX_TOOL_CONCURRENCY`, `MAX_CANONICALIZATION_WORKERS`,
-`CACHE_SEARCH_TTL_MS`, `CACHE_RECORD_TTL_MS`, `CACHE_MAX_ENTRIES`,
-`MAX_BODY_BYTES`.
+Optional or defaulted: `PORT`, `JHRDR_SOLR_URL`, `JHRDR_API_URL`, `JHRDR_PUBLIC_URL`, `ALLOWED_ORIGINS`, `TIMEOUT_SOLR_MS`, `TIMEOUT_API_MS`, `TIMEOUT_DEADLINE_MS`, `MAX_TOOL_CONCURRENCY`, `MAX_CANONICALIZATION_WORKERS`, `CACHE_SEARCH_TTL_MS`, `CACHE_RECORD_TTL_MS`, `CACHE_MAX_ENTRIES`, `MAX_BODY_BYTES`.
+<!-- /docs:inject -->
 
-The JHRDR adapter is only constructed when all three JHRDR URLs are set, so the
-service runs single-repository without them. `GET /health/live` reports process
+Descriptions and defaults: `docs/reference/configuration.md`.
+
+The JHRDR adapter is only constructed when `JHRDR_SOLR_URL` and `JHRDR_API_URL`
+are set, so the service runs single-repository without them.
+
+`GET /health/live` reports process
 liveness; `GET /health/ready` returns 503 until Solr schema validation passes.
 
 ## Testing
@@ -235,6 +242,9 @@ Verify before relying on any of these; they may have been fixed.
   `unsupported_filter` warning; no adapter implements it.
 - `find_related_items` can return fewer than `limit` results, because the source
   record is filtered out after the merge trims.
+- The ECS container health check and the ALB target group both probe
+  `/health/live`, not `/health/ready`, so a task whose schema validation failed
+  still receives traffic.
 - JHRDR's Solr-side `discoverableBy:Anonymous` clause is commented out pending
   verification, so the Dataverse `versionState === "RELEASED"` check carries the
   gate. `config/repositories/jhrdr-endpoints.ts` is a self-declared stub.

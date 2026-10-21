@@ -1,0 +1,24 @@
+name: Set up terraform-docs
+description: >
+  Install the pinned terraform-docs release used to generate
+  docs/reference/infrastructure.md. The version must match
+  TERRAFORM_DOCS_VERSION in scripts/docs/generators/infrastructure.ts.
+
+runs:
+  using: composite
+  steps:
+    - name: Install terraform-docs
+      shell: bash
+      env:
+        VERSION: "0.24.0"
+        # sha256 of terraform-docs-v0.24.0-linux-amd64.tar.gz from the release's .sha256sum file
+        SHA256: "9005daf969de0b50134493a2c00078b49f5f5b39d021cda7c89bf4d4f3d776d3"
+      run: |
+        set -euo pipefail
+        archive="terraform-docs-v${VERSION}-linux-amd64.tar.gz"
+        curl -fsSL -o "${RUNNER_TEMP}/${archive}" \
+          "https://github.com/terraform-docs/terraform-docs/releases/download/v${VERSION}/${archive}"
+        echo "${SHA256}  ${RUNNER_TEMP}/${archive}" | sha256sum --check --strict
+        mkdir -p "${RUNNER_TEMP}/terraform-docs"
+        tar -xzf "${RUNNER_TEMP}/${archive}" -C "${RUNNER_TEMP}/terraform-docs" terraform-docs
+        echo "${RUNNER_TEMP}/terraform-docs" >> "${GITHUB_PATH}"

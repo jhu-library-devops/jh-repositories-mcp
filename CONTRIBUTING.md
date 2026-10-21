@@ -91,6 +91,13 @@ Naming: `camelCase` functions and variables, `PascalCase` types and classes,
 lowercase repository ids (`jscholarship`, `jhrdr`), and the fixed snake_case MCP
 tool names (`search_items`) exactly as the registry declares them.
 
+### Documentation checks
+
+`bun run docs:check` runs everything CI enforces on documentation: Markdown
+style, local links and anchors, cited repository paths, the public-content guard,
+and whether the generated reference is current. Link validation is
+repository-local and does not probe external URLs, so the gate is deterministic.
+
 ## Changelog
 
 Describe changes with a fragment rather than editing [`CHANGELOG.md`](CHANGELOG.md)
@@ -114,7 +121,7 @@ Pull requests should:
 - call out schema, security, configuration, or infrastructure impacts
 - link the relevant issue when there is one
 
-CI runs lint, typecheck, test, build, and a dependency audit. Get it green before
+CI runs lint, documentation checks, typecheck, test, build, and a dependency audit. Get it green before
 requesting review.
 
 **Never commit credentials, private endpoints, or unreviewed repository payloads.**
@@ -204,7 +211,22 @@ approved it. Check with your supervisor when a tool is new to the team.
 
 ## Documentation
 
+The developer reference in [`docs/`](docs/index.md) is published to GitHub
+Pages. It describes the system as built: no plans, task numbers, or progress
+notes. Release notes go in `changelog.d/`, intent stays in the specs.
+
+- **Generated pages.** `docs/reference/` is generated from source. If you change
+  the MCP surface, configuration, a repository profile, error codes, or `infra/`,
+  run `bun run docs:generate` and commit the result. CI fails otherwise.
+- **Hand-written pages.** Each declares the code it describes in `sources:` front
+  matter. A PR that changes those files gets an advisory comment listing the pages
+  to recheck. When you check a page, update its `verified:` date even if nothing
+  changed.
+- **Public repository.** The site is public. Never put hostnames, account or
+  resource IDs, or IP addresses in `docs/`; the public-content guard fails the
+  build if you do.
+
 Where a document and the source disagree, the source wins. If you find drift, say
-so in the PR and fix the document — leaving it means the next person rediscovers it.
-[`CLAUDE.md`](CLAUDE.md) should stay accurate about current state, and ADRs are
-append-only: supersede a decision with a new ADR rather than editing the old one.
+so in the PR and fix the document. ADRs are append-only: supersede a decision with
+a new ADR rather than editing the old one. Details are in
+[Maintaining these docs](docs/guides/maintaining-docs.md).

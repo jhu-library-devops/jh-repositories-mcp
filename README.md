@@ -31,10 +31,13 @@ server on the same bones.
 another project, or in Claude.ai), how to get the most out of it, and how to use
 it to build a new MCP server.
 
-Prefer to read? Start with [`CLAUDE.md`](CLAUDE.md) for current state and
-conventions, [`CONTEXT.md`](CONTEXT.md) for the domain vocabulary, then
-[ADR-005](docs/adr/ADR-005-solr-candidates-canonical-api-gate.md) for the decision
-everything else follows from.
+Prefer to read? The **developer reference** at
+<https://jhu-library-devops.github.io/jh-repositories-mcp/> (source in
+[`docs/`](docs/index.md)) covers the MCP surface, configuration, architecture,
+and how to extend and operate the service. [`CONTEXT.md`](CONTEXT.md) defines the
+domain vocabulary, and
+[ADR-005](docs/adr/ADR-005-solr-candidates-canonical-api-gate.md) records the
+decision everything else follows from.
 
 ## The one idea
 
@@ -114,19 +117,22 @@ on the Dataverse side.
 
 ## MCP surface
 
-Closed and fixed for v1 — no dynamic registration, strict schemas throughout.
+Closed and fixed: no dynamic registration, strict schemas throughout. Full
+schemas are in the [MCP surface reference](docs/reference/mcp-surface.md).
 
+<!-- docs:inject mcp-surface-summary -->
 | Type | Name | Purpose |
 | --- | --- | --- |
-| Tool | `search_items` | Federated search with filters and cursor pagination |
-| Tool | `get_item` | Resolve a single record through its canonical API |
-| Tool | `list_facets` | Approved common and repository-qualified facets |
-| Tool | `find_related_items` | Related-record discovery |
-| Tool | `explain_search` | How a query was interpreted, no backend syntax leaked |
-| Resource | `jhu-repo://jscholarship/item/{id}` | A canonical JScholarship record |
-| Resource | `jhu-repo://jhrdr/dataset/{id}` | A canonical JHRDR dataset |
-| Prompt | `explore_research_topic` | Guided cross-repository search |
-| Prompt | `find_reusable_data` | Guided dataset discovery |
+| Tool | `search_items` | Search JScholarship (publications) and/or JHRDR (research datasets) with structured filters and cursor pagination. Returns citation-ready public records only. |
+| Tool | `get_item` | Resolve one public record by namespaced ID, UUID, Handle, DOI, or Dataverse persistent identifier, with full canonical metadata and public file summaries. |
+| Tool | `list_facets` | List approved facets (repository, creator, subject, year, resourceType, collection) with per-repository counts for refining a search. |
+| Tool | `find_related_items` | Find public records related to a known publication or dataset, within or across the two repositories. |
+| Tool | `explain_search` | Explain how a search would be interpreted per repository (concepts searched, filters applied or unsupported, sort) without executing it. |
+| Resource | `jhu-repo://jscholarship/item/{encodedIdentifier}` | Canonical public JScholarship record by encoded identifier |
+| Resource | `jhu-repo://jhrdr/dataset/{encodedIdentifier}` | Canonical public JHRDR dataset by encoded identifier |
+| Prompt | `explore_research_topic` | Iteratively explore JHU repository holdings (publications and datasets) on a research topic, with citations to persistent identifiers. |
+| Prompt | `find_reusable_data` | Discover and evaluate reusable JHRDR datasets for a research need, including related JScholarship publications. |
+<!-- /docs:inject -->
 
 v1 is deliberately narrow: anonymous, read-only, no embedded LLM, no vector
 search, no writes, no file-content proxying. Adding to this list is a spec change,
@@ -149,16 +155,17 @@ ENVIRONMENT=stage BUILD_VERSION=dev BUILD_COMMIT=local \
 JSCHOLARSHIP_SOLR_URL=http://localhost:8983/solr/search \
 JSCHOLARSHIP_API_URL=http://localhost:8080/server/api \
 JSCHOLARSHIP_PUBLIC_URL=https://jscholarship.library.jhu.edu \
-ALLOWED_HOSTS=localhost \
+ALLOWED_HOSTS=localhost:3000 \
 bun run dev
 ```
 
 `GET /health/live` reports process liveness. `GET /health/ready` stays 503 until
-Solr schema validation passes — a task that can't confirm the index still has the
-fields its profile depends on never takes traffic. The JHRDR adapter is only
-constructed when all three of its URLs are set, so leaving them unset runs the
-service single-repository. Full variable list and defaults are in
-[`src/config/env.ts`](src/config/env.ts).
+Solr schema validation confirms the index still has the fields each profile
+depends on. (The deployed load balancer checks `/health/live`, so readiness is
+reported, not enforced, in routing.) The JHRDR adapter is only
+constructed when its Solr and API URLs are set, so leaving them unset runs the
+service single-repository. Every variable and default is in the
+[configuration reference](docs/reference/configuration.md).
 
 ## Layout
 
@@ -185,22 +192,16 @@ DSpace, or Dataverse exist.
 
 | Where | What it's for |
 | --- | --- |
-| [`ONBOARDING.md`](ONBOARDING.md) | New-contributor setup, installing the onboarding skill, and building a new MCP server with it |
-| [`CLAUDE.md`](CLAUDE.md) | Current state, invariants, commands, conventions. Start here. |
-| [`CONTEXT.md`](CONTEXT.md) | Domain vocabulary — the terms to use, and the ones to avoid |
-| [`docs/adr/`](docs/adr/README.md) | Twelve accepted ADRs: why each structural decision was made |
-| [`docs/spike/`](docs/spike/) | Verified facts about the deployed Solr schemas and network routes |
-| [`docs/related-resources.md`](docs/related-resources.md) | The JHU collections the server refers researchers to, and why — the maintained source for the MCP `initialize` instructions |
-| [`.kiro/specs/jscholarship-jhrdr-mcp/`](.kiro/specs/jscholarship-jhrdr-mcp/) | Requirements, design, and the dependency-ordered task plan |
-| [`.kiro/steering/`](.kiro/steering/) | Team standards: TypeScript, error handling, logging, security, testing |
-| [`.claude/skills/jh-repo-mcp-onboarding/`](.claude/skills/jh-repo-mcp-onboarding/SKILL.md) | The onboarding walkthrough and architecture reference |
-| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to make a change here: tests, fixtures, scope, commits, PRs |
-| [`AGENTS.md`](AGENTS.md) | Repository guidelines for coding agents |
-| [`test/fixtures/*/README.md`](test/fixtures/) | Fixture provenance and sanitization rules |
+| [Developer reference](https://jhu-library-devops.github.io/jh-repositories-mcp/) ([`docs/`](docs/index.md)) | MCP surface, configuration, repositories, errors, infrastructure, architecture, and guides. The reference pages are generated from source. |
+| [`docs/adr/`](docs/adr/README.md) | Architecture decision records: why each structural choice was made |
+| [`CONTEXT.md`](CONTEXT.md) | Domain vocabulary: the terms to use, and the ones to avoid |
+| [`ONBOARDING.md`](ONBOARDING.md) | New-contributor setup and the onboarding skill |
+| [`CONTRIBUTING.md`](CONTRIBUTING.md) | How to make a change: tests, fixtures, scope, commits, PRs |
+| [`CLAUDE.md`](CLAUDE.md), [`AGENTS.md`](AGENTS.md) | Guidance for coding agents |
+| [`.kiro/specs/`](.kiro/specs/) | Requirements, designs, and task plans (working records, not published) |
+| [`docs/spike/`](docs/spike/) | Schema and network investigations (working records, not published) |
 
-Source comments cite requirement numbers (`_Requirements: 2.4-2.6_`) that resolve
-into the Kiro spec. **Where a document and the source disagree, the source wins** —
-say so, and fix the document.
+**Where a document and the source disagree, the source wins.** Fix the document.
 
 ## Contributing
 
@@ -209,8 +210,10 @@ check before changing behavior, what belongs in which test directory, fixture
 sanitization, changelog fragments, and commit and PR conventions.
 
 The short version: add tests with each behavior change, put invariants in
-`test/property/` as generated cases, describe the change with a `changelog.d/`
-fragment, and cite the requirement and task numbers your PR advances. Never commit
+`test/property/` as generated cases, run `bun run docs:generate` when you change
+the MCP surface, configuration, profiles, or errors, describe the change with a
+`changelog.d/` fragment, and cite the requirement and task numbers your PR
+advances. Never commit
 credentials, private endpoints, or unreviewed repository payloads.
 
 ## Deployment
@@ -227,15 +230,6 @@ Post-deployment verification:
 ```bash
 ./scripts/smoke-test.sh https://mcp-stage.library.jhu.edu
 ```
-
-## Status
-
-Task 24 in [`tasks.md`](.kiro/specs/jscholarship-jhrdr-mcp/tasks.md) is
-complete: the service is implemented, tested, containerized, and deployed to
-stage. Remaining work is full container-image verification (19.3), OpenTofu plan
-tests (20.4), Origin and complete public-path validation (21.3–21.4), pilot
-evaluation (25), and production release (26). Tasks 20 and 21 are otherwise
-implemented.
 
 ## License
 

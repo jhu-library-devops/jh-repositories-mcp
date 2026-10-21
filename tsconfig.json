@@ -15,5 +15,12 @@
       "~/*": ["./src/*"]
     }
   },
-  "include": ["src/**/*.ts", "config/**/*.ts", "test/**/*.ts"]
+  "include": [
+    "src/**/*.ts",
+    "config/**/*.ts",
+    "test/**/*.ts",
+    "scripts/**/*.ts",
+    "docs/.vitepress/**/*.ts"
+  ],
+  "exclude": ["node_modules", "dist", "docs/.vitepress/cache", "docs/.vitepress/dist"]
 }

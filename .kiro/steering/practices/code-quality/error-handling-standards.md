@@ -503,12 +503,6 @@ This is a starting point for error handling standards. You can customize by:
 
 - Incorporating circuit breaker patterns
 
-## Related Documents
-
-- [Code Review Standards](./code-review-standards.md) - Code quality practices
-
-- [API Development Patterns](../workflows/api-development-patterns.md) - API error responses
-
 ## Optional: Validation with External Tools
 
 Want to enhance error handling? Consider these tools:

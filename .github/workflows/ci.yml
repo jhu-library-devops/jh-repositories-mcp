@@ -40,6 +40,14 @@ jobs:
       - name: Lint
         run: bun run lint
 
+      - name: Set up terraform-docs
+        uses: ./.github/actions/setup-terraform-docs
+
+      # Markdown style, links, cited paths, public-content guard, and whether
+      # the generated reference in docs/reference/ matches the code.
+      - name: Documentation
+        run: bun run docs:check
+
       - name: Typecheck
         run: bun run typecheck
 
