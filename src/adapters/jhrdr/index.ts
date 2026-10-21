@@ -33,7 +33,7 @@ import type {
 } from "../../models/index";
 import { parseRecordId } from "../../models/index";
 import { canonicalizeInOrder } from "../canonicalize";
-import type { RepositoryAdapter } from "../index";
+import { ADAPTER_CONTRACT_VERSION, type RepositoryAdapter } from "../index";
 import { SolrClient } from "../solr-client";
 import { buildFacetQuery, buildSearchQuery } from "../solr-query";
 import { type FetchFn, validateSolrSchema } from "../solr-schema-validator";
@@ -78,6 +78,7 @@ interface SolrSearchBody {
  */
 export class JhrdrAdapter implements RepositoryAdapter {
   readonly id = "jhrdr" as const;
+  readonly contractVersion = ADAPTER_CONTRACT_VERSION;
 
   private readonly solrCollectionUrl: string;
   private readonly schemaTimeoutMs: number;

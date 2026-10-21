@@ -137,6 +137,7 @@ function instrumentedAdapter(): InstrumentedAdapter {
   };
   const adapter: InstrumentedAdapter = {
     id: "jscholarship",
+    contractVersion: 2,
     searchCalls: 0,
     getCalls: 0,
     probeCalls: 0,

@@ -106,6 +106,35 @@ resource "aws_cloudwatch_metric_alarm" "high_cpu" {
   tags = local.common_tags
 }
 
+resource "aws_cloudwatch_metric_alarm" "dispatch_fan_out" {
+  count = var.alarm_sns_topic_arn != null ? 1 : 0
+
+  alarm_name        = "${var.name_prefix}-dispatch-fan-out"
+  alarm_description = "MCP ${var.environment}: dispatch fan-out >= 75% of max adapter count (${var.max_adapter_count}) on a single request"
+
+  # Trigger when any single request's fan-out reaches >= 75% of the configured
+  # max adapter count (Req 10.7). Maximum statistic so one wide request trips
+  # the alarm even when the average stays low; ceil keeps the threshold an
+  # integer adapter count.
+  comparison_operator = "GreaterThanOrEqualToThreshold"
+  evaluation_periods  = 1
+  metric_name         = "DispatchFanOut"
+  namespace           = "JhuRepositoryMcp"
+  period              = 60
+  statistic           = "Maximum"
+  threshold           = ceil(var.max_adapter_count * 0.75)
+  treat_missing_data  = "notBreaching"
+
+  dimensions = {
+    Service = "federation"
+  }
+
+  alarm_actions = [var.alarm_sns_topic_arn]
+  ok_actions    = [var.alarm_sns_topic_arn]
+
+  tags = local.common_tags
+}
+
 # -----------------------------------------------------------------------------
 # Application Auto Scaling
 # -----------------------------------------------------------------------------

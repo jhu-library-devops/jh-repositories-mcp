@@ -36,7 +36,7 @@ import type {
 } from "../../models/index";
 import { parseRecordId } from "../../models/index";
 import { canonicalizeInOrder } from "../canonicalize";
-import type { GetOptions, RepositoryAdapter } from "../index";
+import { ADAPTER_CONTRACT_VERSION, type GetOptions, type RepositoryAdapter } from "../index";
 import { SolrClient } from "../solr-client";
 import { buildFacetQuery, buildRelatedQuery, buildSearchQuery } from "../solr-query";
 import { type FetchFn, validateSolrSchema } from "../solr-schema-validator";
@@ -79,6 +79,7 @@ interface SolrSearchBody {
  */
 export class JScholarshipAdapter implements RepositoryAdapter {
   readonly id = "jscholarship" as const;
+  readonly contractVersion = ADAPTER_CONTRACT_VERSION;
 
   private readonly solrCollectionUrl: string;
   private readonly schemaTimeoutMs: number;
