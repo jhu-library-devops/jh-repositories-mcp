@@ -239,6 +239,17 @@ variable "alarm_sns_topic_arn" {
   default     = null
 }
 
+variable "max_adapter_count" {
+  description = "Configured maximum federated adapter count (FederationLimits.maxAdapters, 2-16). The dispatch fan-out alarm triggers when any single request calls >= 75% of this many adapters."
+  type        = number
+  default     = 8
+
+  validation {
+    condition     = var.max_adapter_count >= 2 && var.max_adapter_count <= 16
+    error_message = "max_adapter_count must be between 2 and 16 inclusive."
+  }
+}
+
 # -----------------------------------------------------------------------------
 # Tags
 # -----------------------------------------------------------------------------
