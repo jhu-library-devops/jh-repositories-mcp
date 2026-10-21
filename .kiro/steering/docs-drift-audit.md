@@ -21,7 +21,8 @@ Use this when asked to audit or refresh the developer reference in `docs/`, typi
 4. If a fact is already on a generated page, link to that page instead of restating it.
 5. Update `sources:` if the page now depends on different files, and set `verified:` to today's date.
 6. Run `bun run docs:generate`, `bun run docs:check`, and `bun run docs:build`. All three must pass.
-7. Open a pull request listing each page changed and, for each, the code fact that prompted the change.
+7. Check the onboarding skill in `.claude/skills/jh-repo-mcp-onboarding/` the same way: it names functions, types, paths, and request-path steps, and nothing fails when those go stale. Fix claims that no longer match the code.
+8. Open a pull request listing each page changed and, for each, the code fact that prompted the change.
 
 ## Writing rules
 

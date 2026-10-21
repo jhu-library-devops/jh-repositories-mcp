@@ -7,6 +7,7 @@ sources:
   - .github/workflows/docs.yml
   - .github/workflows/docs-impact.yml
   - .github/workflows/docs-freshness.yml
+  - .claude/skills/jh-repo-mcp-onboarding/
   - package.json
 verified: 2026-10-21
 ---
@@ -87,6 +88,8 @@ Specs record intent; this site records the result. Finish every spec's task plan
   - Update the architecture and guide pages whose `sources:` cover the changed code; set `verified:` to today.
   - Describe the system as built. Leave out task numbers, phases, and "new" or "now" language.
   - Record any structural decision as an ADR in `docs/adr/`.
+  - Revise the onboarding skill in `.claude/skills/jh-repo-mcp-onboarding/` wherever it names
+    the changed code (function and type names, paths, the request path, invariants, recipes).
   - Run `bun run docs:check` and `bun run docs:build`.
 ```
 
