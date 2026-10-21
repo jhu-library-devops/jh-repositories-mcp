@@ -127,6 +127,35 @@ describe("explain_search leaks no backend syntax", () => {
     });
     expect(output.repositoryStrategies.map((s) => s.repository)).toEqual(["jscholarship"]);
   });
+
+  test("lists every registered adapter's id and description for discovery (Req 9.5)", () => {
+    const output = explainSearch(context, {
+      query: "wetlands",
+      repositories: "jscholarship",
+      sort: "relevance",
+    });
+    // The discovery list is the full registered set, independent of the selector,
+    // sorted lexicographically to mirror registeredIds().
+    expect(output.availableRepositories?.map((r) => r.repository)).toEqual([
+      "jhrdr",
+      "jscholarship",
+    ]);
+    for (const entry of output.availableRepositories ?? []) {
+      expect(entry.description.length).toBeGreaterThan(0);
+    }
+  });
+
+  test("an array-valued selector resolves to the named repositories (Req 9.6)", () => {
+    const output = explainSearch(context, {
+      query: "wetlands",
+      repositories: ["jscholarship", "jhrdr"],
+      sort: "relevance",
+    });
+    expect(output.repositoryStrategies.map((s) => s.repository).sort()).toEqual([
+      "jhrdr",
+      "jscholarship",
+    ]);
+  });
 });
 
 // ─── Resource URIs ───────────────────────────────────────────────────────────
