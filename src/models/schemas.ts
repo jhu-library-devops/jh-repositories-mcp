@@ -52,8 +52,31 @@ const DEFAULT_LIMIT = 10;
 
 // ─── Enum Schemas ────────────────────────────────────────────────────────────
 
-const repositorySelectorSchema = z.enum(["all", "jscholarship", "jhrdr"]);
 const repositoryIdSchema = z.enum(["jscholarship", "jhrdr"]);
+
+/**
+ * Upper bound on an array-valued `repositories` selector. The federation layer
+ * caps registered adapters at `FederationLimits.maxAdapters` (2–16, default 8),
+ * so no valid selector names more than that many ids; the bound keeps the input
+ * closed without coupling the static schema to the runtime registry (Req 2.7,
+ * 9.6, 10.1).
+ */
+const MAX_REPOSITORY_SELECTOR_ITEMS = 16;
+
+/**
+ * The `repositories` / `targetRepositories` input selector (Req 2.7, 9.2, 9.6).
+ *
+ * Backward compatible: `all`, a single registered id string, and omission remain
+ * valid exactly as in v1. Additive: an array of registered ids is now also
+ * accepted and treated as a set downstream (`resolveSelector` deduplicates). The
+ * array is bounded and its members constrained to the registered id enum so the
+ * input stays closed. The concrete enum mirrors `registeredIds()` for the
+ * initial `jscholarship` + `jhrdr` set; a new adapter extends both arms here.
+ */
+const repositorySelectorSchema = z.union([
+  z.enum(["all", "jscholarship", "jhrdr"]),
+  z.array(repositoryIdSchema).min(1).max(MAX_REPOSITORY_SELECTOR_ITEMS),
+]);
 const searchFieldSchema = z.enum(["keyword", "title", "creator", "subject", "abstract"]);
 const sortOptionSchema = z.enum(["relevance", "date_asc", "date_desc", "title_asc"]);
 const accessSchema = z.enum(["open", "metadata_only"]);
@@ -251,6 +274,8 @@ const repositoryWarningSchema = z
       "backend_unavailable",
       "validation_attrition",
       "cursor_reset",
+      "cursor_expanded",
+      "deadline_exceeded",
       "unsupported_filter",
     ]),
     message: z.string().min(1).max(1000),
@@ -325,6 +350,19 @@ export const findRelatedItemsOutputSchema = z
   })
   .strict();
 
+/**
+ * One registered repository advertised by `explain_search` for discovery: its
+ * id and a human-readable description, so a client learns the full registered
+ * set without a separate call (Req 9.5). Additive and optional on the envelope
+ * (Req 9.7).
+ */
+const availableRepositorySchema = z
+  .object({
+    repository: repositoryIdSchema,
+    description: z.string().min(1).max(500),
+  })
+  .strict();
+
 export const explainSearchOutputSchema = z
   .object({
     originalQuery: z.string().min(1).max(MAX_QUERY_LENGTH),
@@ -342,6 +380,12 @@ export const explainSearchOutputSchema = z
           .strict(),
       )
       .max(2),
+    /**
+     * Every registered adapter's id and human-readable description (Req 9.5).
+     * Additive and optional: absent in the v1 envelope, present once the handler
+     * is wired to the registry. Bounded by the max registered adapter count.
+     */
+    availableRepositories: z.array(availableRepositorySchema).max(16).optional(),
     warnings: z.array(repositoryWarningSchema).max(10),
     retrievedAt: z.string().min(1).max(30),
   })
