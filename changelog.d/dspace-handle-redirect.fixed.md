@@ -1,1 +1,0 @@
-Fix get_item by JScholarship Handle always failing with backend_unavailable: DSpace answers pid/find with a 302, which the client refused; the redirect is now read and mapped to the item on the private API base
