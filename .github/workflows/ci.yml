@@ -3,8 +3,14 @@ name: CI
 on:
   push:
     branches: [main]
+  # Run validation on every pull request regardless of its base branch, so
+  # stacked PRs (whose base is another feature branch, not `main`) are also
+  # validated. GitHub checks out the PR's merge ref (head merged into its
+  # base), so a lower PR in a stack is validated together with the parent
+  # branch it targets, giving a meaningful signal even though the branch would
+  # not build in isolation against `main`. Deploy stays gated on `main` only
+  # (see build-push.yml / deploy.yml).
   pull_request:
-    branches: [main]
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}

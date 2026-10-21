@@ -5,8 +5,9 @@ on:
     branches: [main]
     paths:
       - "infra/**"
+  # Validate infra changes on every pull request regardless of base branch so
+  # stacked PRs that touch infra/ are checked too (see ci.yml for rationale).
   pull_request:
-    branches: [main]
     paths:
       - "infra/**"
 
