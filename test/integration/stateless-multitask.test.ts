@@ -47,6 +47,10 @@ function makeItem(repository: RepositoryId): ItemDetail {
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,
@@ -198,7 +202,8 @@ describe("23.2 — Multi-task stateless operation", () => {
       arguments: { query: "third query" },
     });
     const s3 = r3.structuredContent as { repositories: { requested: string[] } };
-    expect(s3.repositories.requested).toEqual(["jscholarship", "jhrdr"]);
+    // The N-way assembly reports repository sets lexicographically sorted.
+    expect(s3.repositories.requested).toEqual(["jhrdr", "jscholarship"]);
   });
 
   test("tool calls succeed without prior initialization on the same server", async () => {

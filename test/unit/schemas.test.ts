@@ -318,3 +318,70 @@ describe("explainSearchInputSchema", () => {
     expect(result.success).toBe(false);
   });
 });
+
+// ─── repositories selector: backward-compatible array support (Req 2.7, 9.2, 9.6) ──
+
+describe("repositories selector accepts all, single id, omitted, and array forms", () => {
+  test("omitted selector defaults to 'all' (back-compat)", () => {
+    const result = searchItemsInputSchema.safeParse({ query: "x" });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.repositories).toBe("all");
+    }
+  });
+
+  test("'all' still validates unchanged", () => {
+    expect(searchItemsInputSchema.safeParse({ query: "x", repositories: "all" }).success).toBe(
+      true,
+    );
+  });
+
+  test("a single registered id string still validates unchanged", () => {
+    expect(
+      searchItemsInputSchema.safeParse({ query: "x", repositories: "jscholarship" }).success,
+    ).toBe(true);
+  });
+
+  test("an array of registered ids now validates", () => {
+    const result = searchItemsInputSchema.safeParse({
+      query: "x",
+      repositories: ["jscholarship", "jhrdr"],
+    });
+    expect(result.success).toBe(true);
+    if (result.success) {
+      expect(result.data.repositories).toEqual(["jscholarship", "jhrdr"]);
+    }
+  });
+
+  test("a single-element array validates", () => {
+    expect(searchItemsInputSchema.safeParse({ query: "x", repositories: ["jhrdr"] }).success).toBe(
+      true,
+    );
+  });
+
+  test("an empty array is rejected (min 1)", () => {
+    expect(searchItemsInputSchema.safeParse({ query: "x", repositories: [] }).success).toBe(false);
+  });
+
+  test("an array containing an unknown id is rejected", () => {
+    expect(
+      searchItemsInputSchema.safeParse({ query: "x", repositories: ["jscholarship", "nope"] })
+        .success,
+    ).toBe(false);
+  });
+
+  test("'all' is not allowed as an array element", () => {
+    expect(searchItemsInputSchema.safeParse({ query: "x", repositories: ["all"] }).success).toBe(
+      false,
+    );
+  });
+
+  test("targetRepositories on find_related_items accepts an array too", () => {
+    const result = findRelatedItemsInputSchema.safeParse({
+      repository: "jscholarship",
+      identifier: "abc",
+      targetRepositories: ["jscholarship", "jhrdr"],
+    });
+    expect(result.success).toBe(true);
+  });
+});

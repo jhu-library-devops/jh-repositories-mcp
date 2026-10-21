@@ -32,13 +32,20 @@ const REPOSITORY_NAMES: Readonly<Record<RepositoryId, string>> = {
  * deployment's scope from an outage.
  */
 export function repositoryNotAvailable(
-  requested: RepositoryId | "all",
+  requested: RepositoryId | "all" | readonly RepositoryId[],
   available: readonly RepositoryId[],
 ): ToolFailure {
-  const name = requested === "all" ? "No repository" : REPOSITORY_NAMES[requested];
+  let name: string;
+  if (typeof requested !== "string") {
+    name = requested.map((id) => REPOSITORY_NAMES[id] ?? id).join(", ");
+  } else if (requested === "all") {
+    name = "No repository";
+  } else {
+    name = REPOSITORY_NAMES[requested] ?? requested;
+  }
   const offered =
     available.length > 0
-      ? ` Available here: ${available.map((id) => REPOSITORY_NAMES[id]).join(", ")}.`
+      ? ` Available here: ${available.map((id) => REPOSITORY_NAMES[id] ?? id).join(", ")}.`
       : "";
   return invalidInput(`${name} is not available on this server.${offered}`);
 }

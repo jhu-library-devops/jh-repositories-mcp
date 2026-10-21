@@ -11,7 +11,8 @@
  * Requirements: 7.1-7.6, 9.3, 15.3
  */
 
-import { mergePages } from "../../federation/index";
+import { computeQueryHashV2, mergePages } from "../../federation/index";
+import type { FusionConfig } from "../../federation/index";
 import type {
   FindRelatedItemsInput,
   FindRelatedItemsOutput,
@@ -152,7 +153,32 @@ export async function findRelatedItems(
     throw backendUnavailable();
   }
 
-  const merged = mergePages({ pages, cursor: null, limit: input.limit });
+  // Merge related pages with the N-way reciprocal-rank merge. Related discovery
+  // is single-page (no pagination), so the cursor is null. The participating set
+  // is the repositories that returned results, at equal default fusion weights;
+  // scoping it to responders keeps the handler the sole owner of the
+  // backend-unavailable warnings for failed targets (preserving v1 behavior).
+  const participating = [...pages.entries()]
+    .filter(([, repositoryPage]) => repositoryPage.results.length > 0)
+    .map(([repository]) => repository);
+  const fusion: FusionConfig = { k: 60, weights: new Map() };
+  const merged = mergePages({
+    pages,
+    participating,
+    cursor: null,
+    limit: input.limit,
+    fusion,
+    queryHash: computeQueryHashV2({
+      query: deriveRelatedTerms(resolvedSource),
+      repositories:
+        input.targetRepositories === "all"
+          ? "all"
+          : Array.isArray(input.targetRepositories)
+            ? [...input.targetRepositories]
+            : [input.targetRepositories],
+      limit: input.limit,
+    }),
+  });
   const results = merged.results.filter((record) => record.id !== resolvedSource.id);
 
   return {

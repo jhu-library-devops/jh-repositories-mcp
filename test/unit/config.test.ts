@@ -22,6 +22,24 @@ function validEnv(): Record<string, string | undefined> {
   };
 }
 
+/**
+ * Apply an env map to process.env, DELETING any key whose value is undefined.
+ *
+ * Assigning `undefined` to a process.env property coerces it to the string
+ * "undefined" rather than unsetting it, so `undefined`-valued keys must be
+ * deleted for loadConfig() to observe a var as genuinely absent and apply its
+ * default.
+ */
+function applyEnv(env: Record<string, string | undefined>): void {
+  for (const [key, value] of Object.entries(env)) {
+    if (value === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = value;
+    }
+  }
+}
+
 describe("loadConfig()", () => {
   let originalEnv: NodeJS.ProcessEnv;
 
@@ -42,7 +60,7 @@ describe("loadConfig()", () => {
   });
 
   test("returns valid config when all required vars are set", () => {
-    Object.assign(process.env, validEnv());
+    applyEnv(validEnv());
 
     const config = loadConfig();
 
@@ -63,7 +81,7 @@ describe("loadConfig()", () => {
   test("throws when JSCHOLARSHIP_SOLR_URL is missing", () => {
     const env = validEnv();
     env.JSCHOLARSHIP_SOLR_URL = undefined;
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     expect(() => loadConfig()).toThrow(/JSCHOLARSHIP_SOLR_URL/);
   });
@@ -71,7 +89,7 @@ describe("loadConfig()", () => {
   test("throws when ENVIRONMENT is invalid", () => {
     const env = validEnv();
     env.ENVIRONMENT = "development";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     expect(() => loadConfig()).toThrow(/ENVIRONMENT/);
   });
@@ -79,13 +97,13 @@ describe("loadConfig()", () => {
   test("throws when ALLOWED_HOSTS is empty", () => {
     const env = validEnv();
     env.ALLOWED_HOSTS = "";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     expect(() => loadConfig()).toThrow(/ALLOWED_HOSTS/);
   });
 
   test("uses defaults for optional values", () => {
-    Object.assign(process.env, validEnv());
+    applyEnv(validEnv());
 
     const config = loadConfig();
 
@@ -104,7 +122,7 @@ describe("loadConfig()", () => {
   test("parses comma-separated ALLOWED_HOSTS into array", () => {
     const env = validEnv();
     env.ALLOWED_HOSTS = "host1.example.com,host2.example.com,host3.example.com";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 
@@ -118,7 +136,7 @@ describe("loadConfig()", () => {
   test("parses comma-separated ALLOWED_ORIGINS into array", () => {
     const env = validEnv();
     env.ALLOWED_ORIGINS = "https://hopgpt.jhu.edu,https://chat.jhu.edu";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 
@@ -129,7 +147,7 @@ describe("loadConfig()", () => {
   });
 
   test("warns but does not throw when JHRDR vars are missing", () => {
-    Object.assign(process.env, validEnv());
+    applyEnv(validEnv());
     const warnSpy = spyOn(console, "warn").mockImplementation(() => {});
 
     const config = loadConfig();
@@ -145,7 +163,7 @@ describe("loadConfig()", () => {
   test("rejects non-URL values for endpoint vars", () => {
     const env = validEnv();
     env.JSCHOLARSHIP_SOLR_URL = "not-a-url";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     expect(() => loadConfig()).toThrow(/JSCHOLARSHIP_SOLR_URL/);
   });
@@ -153,7 +171,7 @@ describe("loadConfig()", () => {
   test("rejects negative timeout values", () => {
     const env = validEnv();
     env.TIMEOUT_SOLR_MS = "-1000";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     expect(() => loadConfig()).toThrow(/TIMEOUT_SOLR_MS/);
   });
@@ -161,7 +179,7 @@ describe("loadConfig()", () => {
   test("clamps TIMEOUT_DEADLINE_MS to max 30000", () => {
     const env = validEnv();
     env.TIMEOUT_DEADLINE_MS = "60000";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 
@@ -171,7 +189,7 @@ describe("loadConfig()", () => {
   test("accepts production as a valid ENVIRONMENT", () => {
     const env = validEnv();
     env.ENVIRONMENT = "production";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 
@@ -181,7 +199,7 @@ describe("loadConfig()", () => {
   test("uses default PORT when not set", () => {
     const env = validEnv();
     env.PORT = undefined;
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 
@@ -191,7 +209,7 @@ describe("loadConfig()", () => {
   test("trims whitespace from comma-separated values", () => {
     const env = validEnv();
     env.ALLOWED_HOSTS = " host1.example.com , host2.example.com ";
-    Object.assign(process.env, env);
+    applyEnv(env);
 
     const config = loadConfig();
 

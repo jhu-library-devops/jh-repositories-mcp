@@ -78,6 +78,10 @@ function makePage(repository: RepositoryId): RepositoryPage {
 function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,

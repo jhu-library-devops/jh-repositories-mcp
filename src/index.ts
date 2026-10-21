@@ -10,6 +10,12 @@
 
 import { Hono } from "hono";
 import { withCaching } from "./adapters/caching";
+import {
+  type AdapterRegistration,
+  type FederationLimits,
+  type RegistryFatalError,
+  buildRegistry,
+} from "./adapters/index";
 import { JhrdrAdapter } from "./adapters/jhrdr/index";
 import { JScholarshipAdapter } from "./adapters/jscholarship/index";
 import { loadConfig } from "./config/env";
@@ -20,6 +26,13 @@ import { createMcpTransport } from "./mcp/transport";
 import type { SchemaValidationResult } from "./models/index";
 import { logger } from "./observability/index";
 import { createSemaphore, deadlineMiddleware, edgeMiddleware } from "./security/index";
+
+/**
+ * Maximum registered adapter count (Req 10.1, design default 8). No env knob
+ * exists yet, so the design default is used directly; the initial registered set
+ * (`jscholarship` + optional `jhrdr`) is always well within it.
+ */
+const MAX_REGISTERED_ADAPTERS = 8;
 
 // ─── Configuration ───────────────────────────────────────────────────────────
 
@@ -42,12 +55,21 @@ interface ReadinessState {
   validated: boolean;
   results: SchemaValidationResult[];
   error?: string;
+  /**
+   * Set once the startup registry build completes (task 15.2). A non-null
+   * `registryError` means the build failed; `/health/ready` then reports
+   * not-ready with the structured code even if schema validation passed
+   * (Req 1.1).
+   */
+  registryBuilt: boolean;
+  registryError?: RegistryFatalError;
 }
 
 const readinessState: ReadinessState = {
   ready: false,
   validated: false,
   results: [],
+  registryBuilt: false,
 };
 
 // ─── Application ─────────────────────────────────────────────────────────────
@@ -59,15 +81,39 @@ app.get("/health/live", (c) => c.json({ status: "ok" }));
 
 // Readiness endpoint — reflects schema validation status
 app.get("/health/ready", (c) => {
+  const build = { version: config.buildVersion, commit: config.buildCommit };
+
+  // The registry must have been built before readiness can report healthy
+  // (Req 1.1). A fatal build error is surfaced with its structured code.
+  if (!readinessState.registryBuilt) {
+    return c.json(
+      {
+        status: "not_ready",
+        reason: "Adapter registry has not been built",
+        build,
+      },
+      503,
+    );
+  }
+
+  if (readinessState.registryError !== undefined) {
+    return c.json(
+      {
+        status: "not_ready",
+        reason: readinessState.registryError.message,
+        code: readinessState.registryError.code,
+        build,
+      },
+      503,
+    );
+  }
+
   if (!readinessState.validated) {
     return c.json(
       {
         status: "not_ready",
         reason: "Schema validation has not completed",
-        build: {
-          version: config.buildVersion,
-          commit: config.buildCommit,
-        },
+        build,
       },
       503,
     );
@@ -79,10 +125,7 @@ app.get("/health/ready", (c) => {
         status: "not_ready",
         reason: readinessState.error ?? "Schema validation failed",
         results: readinessState.results,
-        build: {
-          version: config.buildVersion,
-          commit: config.buildCommit,
-        },
+        build,
       },
       503,
     );
@@ -91,10 +134,7 @@ app.get("/health/ready", (c) => {
   return c.json({
     status: "ready",
     results: readinessState.results,
-    build: {
-      version: config.buildVersion,
-      commit: config.buildCommit,
-    },
+    build,
   });
 });
 
@@ -171,6 +211,64 @@ const mcpTransport = createMcpTransport({
 });
 
 app.route("/mcp", mcpTransport);
+
+// ─── Startup Registry Build (task 15.2) ──────────────────────────────────────
+
+/**
+ * Build the immutable Adapter_Registry once at process init, before readiness
+ * reports healthy (Req 1.1). The registry becomes the single source of dispatch
+ * eligibility for the MCP handlers (attached to `toolContext.registry`).
+ *
+ * On a `RegistryFatalError` (duplicate id, no adapter, all-schema-invalid,
+ * weight out of range, over-max count, or cursor-size bound) the process exits
+ * non-zero so an orchestrator never routes traffic to a misconfigured task
+ * (design.md "Startup and Readiness", error table). The structured code is
+ * recorded on the readiness state first so a `/health/ready` probe racing the
+ * exit still reports the reason rather than a bare 503.
+ */
+async function buildStartupRegistry(): Promise<void> {
+  const limits: Pick<FederationLimits, "maxAdapters"> = { maxAdapters: MAX_REGISTERED_ADAPTERS };
+  const registrations: AdapterRegistration[] = [...toolContext.adapters.values()].map(
+    (adapter) => ({ adapter }),
+  );
+
+  let result: Awaited<ReturnType<typeof buildRegistry>>;
+  try {
+    result = await buildRegistry(registrations, limits);
+  } catch (error) {
+    // buildRegistry returns fatal errors rather than throwing; an unexpected
+    // throw is still fatal — fail readiness and terminate.
+    readinessState.registryError = {
+      code: "no_adapter_registered",
+      message: `Registry build failed: ${error instanceof Error ? error.message : String(error)}`,
+    };
+    readinessState.registryBuilt = true;
+    readinessState.ready = false;
+    console.error("[startup] Adapter registry build threw:", readinessState.registryError.message);
+    // Halt the process so the schema-validation chain cannot run and flip
+    // readiness to healthy against a misconfigured registry.
+    process.exit(1);
+  }
+
+  if (result.fatalError !== null) {
+    readinessState.registryError = result.fatalError;
+    readinessState.registryBuilt = true;
+    readinessState.ready = false;
+    console.error(
+      `[startup] Adapter registry build failed (${result.fatalError.code}): ${result.fatalError.message}`,
+    );
+    // Terminate with a non-zero exit so the task is never routed traffic and the
+    // schema-validation chain below cannot flip readiness to healthy.
+    process.exit(1);
+  }
+
+  toolContext.registry = result.registry;
+  readinessState.registryBuilt = true;
+  console.log(
+    `[startup] Adapter registry built: ${result.registry.registeredIds().join(", ")} ` +
+      `(${result.registry.eligibleIds().length} eligible)`,
+  );
+}
 
 // ─── Startup Schema Validation ───────────────────────────────────────────────
 
@@ -255,12 +353,25 @@ async function performSchemaValidation(): Promise<void> {
   }
 }
 
-// Run schema validation asynchronously at startup
-performSchemaValidation();
+// Build the registry first (the readiness gate + eligibility source), then run
+// the detailed schema validation that populates the readiness results payload.
+// Both complete before readiness reports healthy (Req 1.1).
+buildStartupRegistry()
+  .then(() => performSchemaValidation())
+  .catch((error: unknown) => {
+    // Any unexpected rejection in the startup chain is unrecoverable: log it and
+    // exit non-zero rather than leaving the task stuck reporting not-ready with
+    // no diagnostic.
+    console.error(
+      "[startup] Unhandled startup failure:",
+      error instanceof Error ? error.message : String(error),
+    );
+    process.exit(1);
+  });
 
 // ─── Export ──────────────────────────────────────────────────────────────────
 
-export { app, readinessState, performSchemaValidation };
+export { app, readinessState, performSchemaValidation, buildStartupRegistry };
 
 export default {
   port: config.port,

@@ -11,7 +11,22 @@
 
 import { describe, expect, test } from "bun:test";
 import type { RepositoryAdapter } from "../../src/adapters/index";
-import { computeQueryHash, decodeCursor, encodeCursor } from "../../src/federation/index";
+import { computeQueryHashV2, decodeCursor } from "../../src/federation/index";
+import type { RepositoryId as CursorRepositoryId } from "../../src/models/index";
+
+/** Encode a legacy V1 cursor token (base64url canonical JSON) for back-compat tests. */
+function encodeV1Cursor(cursor: {
+  v: 1;
+  queryHash: string;
+  jsOffset: number;
+  dvOffset: number;
+  nextTieSource: CursorRepositoryId;
+}): string {
+  return Buffer.from(JSON.stringify(cursor), "utf8").toString("base64url");
+}
+
+/** Registration predicate for the two-repository deployment under test. */
+const isRegisteredRepo = (id: string): boolean => id === "jscholarship" || id === "jhrdr";
 import { ToolFailure } from "../../src/mcp/errors";
 import { findRelatedItems } from "../../src/mcp/tools/find-related-items";
 import { classifyIdentifier, getItem } from "../../src/mcp/tools/get-item";
@@ -64,6 +79,10 @@ interface StubBehavior {
 function stubAdapter(repository: RepositoryId, behavior: StubBehavior = {}): RepositoryAdapter {
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,
@@ -131,9 +150,11 @@ describe("search_items: federated orchestration", () => {
     const output = await searchItems(context(), parseInput({ query: "housing" }));
     expect(output.results.length).toBeGreaterThan(0);
     expect(new Set(output.results.map((r) => r.repository)).size).toBe(2);
+    // The N-way assembly reports the repository sets lexicographically sorted
+    // for determinism; both repositories are present either way.
     expect(output.repositories).toEqual({
-      requested: ["jscholarship", "jhrdr"],
-      succeeded: ["jscholarship", "jhrdr"],
+      requested: ["jhrdr", "jscholarship"],
+      succeeded: ["jhrdr", "jscholarship"],
       failed: [],
     });
     expect(() => searchItemsOutputSchema.parse(output)).not.toThrow();
@@ -214,9 +235,9 @@ describe("search_items: federated orchestration", () => {
   });
 
   test("a stale cursor resets to the first page with a cursor_reset warning", async () => {
-    const staleCursor = encodeCursor({
+    const staleCursor = encodeV1Cursor({
       v: 1,
-      queryHash: computeQueryHash({
+      queryHash: computeQueryHashV2({
         query: "different query",
         repositories: "all",
         sort: "relevance",
@@ -248,37 +269,43 @@ describe("search_items: federated orchestration", () => {
     expect(offsets.every((offset) => offset === 0)).toBe(true);
   });
 
-  test("an exhausted repository offset skips that adapter on later pages", async () => {
+  test("a V1 cursor's per-repository offsets drive each adapter's next page", async () => {
     const input = parseInput({ query: "housing" });
-    const validCursor = encodeCursor({
+    const validCursor = encodeV1Cursor({
       v: 1,
-      queryHash: computeQueryHash({
+      queryHash: computeQueryHashV2({
         query: "housing",
         repositories: "all",
         sort: "relevance",
         limit: 10,
       }),
-      jsOffset: -1,
+      jsOffset: 7,
       dvOffset: 4,
       nextTieSource: "jscholarship",
     });
     const jsCalls: number[] = [];
-    const js: StubBehavior = {
+    const dvCalls: number[] = [];
+    const observe = (repository: RepositoryId, sink: number[]): StubBehavior => ({
       page: (request) => {
-        jsCalls.push(request.offset);
+        sink.push(request.offset);
         return {
-          repository: "jscholarship",
-          results: [],
+          repository,
+          results: [summary(repository, 1)],
           nextOffset: null,
-          totalCandidates: 0,
+          totalCandidates: 1,
           validationOmissions: 0,
           warnings: [],
         };
       },
-    };
-    const output = await searchItems(context(js, {}), { ...input, cursor: validCursor });
-    expect(jsCalls).toHaveLength(0);
-    expect(output.results.every((r) => r.repository === "jhrdr")).toBe(true);
+    });
+    await searchItems(context(observe("jscholarship", jsCalls), observe("jhrdr", dvCalls)), {
+      ...input,
+      cursor: validCursor,
+    });
+    // V1 jsOffset→jscholarship, dvOffset→jhrdr: each adapter paginates from its
+    // own carried offset (Req 9.1 backward-compatible mapping).
+    expect(jsCalls).toEqual([7]);
+    expect(dvCalls).toEqual([4]);
   });
 
   test("the returned cursor round-trips and reflects adapter nextOffsets", async () => {
@@ -304,9 +331,13 @@ describe("search_items: federated orchestration", () => {
     };
     const output = await searchItems(context(withMore, dvDone), parseInput({ query: "q" }));
     expect(output.cursor).not.toBeNull();
-    const decoded = decodeCursor(output.cursor ?? "");
-    expect(decoded?.jsOffset).toBe(3);
-    expect(decoded?.dvOffset).toBe(-1);
+    const decoded = decodeCursor(output.cursor ?? "", isRegisteredRepo);
+    expect(decoded.error).toBeNull();
+    const offsets = new Map(decoded.cursor?.offsets ?? []);
+    // jscholarship advanced (nextOffset 3); jhrdr exhausted → omitted from the
+    // V2 offset map so the next page re-attempts it from zero (Req 6.5, 6.6).
+    expect(offsets.get("jscholarship")).toBe(3);
+    expect(offsets.has("jhrdr")).toBe(false);
   });
 });
 
