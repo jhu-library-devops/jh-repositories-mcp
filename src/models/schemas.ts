@@ -49,6 +49,12 @@ const MAX_STRING_MEDIUM = 200;
 const MIN_LIMIT = 1;
 const MAX_LIMIT = 25;
 const DEFAULT_LIMIT = 10;
+/**
+ * Upper bound on the repository-status id arrays in search/facet output. Matches
+ * `FederationLimits.maxAdapters` (2–16); kept as a local literal so the static
+ * schema is not coupled to the runtime federation module.
+ */
+const MAX_REPOSITORY_STATUS_ITEMS = 16;
 
 // ─── Enum Schemas ────────────────────────────────────────────────────────────
 
@@ -284,9 +290,9 @@ const repositoryWarningSchema = z
 
 const repositoriesStatusSchema = z
   .object({
-    requested: z.array(repositoryIdSchema).max(2),
-    succeeded: z.array(repositoryIdSchema).max(2),
-    failed: z.array(repositoryIdSchema).max(2),
+    requested: z.array(repositoryIdSchema).max(MAX_REPOSITORY_STATUS_ITEMS),
+    succeeded: z.array(repositoryIdSchema).max(MAX_REPOSITORY_STATUS_ITEMS),
+    failed: z.array(repositoryIdSchema).max(MAX_REPOSITORY_STATUS_ITEMS),
   })
   .strict();
 

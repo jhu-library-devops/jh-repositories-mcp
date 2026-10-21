@@ -41,7 +41,7 @@ import type {
   RepositoryRecord,
   RepositoryWarning,
 } from "../models/index";
-import type { CursorV2 } from "./cursor";
+import { type CursorV2, MAX_REPOSITORY_OFFSET } from "./cursor";
 import type { FusionWeight } from "./limits";
 import { type TieSequence, advanceTie, deriveTieSequence, resolveTieAmong } from "./tie-sequence";
 
@@ -400,10 +400,13 @@ function resolveWeight(weight: FusionWeight | undefined): FusionWeight {
 
 /** Stamp the emitted record with its source `repository` and 1-based `sourceRank` (Req 4.6). */
 function stampSource(record: RepositoryRecord, repository: RepositoryId): RepositoryRecord {
-  if (record.repository === repository && record.sourceRank !== null) {
+  // A record already attributed to this repository is returned unchanged; its
+  // `sourceRank` is the adapter's 1-based rank and is carried through verbatim,
+  // never re-derived here (Req 4.6).
+  if (record.repository === repository) {
     return record;
   }
-  return { ...record, repository, sourceRank: record.sourceRank };
+  return { ...record, repository };
 }
 
 /** Advance the winning repository's queue past its consumed head. */
@@ -459,9 +462,6 @@ function buildNextCursor(input: MergeInput, nextTieSequence: number): CursorV2 |
     nextTieSequence,
   };
 }
-
-/** Upper bound on any per-repository offset, mirrored from the cursor codec (Req 3.3, 12.7). */
-const MAX_REPOSITORY_OFFSET = 1_000_000;
 
 /** Sort offset pairs lexicographically by RepositoryId for canonical encoding. */
 function sortOffsets(

@@ -333,9 +333,13 @@ export function mapV1ToV2(v1: CursorV1, currentQueryHash?: string): CursorDecode
     [V1_DV_OFFSET_ID, dvOffset],
   ];
 
+  // `currentQueryHash` is non-undefined whenever `hashMismatch` is true (it is
+  // part of that condition), but control-flow narrowing does not reach this
+  // object literal, so bind the narrowed value explicitly for the mismatch case.
+  const resetQueryHash = currentQueryHash ?? v1.queryHash;
   const cursor: CursorV2 = {
     v: CURSOR_V2_VERSION,
-    queryHash: hashMismatch ? currentQueryHash : v1.queryHash,
+    queryHash: hashMismatch ? resetQueryHash : v1.queryHash,
     offsets: sortByRepositoryId(offsets, ([id]) => id),
     participating: [...V1_PARTICIPATING],
     nextTieSequence: tiePosition < 0 ? 0 : tiePosition,

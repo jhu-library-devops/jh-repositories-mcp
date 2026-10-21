@@ -195,7 +195,17 @@ function canonicalJson(value: unknown): string {
   return `{${entries.join(",")}}`;
 }
 
-/** FNV-1a 64-bit over the UTF-16 code units of `text`, as 16-char lowercase hex. */
+/**
+ * FNV-1a 64-bit over `text`, as 16-char lowercase hex.
+ *
+ * The accumulator folds in `charCodeAt` (UTF-16 code units), not UTF-8 bytes.
+ * This is sound ONLY because the sole caller feeds it `canonicalJson(...)`
+ * output, which JSON-escapes every non-ASCII character to a `\uXXXX` sequence
+ * and so is always ASCII — within the ASCII range a UTF-16 code unit equals the
+ * UTF-8 byte. The hash is a cursor-binding control, not a cross-implementation
+ * wire value; if a non-ASCII input is ever hashed directly, convert to UTF-8
+ * bytes first so the result stays byte-defined.
+ */
 function fnv1a64Hex(text: string): string {
   let hash = FNV_OFFSET_BASIS;
   for (let i = 0; i < text.length; i += 1) {
