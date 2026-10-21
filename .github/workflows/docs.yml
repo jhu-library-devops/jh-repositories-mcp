@@ -66,7 +66,8 @@ jobs:
           set -euo pipefail
           ./node_modules/.bin/vitepress preview docs --port 4173 > "${RUNNER_TEMP}/preview.log" 2>&1 &
           for _ in $(seq 1 30); do
-            curl -fsS -o /dev/null http://localhost:4173/jh-repositories-mcp/ && break
+            # Silent while the preview server starts; the loop waits up to 30 s.
+            curl -fs -o /dev/null http://localhost:4173/jh-repositories-mcp/ && break
             sleep 1
           done
           base=http://localhost:4173/jh-repositories-mcp

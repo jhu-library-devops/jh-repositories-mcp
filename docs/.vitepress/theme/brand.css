@@ -178,9 +178,15 @@
   color: #ffffff;
 }
 
-.VPNavBarSearch .DocSearch-Button .DocSearch-Button-Key {
-  color: #ffffff;
-  border-color: rgba(255, 255, 255, 0.5);
+/*
+ * The default theme shows a "Ctrl K" / "⌘ K" hint inside the search button,
+ * but labels the button only "Search". On non-Mac platforms the CSS-generated
+ * "Ctrl" is visible text missing from the accessible name, which fails WCAG
+ * 2.5.3 (axe: label-content-name-mismatch). Hide the hint so the visible text
+ * matches the label; the Ctrl/⌘ K and "/" shortcuts still work.
+ */
+.DocSearch-Button .DocSearch-Button-Keys {
+  display: none !important;
 }
 
 /* ---------- Type ---------- */
