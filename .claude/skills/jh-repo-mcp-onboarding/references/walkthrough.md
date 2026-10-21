@@ -193,21 +193,29 @@ ENVIRONMENT=stage BUILD_VERSION=dev BUILD_COMMIT=local \
 JSCHOLARSHIP_SOLR_URL=http://localhost:8983/solr/search \
 JSCHOLARSHIP_API_URL=http://localhost:8080/server/api \
 JSCHOLARSHIP_PUBLIC_URL=https://jscholarship.library.jhu.edu \
-ALLOWED_HOSTS=localhost \
+ALLOWED_HOSTS=localhost:3000 \
 bun run dev
 ```
 
 With nothing behind it, `GET /health/live` returns OK and `GET /health/ready`
 returns 503. Have them hit both. (Leaving the JHRDR variables unset is normal —
-that adapter is only constructed when all three of its URLs are present, so the
-server runs single-repository.)
+that adapter is only constructed when its Solr and API URLs are present, so the
+server runs single-repository. `ALLOWED_HOSTS` is matched against the exact
+`Host` header, port included, which is why it's `localhost:3000`.)
+
+Every variable, default, and meaning is in `docs/reference/configuration.md`,
+which is generated from `src/config/env.ts`. Point them there rather than
+listing variables yourself.
 
 **End the message here, with:** liveness passes but readiness doesn't — what do
 you think readiness is waiting for?
 
-*(The answer, for you: Solr schema validation. A task that can't confirm the
-deployed index still has the fields the profiles require never takes traffic.
-Don't hand them this; it's a guessable question and the guess is the point.)*
+*(The answer, for you: Solr schema validation — confirming the deployed index
+still has the fields the profiles require. Don't hand them this; it's a
+guessable question and the guess is the point. If they then ask whether a
+not-ready task gets traffic, be accurate: in the deployed stack the container and
+load-balancer health checks probe `/health/live`, so readiness is reported, not
+enforced. That's a known sharp edge, listed in `references/architecture.md`.)*
 
 ---
 
@@ -255,11 +263,14 @@ drifted from what the platforms actually enforce. Solr is a fast index, not an
 authority on who may see what. Making it the authority means eventually
 publishing a withdrawn thesis.
 
-Have them open **`src/adapters/canonicalize.ts`** — it's about 80 lines — and
-find the line that drops a failed candidate:
+Have them open **`src/adapters/canonicalize.ts`** — it's under 80 lines — and
+find the lines that drop a failed candidate:
 
 ```ts
-if (item === null) { omissions += 1; continue; }
+if (item === null) {
+  omissions += 1;
+  continue;
+}
 ```
 
 That line is what the whole architecture exists to protect. Worth noting how
@@ -381,8 +392,11 @@ Don't end on theory. Offer a concrete first change and let them pick:
    open.
 
 Then walk the loop once with them: `bun test`, `bun run typecheck`,
-`bun run lint`, a changelog fragment via `bun run changelog:new`, and a PR
-description citing requirement and task numbers. Getting that rhythm right on
+`bun run lint`, `bun run docs:check` (and `bun run docs:generate` if they touched
+the MCP surface, configuration, a profile, error codes, or `infra/`), a changelog
+fragment via `bun run changelog:new`, and a PR description citing requirement and
+task numbers. The PR will get an advisory comment listing developer-reference
+pages whose sources it changed; checking those is part of the loop. Getting that rhythm right on
 the first change is most of what "knowing a codebase" turns out to mean.
 
 ---

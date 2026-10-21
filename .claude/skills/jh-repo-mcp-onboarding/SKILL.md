@@ -81,6 +81,13 @@ rediscover it. `references/doc-map.md` has the precedence order and the drift
 known when this skill was written; treat that list as a starting point rather
 than a guarantee, and verify before you assert.
 
+The published developer reference in `docs/` is the one documentation set
+that is checked against the code: `docs/reference/` is generated from source and
+CI fails when it is stale, and every hand-written page lists the files it
+describes in `sources:` front matter. Point people there for exact schemas,
+defaults, and error codes instead of reciting them, and when you find drift in a
+hand-written page, fix the page and bump its `verified:` date.
+
 **Never answer a question about behavior from a single file.** The
 public-access guarantee is enforced in at least four places (immutable Solr
 filters in the profile, the canonical-API gate in the adapter, the public gate
@@ -99,7 +106,9 @@ help.
 private Solr collection for fast candidate retrieval, but no Solr-sourced
 metadata is ever returned to a client. Each candidate is re-fetched through the
 platform's own public API (DSpace REST / Dataverse Native), and one that fails
-that fetch is silently dropped. *Why:* the Solr indexes are internal and their
+that fetch is silently dropped. (The one nuance: a bounded-TTL search-page cache
+serves pages that passed that gate when first cached, without re-checking;
+single cached records are re-probed before every use.) *Why:* the Solr indexes are internal and their
 access fields have historically drifted from what the platforms actually
 enforce. Trusting Solr means eventually publishing a withdrawn thesis.
 
@@ -135,7 +144,9 @@ error here puts the host model into a retry loop; a reset lets it continue.
 **Everything fails closed.** Timeout, validation failure, schema mismatch — all
 produce omission or an error, never unvalidated data. Startup fails readiness if
 required Solr schema fields are missing (optional ones degrade with a recorded
-`disabledFeatures` list instead).
+`disabledFeatures` list instead). Be precise about the limit of that last one:
+the deployed health checks probe `/health/live`, so a not-ready task still
+receives traffic.
 
 **Record metadata is untrusted data.** Titles and abstracts come from user
 submissions. They are never interpolated into a prompt or instruction role.
@@ -151,7 +162,11 @@ bun install --frozen-lockfile   # honors .bun-version and the committed bun.lock
 bun run typecheck               # tsc --noEmit; Bun's bundler does not type-check
 bun test                        # unit, property, contract, integration
 bun run lint                    # biome check .
+bun run docs:check              # docs lint, links, cited paths, public-content guard, generated freshness
 ```
+
+`docs:check` regenerates the infrastructure reference with terraform-docs, so it
+needs the pinned version installed (see `docs/guides/local-development.md`).
 
 `bun run dev` needs environment variables or it exits immediately by design —
 config validation is fail-fast. `references/walkthrough.md` has the minimum
@@ -172,8 +187,16 @@ belongs, and it must run at least 100 generated cases.
 Changes are described in `changelog.d/` fragments (`bun run changelog:new`),
 not by hand-editing `CHANGELOG.md`, and pull requests are expected to cite the
 requirement and task numbers they advance. Those numbers are the connective
-tissue between `.kiro/specs/jscholarship-jhrdr-mcp/{requirements,design,tasks}.md`
-and the code comments that reference them.
+tissue between `.kiro/specs/<feature>/{requirements,design,tasks}.md` and the
+code comments that reference them.
+
+Docs move with the code. A change to the MCP surface, configuration, a
+repository profile, error codes, or `infra/` needs `bun run docs:generate`, and
+CI fails without it. A change to code that a hand-written page lists in its
+`sources:` gets an advisory PR comment; recheck those pages. The developer docs
+describe the system as built, so never write task numbers, plans, or progress
+notes into `docs/`, and never write hostnames, account or resource IDs, or IP
+addresses there either: the site is public.
 
 ## Reference files
 
@@ -185,7 +208,7 @@ Read these as needed rather than upfront:
   real function names, and where each invariant is enforced. Use when answering
   any "how does X work" or before modifying anything.
 - `references/doc-map.md` — every documentation source in the repo, what it is
-  authoritative for, and the known drift. Use when a doc and the code disagree,
+  authoritative for, how drift is caught, and the known drift. Use when a doc and the code disagree,
   or when asked "why was this decided".
 - `references/mcp-patterns.md` — the transferable architecture, stated as
   patterns with rationale and this repo's code as worked examples. Use when
