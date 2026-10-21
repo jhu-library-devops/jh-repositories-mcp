@@ -25,28 +25,21 @@
  * Requirements: 2.1, 2.2, 2.3, 2.4
  */
 
+import type { AdapterRegistry } from "../adapters/registry";
 import type { RepositoryId } from "../models/index";
 
+// Re-export the canonical registry type so callers that reach it through the
+// selector keep a single source of truth (the interface is owned by
+// `src/adapters/registry.ts`).
+export type { AdapterRegistry };
+
 /**
- * The subset of the Adapter_Registry the selector depends on (design.md §1).
- *
- * The full `AdapterRegistry` type is owned by `src/adapters/index.ts` under task
- * 8.1, a later wave. This structural interface matches that design shape so the
- * selector type-checks today; the concrete registry satisfies it without change.
- *
- * NOTE FOR ORCHESTRATOR: when task 8.1 lands the canonical `AdapterRegistry` in
- * `src/adapters/index.ts`, replace this local interface with an import of that
- * type. The member signatures here are a deliberate subset of the design's
- * registry contract (`registeredIds`, `eligibleIds`, `has`).
+ * The slice of the canonical `AdapterRegistry` the selector actually reads. A
+ * `Pick` of the canonical type (not a hand-maintained duplicate), so any change
+ * to these three members propagates here automatically; the full registry and a
+ * minimal structural double both satisfy it (design.md §1, §2).
  */
-export interface AdapterRegistry {
-  /** All registered ids, lexicographically sorted (design.md §1). */
-  registeredIds(): readonly RepositoryId[];
-  /** Ids whose startup schema validation succeeded (dispatch-eligible). */
-  eligibleIds(): readonly RepositoryId[];
-  /** Whether an id is present in the registry. */
-  has(id: RepositoryId): boolean;
-}
+export type SelectorRegistry = Pick<AdapterRegistry, "registeredIds" | "eligibleIds" | "has">;
 
 /** Wire form accepted on the `repositories` input parameter (Req 9.2, 9.6). */
 export type RepositorySelector = "all" | RepositoryId | RepositoryId[] | undefined;
@@ -79,7 +72,7 @@ export function isSelectorRejection(
  */
 export function resolveSelector(
   selector: RepositorySelector,
-  registry: AdapterRegistry,
+  registry: SelectorRegistry,
 ): SelectorResolution | SelectorRejection {
   // `all` or omitted → every eligible adapter (Req 2.1).
   if (selector === undefined || selector === "all") {

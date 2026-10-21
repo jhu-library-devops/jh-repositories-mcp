@@ -23,7 +23,7 @@
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
-  type AdapterRegistry,
+  type SelectorRegistry,
   isSelectorRejection,
   resolveSelector,
 } from "../../src/federation/selector";
@@ -42,7 +42,7 @@ const NUM_RUNS = 200;
 function buildRegistryDouble(
   registered: readonly RepositoryId[],
   eligible: readonly RepositoryId[] = registered,
-): AdapterRegistry {
+): SelectorRegistry {
   const registeredSet: ReadonlySet<RepositoryId> = new Set(registered);
   return {
     registeredIds(): readonly RepositoryId[] {

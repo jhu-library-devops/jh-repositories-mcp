@@ -83,7 +83,9 @@ export function reconcileParticipatingSet(
 
   // Rule (b): any id carried in the cursor that is no longer participating means
   // the repository set changed. Drop it and reset to the first page (Req 3.5).
-  const droppedIds = [...decodedOffsets.keys()].filter((id) => !participatingSet.includes(id));
+  // Use a Set for the membership test so detection is O(M+N), not O(M*N).
+  const participatingLookup = new Set<RepositoryId>(participatingSet);
+  const droppedIds = [...decodedOffsets.keys()].filter((id) => !participatingLookup.has(id));
   if (droppedIds.length > 0) {
     return firstPageReset(
       participatingSet,

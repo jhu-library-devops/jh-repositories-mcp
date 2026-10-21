@@ -147,11 +147,15 @@ export async function federatedSearch(
   }
   const selected = resolution.selected;
 
-  // The query hash binds a cursor to the search it paginates. `all` is folded as
-  // a sentinel; an explicit set is the resolved participating ids.
+  // The query hash binds a cursor to the search it paginates. `all` AND an
+  // omitted (undefined) selector both fold to the same `all` sentinel so the two
+  // equivalent forms hash identically and a cursor issued for one is accepted on
+  // the next page sent as the other; an explicit set is the resolved ids.
+  const repositoriesForHash =
+    request.repositories === "all" || request.repositories === undefined ? "all" : [...selected];
   const queryHash = computeQueryHashV2({
     query: request.query,
-    repositories: request.repositories === "all" ? "all" : [...selected],
+    repositories: repositoriesForHash,
     field: request.field,
     filters: request.filters,
     sort: request.sort,

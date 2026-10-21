@@ -12,8 +12,8 @@
 
 import { describe, expect, test } from "bun:test";
 import {
-  type AdapterRegistry,
   type RepositorySelector,
+  type SelectorRegistry,
   isSelectorRejection,
   resolveSelector,
 } from "../../src/federation/selector";
@@ -30,7 +30,7 @@ import type { RepositoryId } from "../../src/models/index";
 function buildRegistryDouble(
   registered: readonly RepositoryId[],
   eligible: readonly RepositoryId[] = registered,
-): AdapterRegistry {
+): SelectorRegistry {
   const registeredSet: ReadonlySet<RepositoryId> = new Set(registered);
   return {
     registeredIds(): readonly RepositoryId[] {

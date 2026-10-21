@@ -114,15 +114,16 @@ resource "aws_cloudwatch_metric_alarm" "dispatch_fan_out" {
 
   # Trigger when any single request's fan-out reaches >= 75% of the configured
   # max adapter count (Req 10.7). Maximum statistic so one wide request trips
-  # the alarm even when the average stays low; ceil keeps the threshold an
-  # integer adapter count.
+  # the alarm even when the average stays low. floor() keeps the threshold at or
+  # below the 75% boundary (ceil would round the 2-adapter minimum up to 2,
+  # i.e. 100%); max(..., 1) guarantees a positive integer threshold.
   comparison_operator = "GreaterThanOrEqualToThreshold"
   evaluation_periods  = 1
   metric_name         = "DispatchFanOut"
   namespace           = "JhuRepositoryMcp"
   period              = 60
   statistic           = "Maximum"
-  threshold           = ceil(var.max_adapter_count * 0.75)
+  threshold           = max(floor(var.max_adapter_count * 0.75), 1)
   treat_missing_data  = "notBreaching"
 
   dimensions = {
