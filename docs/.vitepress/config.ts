@@ -161,7 +161,8 @@ export default withMermaid(
       },
       footer: {
         message: `Released under the <a href="${REPOSITORY_URL}/blob/${DEFAULT_BRANCH}/LICENSE">Apache License 2.0</a>.`,
-        copyright: "Copyright 2026 Johns Hopkins University Libraries. Authors: Steven J. Miklovic and Jared Galanis.",
+        copyright:
+          "Copyright 2026 Johns Hopkins University Libraries. Authors: Steven J. Miklovic and Jared Galanis.",
       },
       docFooter: { prev: "Previous", next: "Next" },
     },
