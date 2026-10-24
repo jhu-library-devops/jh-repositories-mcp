@@ -233,4 +233,6 @@ Post-deployment verification:
 
 ## License
 
-[Apache License 2.0](LICENSE).
+Copyright 2026 Johns Hopkins University Libraries. Authors: Steven J. Miklovic and Jared Galanis.
+
+Licensed under the [Apache License 2.0](LICENSE).
