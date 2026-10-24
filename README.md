@@ -233,4 +233,4 @@ Post-deployment verification:
 
 ## License
 
-[Eclipse Public License 2.0](LICENSE).
+[Apache License 2.0](LICENSE).

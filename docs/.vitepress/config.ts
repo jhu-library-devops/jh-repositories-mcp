@@ -160,7 +160,7 @@ export default withMermaid(
         text: "Edit this page on GitHub",
       },
       footer: {
-        message: `Released under the <a href="${REPOSITORY_URL}/blob/${DEFAULT_BRANCH}/LICENSE">Eclipse Public License 2.0</a>.`,
+        message: `Released under the <a href="${REPOSITORY_URL}/blob/${DEFAULT_BRANCH}/LICENSE">Apache License 2.0</a>.`,
       },
       docFooter: { prev: "Previous", next: "Next" },
     },
