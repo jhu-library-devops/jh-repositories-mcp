@@ -120,6 +120,10 @@ const sidebar: DefaultTheme.Sidebar = [
         text: "013 N-repository federation",
         link: "/adr/ADR-013-n-repository-federation-through-an-adapter-registry",
       },
+      {
+        text: "014 Local stack topology",
+        link: "/adr/ADR-014-local-stack-mirrors-deployed-topology",
+      },
     ],
   },
 ];

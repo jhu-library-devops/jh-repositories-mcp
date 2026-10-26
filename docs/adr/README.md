@@ -21,6 +21,7 @@ Read [ADR-005](./ADR-005-solr-candidates-canonical-api-gate.md) first. Most of t
 | [ADR-011](./ADR-011-search-cache-never-bypasses-canonical-gate.md) | Search Cache Never Bypasses the Canonical API Gate | Accepted; implementation differs | 2024-07-24 |
 | [ADR-012](./ADR-012-cursor-mismatch-resets-instead-of-errors.md) | Cursor Hash Mismatch Resets Pagination Instead of Returning an Error | Accepted; amended by 013 | 2024-07-24 |
 | [ADR-013](./ADR-013-n-repository-federation-through-an-adapter-registry.md) | N-Repository Federation Through an Adapter Registry | Accepted | 2026-10-21 |
+| [ADR-014](./ADR-014-local-stack-mirrors-deployed-topology.md) | Local Test Environment Mirrors the Deployed Solr and Postgres Topology | Accepted | 2026-10-26 |
 
 ## Source
 

@@ -34,7 +34,7 @@ no task numbers, plans, or progress notes. See `docs/guides/maintaining-docs.md`
 `docs/glossary.md` is the domain glossary (SearchResult, ItemDetail, Candidate,
 Public Record, Canonical API, Field Allowlist, Immutable Public Filter, Cursor,
 Repository Rank); `CONTEXT.md` points to it and keeps the example dialogue. Use
-that vocabulary precisely. `docs/adr/` holds 13 accepted ADRs recording why each
+that vocabulary precisely. `docs/adr/` holds 14 accepted ADRs recording why each
 structural decision was made. `.kiro/steering/docs-writing-style.md` is the
 register for every page under `docs/` and the root documents.
 

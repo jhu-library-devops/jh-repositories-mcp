@@ -53,7 +53,7 @@ infra/                      OpenTofu: modules/mcp-service, modules/mcp-shared, e
 docs/                       Published developer reference (VitePress site)
   reference/                Generated from source by `bun run docs:generate`; never hand-edit
   architecture/, guides/    Hand-written; each page lists its `sources:` in front matter
-  adr/                      12 accepted ADRs
+  adr/                      14 accepted ADRs
   spike/                    Schema and route investigations (not published)
   .vitepress/               Site config and the JHU brand theme
 scripts/docs/               Reference generators and docs checks (paths, public content, staleness, PR impact)

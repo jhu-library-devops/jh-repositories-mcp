@@ -57,7 +57,7 @@ defend reflexively. Give the honest answer *including the cost*: yes, it's an
 extra round trip per result; the index is owned by another team and its
 access-control fields have drifted before; and the failure mode being bought
 off is publishing a withdrawn thesis, which is unrecoverable in a way that
-latency isn't. Then point them at the ADR — several of this repo's twelve record
+latency isn't. Then point them at the ADR — several of this repo's fourteen record
 roads not taken, and reading one is a better answer than anything you'll
 improvise. If they're actually right about something, say so; "that's a live
 question, here's where it was argued" is a fine answer, and pretending the
