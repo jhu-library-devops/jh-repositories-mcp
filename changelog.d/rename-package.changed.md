@@ -1,0 +1,1 @@
+The package and the MCP server identify themselves as `jh-repositories-mcp`, matching the GitHub project, instead of `jhu-repository-mcp`. Clients that read the server name from `initialize` see the new value.

@@ -158,11 +158,11 @@ app.use(
 app.use("/mcp/*", deadlineMiddleware(config.timeouts.overallDeadlineMs));
 
 const mcpTransport = createMcpTransport({
-  serverName: "jhu-repository-mcp",
+  serverName: "jh-repositories-mcp",
   serverVersion: config.buildVersion,
   createServer: (requestId) =>
     createRepositoryServer({
-      name: "jhu-repository-mcp",
+      name: "jh-repositories-mcp",
       version: config.buildVersion,
       context: toolContext,
       toolSemaphore,
@@ -277,6 +277,6 @@ process.on("SIGTERM", () => {
 });
 
 console.log(
-  `jhu-repository-mcp v${config.buildVersion} (${config.buildCommit}) ` +
+  `jh-repositories-mcp v${config.buildVersion} (${config.buildCommit}) ` +
     `listening on port ${config.port} [${config.environment}]`,
 );

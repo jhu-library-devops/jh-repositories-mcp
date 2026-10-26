@@ -1,9 +1,9 @@
 ---
 name: jh-repo-mcp-onboarding
-description: Onboard a developer into the jhu-repository-mcp codebase (the JScholarship/JHRDR federated MCP server) and serve as its architecture reference. Use this whenever someone is new to this repo, is orienting themselves in it, or asks things like "how does this codebase work", "walk me through this project", "where do I start", "how does search actually work here", "what's the adapter pattern here", "how do I add a tool / a repository / a filter", "why does it do X", "what do these ADRs mean" — and also whenever anyone wants to build a new MCP server modeled on this one ("build another MCP like this", "reuse this architecture", "scaffold a similar federated server"). Use it even when the question looks like a narrow one-file question, because the invariants in this codebase are cross-cutting and answering from one file alone tends to be wrong. Do not use it for unrelated repositories.
+description: Onboard a developer into the jh-repositories-mcp codebase (the JScholarship/JHRDR federated MCP server) and serve as its architecture reference. Use this whenever someone is new to this repo, is orienting themselves in it, or asks things like "how does this codebase work", "walk me through this project", "where do I start", "how does search actually work here", "what's the adapter pattern here", "how do I add a tool / a repository / a filter", "why does it do X", "what do these ADRs mean" — and also whenever anyone wants to build a new MCP server modeled on this one ("build another MCP like this", "reuse this architecture", "scaffold a similar federated server"). Use it even when the question looks like a narrow one-file question, because the invariants in this codebase are cross-cutting and answering from one file alone tends to be wrong. Do not use it for unrelated repositories.
 ---
 
-# Onboarding to jhu-repository-mcp
+# Onboarding to jh-repositories-mcp
 
 This skill exists because this codebase is easy to misread. It looks like a
 straightforward search API, but almost every module is shaped by security
@@ -14,7 +14,7 @@ transmit the invariants, not just the file tree.
 
 ## What this project is, in one paragraph
 
-`jhu-repository-mcp` is a read-only Model Context Protocol server that lets an
+`jh-repositories-mcp` is a read-only Model Context Protocol server that lets an
 AI assistant search and cite two independently operated Johns Hopkins
 repositories through a single federated interface: **JScholarship** (DSpace,
 indexed by a SolrCloud `search` collection, resolved through DSpace REST) and
