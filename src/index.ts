@@ -1,5 +1,5 @@
 /**
- * JHU Repository MCP Server — Entry Point
+ * jh-repositories-mcp — Entry Point
  *
  * Validates environment configuration at startup, then starts
  * a Hono HTTP server on the configured port. Performs schema
