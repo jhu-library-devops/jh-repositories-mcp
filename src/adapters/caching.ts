@@ -30,7 +30,7 @@ import type {
   RepositorySearchRequest,
   SchemaValidationResult,
 } from "../models/index";
-import type { GetOptions, RepositoryAdapter } from "./index";
+import { ADAPTER_CONTRACT_VERSION, type GetOptions, type RepositoryAdapter } from "./index";
 
 export interface CachingOptions {
   searchTtlMs: number;
@@ -71,6 +71,7 @@ export function withCaching(
 
   const cached: RepositoryAdapter = {
     id: adapter.id,
+    contractVersion: ADAPTER_CONTRACT_VERSION,
 
     validateSchema(): Promise<SchemaValidationResult> {
       return adapter.validateSchema();
@@ -91,18 +92,14 @@ export function withCaching(
       const key = stableKey({ repository: identifier.repository, value: identifier.value });
       const hit = recordCache.get(key);
       if (hit !== undefined) {
-        // Revalidate on emit (Requirement 15.9). A missing probe means the
-        // cached record cannot be verified — treat as a miss, never serve.
-        if (adapter.probePublic === undefined) {
-          recordCache.delete(key);
-        } else {
-          const stillPublic = await adapter.probePublic(hit);
-          if (stillPublic) {
-            return hit;
-          }
-          recordCache.delete(key);
-          return null;
+        // Revalidate on emit (Requirement 15.9). Probe backend faults propagate
+        // so the cache fails closed rather than serving possibly-withdrawn data.
+        const stillPublic = await adapter.probePublic(hit);
+        if (stillPublic) {
+          return hit;
         }
+        recordCache.delete(key);
+        return null;
       }
       const item = await adapter.get(identifier, options);
       // A degraded record is served once but never cached, so the next call
@@ -120,16 +117,11 @@ export function withCaching(
     related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage> {
       return adapter.related(source, request);
     },
-  };
 
-  if (adapter.probePublic) {
-    cached.probePublic = (record: RepositoryRecord) => {
-      if (adapter.probePublic === undefined) {
-        return Promise.resolve(false);
-      }
+    probePublic(record: RepositoryRecord): Promise<boolean> {
       return adapter.probePublic(record);
-    };
-  }
+    },
+  };
 
   return cached;
 }
