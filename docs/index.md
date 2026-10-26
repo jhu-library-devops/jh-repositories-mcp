@@ -6,7 +6,7 @@ sources:
   - src/mcp/registry.ts
 verified: 2026-10-26
 hero:
-  name: JHU Repositories MCP
+  name: JHULM Repositories MCP
   text: Search and cite JHU repositories from an AI assistant
   tagline: A read-only Model Context Protocol server over JScholarship and JHRDR. It returns only records the repositories themselves confirm are public.
   actions:

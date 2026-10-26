@@ -130,7 +130,7 @@ const sidebar: DefaultTheme.Sidebar = [
 
 export default withMermaid(
   defineConfig({
-    title: "JHU Repositories MCP",
+    title: "JHULM Repositories MCP",
     description:
       "Developer reference for jh-repositories-mcp, a read-only MCP server for Johns Hopkins repositories.",
     lang: "en-US",
@@ -155,7 +155,7 @@ export default withMermaid(
       theme: "github-light-high-contrast",
     },
     themeConfig: {
-      siteTitle: "JHU Repositories MCP",
+      siteTitle: "JHULM Repositories MCP",
       nav: [
         { text: "Reference", link: "/reference/mcp-surface", activeMatch: "/reference/" },
         { text: "Architecture", link: "/architecture/concepts", activeMatch: "/architecture/" },
