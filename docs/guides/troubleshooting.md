@@ -53,7 +53,7 @@ The response body says why.
 | Symptom | Likely cause |
 | --- | --- |
 | `backend_unavailable` on every call | No requested repository answered. Check `backend_fault` log lines for the failing `operation` and HTTP `status`. |
-| Results from one repository only, with a `backend_unavailable` warning | A partial result: the other repository failed. |
+| Results from some repositories only, with a `backend_unavailable` warning per missing one | A partial result: the named repositories failed; `repositories.failed` lists them. |
 | `invalid_input: … is not available on this server` | The requested repository's adapter is not configured in this deployment (for example, JHRDR URLs unset). The message lists the repositories that are. |
 | Fewer results than `limit`, with `validation_attrition` | Candidates the canonical API did not confirm as public were dropped. |
 | `unsupported_filter` warning | That repository does not support the filter or facet; see the matrices in [Repositories](../reference/repositories.md). |
