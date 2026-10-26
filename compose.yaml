@@ -43,7 +43,8 @@ services:
       - ./dev/mock-backend:/app/dev/mock-backend:ro
       - ./test/fixtures:/app/test/fixtures:ro
     healthcheck:
-      test: ["CMD-SHELL", "wget -qO-  >/dev/null"]
+      # No curl/wget in oven/bun (the Dockerfile health check relies on fetch too).
+      test: ["CMD", "bun", "-e", "if (!(await fetch('http://127.0.0.1:8090/health')).ok) process.exit(1)"]
       interval: 5s
       timeout: 3s
       retries: 10
