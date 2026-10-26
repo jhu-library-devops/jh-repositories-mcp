@@ -82,9 +82,9 @@ Caveats:
 The applications and the MCP reach Solr through the network alias `solr`, which
 resolves to both nodes; any node can answer for any collection. `SOLR_HOST` pins
 each node's registered name (`solr1:8983_solr`), so recreating a container keeps
-its replicas. Losing one Solr node leaves every collection serving from the
-other, but a single ZooKeeper failure is also tolerated only while two of three
-members stay up.
+its replicas. Stopping one Solr node leaves every collection
+serving from the other, and the ZooKeeper ensemble keeps its quorum while two of
+its three members are up.
 
 Ports: DSpace API `8080`, Dataverse `8081`, Solr nodes `8983` (`solr1`) and
 `8984` (`solr2`) (see `compose.yaml` for the override variables). Open
