@@ -128,10 +128,10 @@ requesting review.
 
 ## Attribution
 
-Contributions are licensed inbound under the [Eclipse Public License 2.0](LICENSE),
+Contributions are licensed inbound under the [Apache License 2.0](LICENSE),
 the same license the project ships under. By opening a pull request you're
 confirming you have the right to contribute the code — that it's your own work, or
-that you're authorized to submit it and its license is compatible with EPL-2.0.
+that you're authorized to submit it and its license is compatible with Apache-2.0.
 That's the whole affirmation: there's no DCO sign-off and no CLA to sign.
 
 Credit people in the commit, not just the PR thread. If someone pairs with you,
@@ -145,7 +145,7 @@ Co-authored-by: Ada Lovelace <ada@jhu.edu>
 repositories, or model output that reproduces a recognizable existing
 implementation without checking its license and recording where it came from. If a
 non-trivial block is adapted from somewhere, note the source and its license in a
-comment above it. Anything incompatible with EPL-2.0 — GPL, AGPL, CC BY-NC,
+comment above it. Anything incompatible with Apache-2.0 — GPL, AGPL, CC BY-NC,
 license-absent code — doesn't go in, and neither does a vendored copy of something
 we should be depending on properly.
 
