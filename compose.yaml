@@ -138,8 +138,11 @@ services:
       retries: 30
       start_period: 20s
 
-  # Idempotent: uploads the configsets and creates any collection that is
-  # missing (single shard, single replica).
+  # Idempotent provisioning. Every collection is owned by exactly one platform
+  # and gets its own configset, named <owner>_<collection> (dspace_search,
+  # dataverse_collection1, ...), so no collection or configset is shared. An
+  # existing collection bound to a different configset is an error, never
+  # silently adopted.
   solr-init:
     profiles: [real]
     image: solr:${SOLR_TAG:-9.8.0}
@@ -159,19 +162,24 @@ services:
       - |
         set -eu
         api=http://solr:8983/solr/admin/collections
-        for cs in authority oai search statistics qaevent suggestion audit dataverse; do
-          solr zk upconfig -z zookeeper:2181 -n $$cs -d /configsets/$$cs
-        done
-        existing=$$(wget -qO- "$$api?action=LIST&wt=json")
-        create() {
-          case "$$existing" in
-            *"\"$$1\""*) echo "collection $$1 already exists" ;;
-            *) wget -qO- "$$api?action=CREATE&name=$$1&collection.configName=$$2&numShards=1&replicationFactor=1&wt=json" >/dev/null
-               echo "created collection $$1" ;;
-          esac
+        provision() {
+          owner=$$1; col=$$2; src=$$3; cfg="$${owner}_$${col}"
+          solr zk upconfig -z zookeeper:2181 -n "$$cfg" -d "/configsets/$$src"
+          status=$$(wget -qO- "$$api?action=CLUSTERSTATUS&collection=$$col&wt=json" 2>/dev/null || true)
+          if [ -z "$$status" ]; then
+            wget -qO- "$$api?action=CREATE&name=$$col&collection.configName=$$cfg&numShards=1&replicationFactor=1&wt=json" >/dev/null
+            echo "created collection $$col ($$owner, configset $$cfg)"
+          elif echo "$$status" | grep -Eq "\"configName\" *: *\"$$cfg\""; then
+            echo "collection $$col already provisioned for $$owner"
+          else
+            echo "collection $$col exists with a different configset; refusing to share it" >&2
+            exit 1
+          fi
         }
-        for c in authority oai search statistics qaevent suggestion audit; do create $$c $$c; done
-        create collection1 dataverse
+        for c in authority oai search statistics qaevent suggestion audit; do
+          provision dspace $$c $$c
+        done
+        provision dataverse collection1 dataverse
 
   # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
   # Backend only (no Angular UI). Uses the shared SolrCloud above instead of the

@@ -48,7 +48,10 @@ Dataverse's `collection1`, as in the JHU deployment. On startup
 `dspace-configsets` and `dataverse-configset` copy each platform's Solr
 configset out of its image, and the one-shot `solr-init` job uploads them to
 ZooKeeper and creates any missing collection (one shard, one replica; safe to
-re-run).
+re-run). No collection or configset is shared: each collection belongs to one
+platform and has its own configset, named `<owner>_<collection>`
+(`dspace_search`, `dataverse_collection1`, ...). If a collection already exists
+bound to a different configset, `solr-init` fails rather than adopting it.
 
 This is a development stack, so it tracks the **latest** releases: DSpace 10.x
 (`DSPACE_TAG`, default `dspace-10_x`; the backend runs the `-test` image of that
