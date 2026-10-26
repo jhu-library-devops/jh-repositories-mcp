@@ -270,25 +270,34 @@ services:
         done
         provision dataverse collection1 dataverse
 
-  # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
-  # Backend only (no Angular UI). Uses the shared SolrCloud above instead of the
-  # standalone Solr in the DSpace project's own docker-compose.yml.
-
-  dspacedb:
+  # ─── Real profile: Postgres, shared by DSpace and Dataverse ────────────────
+  # One Postgres instance holds both databases as separate roles: `dspace`
+  # (the instance superuser, which DSpace's migration needs to create the
+  # pgcrypto extension) and `dataverse` (owner of its own database, created by
+  # dev/postgres/10-dataverse.sql). Postgres 17 is the common version: Dataverse
+  # requires 17 or later for new installs.
+  postgres:
     profiles: [real]
-    image: postgres:${DSPACE_POSTGRES_VERSION:-15}
+    image: postgres:${POSTGRES_VERSION:-17}
     environment:
-      PGDATA: /pgdata
       POSTGRES_DB: dspace
       POSTGRES_USER: dspace
       POSTGRES_PASSWORD: dspace
     volumes:
-      - dspace_pgdata:/pgdata
+      - postgres_data:/var/lib/postgresql/data
+      - ./dev/postgres/10-dataverse.sql:/docker-entrypoint-initdb.d/10-dataverse.sql:ro
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dspace"]
+      # pg_isready only proves the server accepts connections; the query proves
+      # the init script created the Dataverse role and database.
+      test: ["CMD-SHELL", "pg_isready -U dspace -d dspace && psql -U dataverse -d dataverse -tAc 'select 1'"]
       interval: 5s
       timeout: 3s
       retries: 20
+
+  # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
+  # Backend only (no Angular UI). Uses the shared SolrCloud and Postgres above
+  # instead of the standalone services in the DSpace project's own
+  # docker-compose.yml.
 
   dspace:
     profiles: [real]
@@ -296,7 +305,7 @@ services:
     # own docker-compose.yml uses.
     image: dspace/dspace:${DSPACE_TAG:-dspace-10_x}-test
     depends_on:
-      dspacedb:
+      postgres:
         condition: service_healthy
       solr-init:
         condition: service_completed_successfully
@@ -309,7 +318,7 @@ services:
       dspace__P__name: DSpace local test
       proxies__P__trusted__P__ipranges: "172."
       solr__P__server: http://solr:8983/solr
-      db__P__url: jdbc:postgresql://dspacedb:5432/dspace
+      db__P__url: jdbc:postgresql://postgres:5432/dspace
       LOGGING_CONFIG: /dspace/config/log4j2-container.xml
     entrypoint:
       - /bin/bash
@@ -336,33 +345,18 @@ services:
   # image supplies the Solr configset and bootstraps the installation.
   # DATAVERSE_TAG should match the version being tested.
 
-  dataverse-db:
-    profiles: [real]
-    image: postgres:${DATAVERSE_POSTGRES_VERSION:-17}
-    environment:
-      POSTGRES_USER: dataverse
-      POSTGRES_PASSWORD: secret
-      POSTGRES_DB: dataverse
-    volumes:
-      - dataverse_pgdata:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U dataverse"]
-      interval: 5s
-      timeout: 3s
-      retries: 20
-
   dataverse:
     profiles: [real]
     image: gdcc/dataverse:${DATAVERSE_TAG:-6.12.1-noble}
     depends_on:
-      dataverse-db:
+      postgres:
         condition: service_healthy
       solr-init:
         condition: service_completed_successfully
     ports:
       - "${DATAVERSE_PORT:-8081}:8080"
     environment:
-      DATAVERSE_DB_HOST: dataverse-db
+      DATAVERSE_DB_HOST: postgres
       DATAVERSE_DB_USER: dataverse
       DATAVERSE_DB_PASSWORD: secret
       DATAVERSE_DB_NAME: dataverse
@@ -414,9 +408,8 @@ services:
       JHRDR_PUBLIC_URL: ${JHRDR_PUBLIC_URL:-http://localhost:8081}
 
 volumes:
-  dspace_pgdata:
+  postgres_data:
   dspace_assetstore:
-  dataverse_pgdata:
   dataverse_data:
   zoo1_data:
   zoo1_datalog:

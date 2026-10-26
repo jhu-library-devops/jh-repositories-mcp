@@ -5,7 +5,7 @@
 | Profile | What runs | Startup | What it exercises |
 | --- | --- | --- | --- |
 | `mock` | The server and `dev/mock-backend`, a Bun server that replays `test/fixtures/` | Seconds | The assembled server: transport, tool schemas, canonical resolution |
-| `real` | The server, DSpace, Dataverse, Postgres, and one SolrCloud serving both repositories | Minutes, then empty until you load records | Real Solr, real public-record filtering, real canonical APIs |
+| `real` | The server, DSpace, Dataverse, one Postgres, and one SolrCloud serving both repositories | Minutes, then empty until you load records | Real Solr, real public-record filtering, real canonical APIs |
 
 ## Run the stack
 
@@ -49,6 +49,8 @@ One SolrCloud serves both repositories, as in the JHU deployment: two Solr nodes
 
 DSpace, Dataverse, and the server reach Solr through the network alias `solr`, which resolves to both nodes. Any node answers for any collection, so stopping one node leaves every collection serving from the other. `SOLR_HOST` pins each node's registered name (`solr1:8983_solr`), so recreating a container keeps its replicas instead of orphaning them under a new container ID. The ZooKeeper ensemble keeps its quorum while two of its three members are up.
 
+One Postgres instance holds both databases, `dspace` and `dataverse`, each with its own role, so the platforms share no tables. `dspace` is the instance superuser, because DSpace's migration creates the `pgcrypto` extension. `dev/postgres/10-dataverse.sql` creates the `dataverse` role and database. The Postgres image runs that script only when it first initializes an empty volume. If you reuse a volume from an earlier run that lacks the `dataverse` database, Dataverse cannot connect, and `docker compose --profile real down -v` clears it.
+
 ### Know how provisioning works
 
 On startup, `dspace-configsets` and `dataverse-configset` copy each platform's Solr configset out of its image. The one-shot `solr-init` job then:
@@ -71,8 +73,7 @@ The defaults follow the DSpace 10 and Dataverse 6.12 release lines. Override the
 | `DATAVERSE_TAG` | `6.12.1-noble` | Applies to the application and its configbaker image |
 | `SOLR_TAG` | `9.8.0` | Must suit both platforms; see below |
 | `ZOOKEEPER_TAG` | `3.9` | |
-| `DSPACE_POSTGRES_VERSION` | `15` | |
-| `DATAVERSE_POSTGRES_VERSION` | `17` | Dataverse 6.12 requires 17 or later for new installs |
+| `POSTGRES_VERSION` | `17` | One instance serves both platforms. Dataverse 6.12 requires 17 or later for new installs; DSpace's own compose file uses 15, so confirm that your DSpace release supports 17 before you bump this |
 
 One Solr version has to serve both platforms. DSpace 10 and Dataverse 6.12 both build against Solr 9.8, which is why the cluster works. Check each platform's Solr version before you bump either tag, because a mismatch fails when the collections load. To test against the versions JHU runs, pin the tags and `SOLR_TAG` to match.
 
@@ -132,4 +133,5 @@ Publish the dataset. The server returns only published, non-deaccessioned datase
 | `/health/ready` stays 503 | Read the response body. A missing required field means the schema differs from the profile; a Solr connection error means `solr-init` has not finished or failed. Fix the cause, then run `docker compose --profile real restart mcp-real`. |
 | `solr-init` exits with "different configset" | A collection with that name already exists from an earlier run with other configsets. Run `docker compose --profile real down -v` to delete the volumes and start clean. |
 | `solr-init` times out waiting for nodes | A Solr node failed to join ZooKeeper. Check `docker compose logs zoo1 solr1 solr2`. |
+| Dataverse cannot connect to its database | The Postgres volume predates `dev/postgres/10-dataverse.sql`, so the `dataverse` database was never created. Run `docker compose --profile real down -v` and start again. |
 | A container exits on start | The image tag, an environment variable name, or a healthcheck command does not match the image. The real profile is written from the platforms' container documentation, so check these first and adjust `compose.yaml`. |
