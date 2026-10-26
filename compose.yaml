@@ -8,13 +8,16 @@
 # The real stack is empty until you load records (dev/README.md). The MCP
 # validates the Solr schemas ONCE at startup, so it waits on the Solr healthchecks.
 #
-# The real profile runs ONE SolrCloud (a ZooKeeper plus a Solr node) that serves
-# both repositories, as the JHU deployment does: DSpace's `search` collection
-# (JScholarship) and Dataverse's `collection1` (JHRDR). A one-shot `solr-init`
-# job uploads each platform's configset and creates the collections.
+# The real profile runs ONE SolrCloud that serves both repositories, as the JHU
+# deployment does: two Solr nodes (solr1, solr2) on a three-node ZooKeeper
+# ensemble (zoo1-3). Every collection has one shard replicated on both nodes.
+# DSpace's `search` collection (JScholarship) and Dataverse's `collection1`
+# (JHRDR) are reached through the network alias `solr`, which resolves to both
+# nodes. A one-shot `solr-init` job uploads each platform's configset and
+# creates the collections.
 #
 # Host ports (override with env): MCP 3000, DSpace API 8080, Dataverse 8081,
-# SolrCloud 8983.
+# Solr nodes 8983 and 8984.
 
 name: jhu-repository-mcp
 
@@ -28,6 +31,54 @@ x-mcp-common: &mcp-common
   ports:
     - "${MCP_PORT:-3000}:3000"
   restart: unless-stopped
+
+x-zookeeper: &zookeeper
+  profiles: [real]
+  image: zookeeper:${ZOOKEEPER_TAG:-3.9}
+  healthcheck:
+    # `srvr` reports a Mode only once the node has joined the quorum.
+    test:
+      - CMD
+      - bash
+      - "-c"
+      - "exec 3<>/dev/tcp/localhost/2181 && printf srvr >&3 && cat <&3 | grep -q 'Mode:'"
+    interval: 5s
+    timeout: 3s
+    retries: 30
+    start_period: 10s
+
+x-zookeeper-env: &zookeeper-env
+  ZOO_4LW_COMMANDS_WHITELIST: ruok,srvr
+  ZOO_SERVERS: server.1=zoo1:2888:3888;2181 server.2=zoo2:2888:3888;2181 server.3=zoo3:2888:3888;2181
+
+# DSpace's solrconfig loads the ICU analysis jars through <lib> and says Solr
+# 9.8+ must be started with solr.config.lib.enabled=true. The rest matches the
+# Dataverse dev compose: a larger Jetty header limit and a 100 ms soft commit
+# (the property applies to every collection here, so DSpace also gets
+# near-real-time search, which suits development).
+x-solr: &solr
+  profiles: [real]
+  image: solr:${SOLR_TAG:-9.8.0}
+  command: ["solr-foreground", "-c", "-z", "zoo1:2181,zoo2:2181,zoo3:2181"]
+  depends_on:
+    zoo1:
+      condition: service_healthy
+    zoo2:
+      condition: service_healthy
+    zoo3:
+      condition: service_healthy
+  healthcheck:
+    test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/admin/collections?action=LIST >/dev/null"]
+    interval: 10s
+    timeout: 5s
+    retries: 30
+    start_period: 20s
+
+x-solr-env: &solr-env
+  SOLR_OPTS: >-
+    -Dsolr.config.lib.enabled=true
+    -Dsolr.jetty.request.header.size=102400
+    -Dsolr.autoSoftCommit.maxTime=100
 
 services:
   # ─── Mock profile ──────────────────────────────────────────────────────────
@@ -69,26 +120,35 @@ services:
 
   # ─── Real profile: one SolrCloud for both repositories ─────────────────────
   # Development stack: tracks the latest DSpace (10.x) and Dataverse (6.12.x).
-  # Both currently build against Solr 9.8, which is what lets one node serve
+  # Both currently build against Solr 9.8, which is what lets one cluster serve
   # both. Re-check that when bumping either tag.
 
-  zookeeper:
-    profiles: [real]
-    image: zookeeper:${ZOOKEEPER_TAG:-3.9}
+  zoo1:
+    <<: *zookeeper
     environment:
-      ZOO_4LW_COMMANDS_WHITELIST: ruok,srvr
+      <<: *zookeeper-env
+      ZOO_MY_ID: "1"
     volumes:
-      - zookeeper_data:/data
-      - zookeeper_datalog:/datalog
-    healthcheck:
-      test:
-        - CMD
-        - bash
-        - "-c"
-        - "exec 3<>/dev/tcp/localhost/2181 && printf ruok >&3 && head -c4 <&3 | grep -q imok"
-      interval: 5s
-      timeout: 3s
-      retries: 20
+      - zoo1_data:/data
+      - zoo1_datalog:/datalog
+
+  zoo2:
+    <<: *zookeeper
+    environment:
+      <<: *zookeeper-env
+      ZOO_MY_ID: "2"
+    volumes:
+      - zoo2_data:/data
+      - zoo2_datalog:/datalog
+
+  zoo3:
+    <<: *zookeeper
+    environment:
+      <<: *zookeeper-env
+      ZOO_MY_ID: "3"
+    volumes:
+      - zoo3_data:/data
+      - zoo3_datalog:/datalog
 
   # Each platform ships its Solr configset in its own image; copy them into a
   # shared volume so solr-init can upload them to ZooKeeper.
@@ -110,45 +170,51 @@ services:
     volumes:
       - solr_configsets:/configsets
 
-  solr:
-    profiles: [real]
-    image: solr:${SOLR_TAG:-9.8.0}
-    depends_on:
-      zookeeper:
-        condition: service_healthy
-    command: ["solr-foreground", "-c", "-z", "zookeeper:2181"]
+  # SOLR_HOST pins each node's registered name (solr1:8983_solr), which would
+  # otherwise follow the container ID and orphan replicas when a container is
+  # recreated. The alias `solr` resolves to both nodes (DNS round robin); any
+  # node can serve any collection, so clients need only one of them to answer.
+  solr1:
+    <<: *solr
     environment:
-      # DSpace's solrconfig loads the ICU analysis jars through <lib> and says
-      # Solr 9.8+ must be started with solr.config.lib.enabled=true. The rest
-      # matches the Dataverse dev compose: a larger Jetty header limit and a
-      # 100 ms soft commit (the property applies to every collection here, so
-      # DSpace also gets near-real-time search, which suits development).
-      SOLR_OPTS: >-
-        -Dsolr.config.lib.enabled=true
-        -Dsolr.jetty.request.header.size=102400
-        -Dsolr.autoSoftCommit.maxTime=100
+      <<: *solr-env
+      SOLR_HOST: solr1
+    networks:
+      default:
+        aliases: [solr]
     ports:
       - "${SOLR_PORT:-8983}:8983"
     volumes:
-      - solr_data:/var/solr
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/admin/collections?action=LIST >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 20s
+      - solr1_data:/var/solr
+
+  solr2:
+    <<: *solr
+    environment:
+      <<: *solr-env
+      SOLR_HOST: solr2
+    networks:
+      default:
+        aliases: [solr]
+    ports:
+      - "${SOLR_PORT_2:-8984}:8983"
+    volumes:
+      - solr2_data:/var/solr
 
   # Idempotent provisioning. Every collection is owned by exactly one platform
   # and gets its own configset, named <owner>_<collection> (dspace_search,
   # dataverse_collection1, ...), so no collection or configset is shared. An
   # existing collection bound to a different configset is an error, never
-  # silently adopted.
+  # silently adopted. Waits for both Solr nodes to be live, then makes sure each
+  # collection (one shard) has a replica on each node, adding any that is
+  # missing, so a stack first started with fewer nodes converges.
   solr-init:
     profiles: [real]
     image: solr:${SOLR_TAG:-9.8.0}
     restart: "no"
     depends_on:
-      solr:
+      solr1:
+        condition: service_healthy
+      solr2:
         condition: service_healthy
       dspace-configsets:
         condition: service_completed_successfully
@@ -161,20 +227,43 @@ services:
       - "-c"
       - |
         set -eu
-        api=http://solr:8983/solr/admin/collections
+        zk=zoo1:2181,zoo2:2181,zoo3:2181
+        api=http://solr1:8983/solr/admin/collections
+        nodes="solr1:8983_solr solr2:8983_solr"
+        want=$$(echo $$nodes | wc -w)
+
+        tries=0
+        until [ "$$(wget -qO- "$$api?action=CLUSTERSTATUS&wt=json&indent=false" 2>/dev/null \
+                  | grep -o '"live_nodes":\[[^]]*' | grep -oE '[A-Za-z0-9.-]+:8983_solr' | sort -u | wc -l)" -ge "$$want" ]; do
+          tries=$$((tries + 1))
+          if [ "$$tries" -gt 60 ]; then
+            echo "timed out waiting for $$want live Solr nodes" >&2
+            exit 1
+          fi
+          sleep 2
+        done
+        echo "$$want Solr nodes are live"
+
         provision() {
           owner=$$1; col=$$2; src=$$3; cfg="$${owner}_$${col}"
-          solr zk upconfig -z zookeeper:2181 -n "$$cfg" -d "/configsets/$$src"
-          status=$$(wget -qO- "$$api?action=CLUSTERSTATUS&collection=$$col&wt=json" 2>/dev/null || true)
+          solr zk upconfig -z "$$zk" -n "$$cfg" -d "/configsets/$$src"
+          status=$$(wget -qO- "$$api?action=CLUSTERSTATUS&collection=$$col&wt=json&indent=false" 2>/dev/null || true)
           if [ -z "$$status" ]; then
-            wget -qO- "$$api?action=CREATE&name=$$col&collection.configName=$$cfg&numShards=1&replicationFactor=1&wt=json" >/dev/null
-            echo "created collection $$col ($$owner, configset $$cfg)"
-          elif echo "$$status" | grep -Eq "\"configName\" *: *\"$$cfg\""; then
-            echo "collection $$col already provisioned for $$owner"
-          else
+            wget -qO- "$$api?action=CREATE&name=$$col&collection.configName=$$cfg&numShards=1&replicationFactor=$$want&createNodeSet=$$(echo $$nodes | tr ' ' ',')&wt=json" >/dev/null
+            echo "created collection $$col ($$owner, configset $$cfg) on $$want nodes"
+            return
+          fi
+          if ! echo "$$status" | grep -Eq "\"configName\" *: *\"$$cfg\""; then
             echo "collection $$col exists with a different configset; refusing to share it" >&2
             exit 1
           fi
+          for n in $$nodes; do
+            if ! echo "$$status" | grep -Eq "\"node_name\" *: *\"$$n\""; then
+              wget -qO- "$$api?action=ADDREPLICA&collection=$$col&shard=shard1&node=$$n&wt=json" >/dev/null
+              echo "added a replica of $$col on $$n"
+            fi
+          done
+          echo "collection $$col already provisioned for $$owner"
         }
         for c in authority oai search statistics qaevent suggestion audit; do
           provision dspace $$c $$c
@@ -329,7 +418,12 @@ volumes:
   dspace_assetstore:
   dataverse_pgdata:
   dataverse_data:
-  zookeeper_data:
-  zookeeper_datalog:
-  solr_data:
+  zoo1_data:
+  zoo1_datalog:
+  zoo2_data:
+  zoo2_datalog:
+  zoo3_data:
+  zoo3_datalog:
+  solr1_data:
+  solr2_data:
   solr_configsets:

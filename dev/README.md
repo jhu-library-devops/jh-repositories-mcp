@@ -7,7 +7,7 @@ publish the MCP at `http://localhost:3000/mcp`.
 | Profile | What runs | Startup | Fidelity |
 | --- | --- | --- | --- |
 | `mock` | The MCP plus `dev/mock-backend`, a Bun server replaying `test/fixtures/` | seconds | Canned: every Solr `/select` returns the same page, so filters, sorts, paging and relevance are **not** exercised |
-| `real` | The MCP plus DSpace, Dataverse, Postgres, and one SolrCloud (with ZooKeeper) serving both | minutes, empty until loaded | Real Solr, real public-record filtering, real canonical APIs |
+| `real` | The MCP plus DSpace, Dataverse, Postgres, and a two-node SolrCloud on a three-node ZooKeeper ensemble serving both | minutes, empty until loaded | Real Solr, real public-record filtering, real canonical APIs |
 
 ```bash
 docker compose --profile mock up --build      # or: --profile real
@@ -41,14 +41,17 @@ restricted records; use the `test/integration` suites for that behavior.
 **Status:** written from the DSpace, Dataverse and Solr container documentation
 but not yet booted end to end. Expect to adjust image tags or environment names.
 
-**One SolrCloud for both repositories.** A single Solr node in cloud mode
-(`solr`, backed by `zookeeper`) hosts DSpace's collections (`search`,
+**One SolrCloud for both repositories.** A two-node SolrCloud
+(`solr1` and `solr2`) on a three-node ZooKeeper ensemble (`zoo1` to `zoo3`)
+hosts DSpace's collections (`search`,
 `authority`, `oai`, `statistics`, `qaevent`, `suggestion`, `audit`) and
 Dataverse's `collection1`, as in the JHU deployment. On startup
 `dspace-configsets` and `dataverse-configset` copy each platform's Solr
 configset out of its image, and the one-shot `solr-init` job uploads them to
-ZooKeeper and creates any missing collection (one shard, one replica; safe to
-re-run). No collection or configset is shared: each collection belongs to one
+ZooKeeper and creates any missing collection (one shard with a replica on each
+Solr node). It first waits until both Solr nodes are live, and on a re-run it
+adds a replica to any node that lacks one, so a volume first created with fewer
+nodes converges. It is safe to re-run. No collection or configset is shared: each collection belongs to one
 platform and has its own configset, named `<owner>_<collection>`
 (`dspace_search`, `dataverse_collection1`, ...). If a collection already exists
 bound to a different configset, `solr-init` fails rather than adopting it.
@@ -57,7 +60,7 @@ This is a development stack, so it tracks the **latest** releases: DSpace 10.x
 (`DSPACE_TAG`, default `dspace-10_x`; the backend runs the `-test` image of that
 tag) and Dataverse 6.12.x (`DATAVERSE_TAG`, default `6.12.1-noble`). Both
 currently build against Solr 9.8 (`SOLR_TAG`, default `9.8.0`), which is why one
-node can serve both; re-check that when bumping either tag. Other overrides:
+cluster can serve both; re-check that when bumping either tag. Other overrides:
 `ZOOKEEPER_TAG`, `DSPACE_POSTGRES_VERSION` (15), `DATAVERSE_POSTGRES_VERSION`
 (17; Dataverse 6.12 needs 17+ for new installs). To test against the version
 JHU runs instead, pin the tags (and `SOLR_TAG`) accordingly.
@@ -76,9 +79,16 @@ Caveats:
 - The JHU deployments are customized; stock images may lack fields the
   profiles in `config/repositories/` expect (see below).
 
-Ports: DSpace API `8080`, Dataverse `8081`, SolrCloud `8983` (see
-`compose.yaml` for the override variables). Open `http://localhost:8983/solr`
-for the Solr admin UI and its Cloud view.
+The applications and the MCP reach Solr through the network alias `solr`, which
+resolves to both nodes; any node can answer for any collection. `SOLR_HOST` pins
+each node's registered name (`solr1:8983_solr`), so recreating a container keeps
+its replicas. Losing one Solr node leaves every collection serving from the
+other, but a single ZooKeeper failure is also tolerated only while two of three
+members stay up.
+
+Ports: DSpace API `8080`, Dataverse `8081`, Solr nodes `8983` (`solr1`) and
+`8984` (`solr2`) (see `compose.yaml` for the override variables). Open
+`http://localhost:8983/solr` for the Solr admin UI and its Cloud view.
 
 Things to know:
 

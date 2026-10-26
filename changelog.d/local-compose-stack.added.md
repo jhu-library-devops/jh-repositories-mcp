@@ -1,1 +1,1 @@
-A `compose.yaml` now stands up a local test environment with two profiles: `mock` replays the test fixtures through a lightweight mock backend, and `real` runs DSpace and Dataverse with Postgres and a single SolrCloud serving both repositories. See `dev/README.md`.
+A `compose.yaml` now stands up a local test environment with two profiles: `mock` replays the test fixtures through a lightweight mock backend, and `real` runs DSpace and Dataverse with Postgres and a two-node SolrCloud on a three-node ZooKeeper ensemble serving both repositories. See `dev/README.md`.
