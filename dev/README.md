@@ -42,23 +42,32 @@ restricted records; use the `test/integration` suites for that behavior.
 but not yet booted end to end. Expect to adjust image tags or environment names.
 
 **One SolrCloud for both repositories.** A single Solr node in cloud mode
-(`solr`, backed by `zookeeper`) hosts DSpace's `search`, `authority`, `oai` and
-`statistics` collections and Dataverse's `collection1`, as in the JHU
-deployment. On startup `dspace-configsets` and `dataverse-configset` copy each
-platform's Solr configset out of its image, and the one-shot `solr-init` job
-uploads them to ZooKeeper and creates any missing collection (one shard, one
-replica; safe to re-run). Because one Solr version serves both platforms:
+(`solr`, backed by `zookeeper`) hosts DSpace's collections (`search`,
+`authority`, `oai`, `statistics`, `qaevent`, `suggestion`, `audit`) and
+Dataverse's `collection1`, as in the JHU deployment. On startup
+`dspace-configsets` and `dataverse-configset` copy each platform's Solr
+configset out of its image, and the one-shot `solr-init` job uploads them to
+ZooKeeper and creates any missing collection (one shard, one replica; safe to
+re-run).
 
-- `DSPACE_TAG` defaults to `dspace-9_x`. DSpace 8 targets Solr 8.11 and cannot
-  share a Solr 9 node with Dataverse 6.10.
-- `SOLR_TAG` defaults to `9.8.0`, the version Dataverse 6.10 documents.
-- Dataverse's own documentation describes standalone Solr, so SolrCloud is the
+This is a development stack, so it tracks the **latest** releases: DSpace 10.x
+(`DSPACE_TAG`, default `dspace-10_x`; the backend runs the `-test` image of that
+tag) and Dataverse 6.12.x (`DATAVERSE_TAG`, default `6.12.1-noble`). Both
+currently build against Solr 9.8 (`SOLR_TAG`, default `9.8.0`), which is why one
+node can serve both; re-check that when bumping either tag. Other overrides:
+`ZOOKEEPER_TAG`, `DSPACE_POSTGRES_VERSION` (15), `DATAVERSE_POSTGRES_VERSION`
+(17; Dataverse 6.12 needs 17+ for new installs). To test against the version
+JHU runs instead, pin the tags (and `SOLR_TAG`) accordingly.
+
+Caveats:
+
+- Dataverse's documentation describes standalone Solr, so SolrCloud is the
   least-trodden path here. Changing its metadata blocks later means uploading
   the updated configset to ZooKeeper and reloading the collection, not the
-  standalone `update-fields.sh` flow.
-
-Other overrides: `DATAVERSE_TAG` (default `6.10.1`, the version in the
-fixtures) and `ZOOKEEPER_TAG`.
+  standalone `update-fields.sh` flow. A new Dataverse release can also change
+  the Solr schema and require a reindex.
+- The JHU deployments are customized; stock images may lack fields the
+  profiles in `config/repositories/` expect (see below).
 
 Ports: DSpace API `8080`, Dataverse `8081`, SolrCloud `8983` (see
 `compose.yaml` for the override variables). Open `http://localhost:8983/solr`

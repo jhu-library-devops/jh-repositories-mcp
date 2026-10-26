@@ -68,9 +68,9 @@ services:
       JHRDR_PUBLIC_URL: https://archive.data.jhu.edu
 
   # ─── Real profile: one SolrCloud for both repositories ─────────────────────
-  # Solr 9 must serve DSpace and Dataverse at once, so DSPACE_TAG defaults to a
-  # DSpace release built for Solr 9 (dspace-9_x). DSpace 8 targets Solr 8.11 and
-  # cannot share this node.
+  # Development stack: tracks the latest DSpace (10.x) and Dataverse (6.12.x).
+  # Both currently build against Solr 9.8, which is what lets one node serve
+  # both. Re-check that when bumping either tag.
 
   zookeeper:
     profiles: [real]
@@ -90,7 +90,7 @@ services:
   # shared volume so solr-init can upload them to ZooKeeper.
   dspace-configsets:
     profiles: [real]
-    image: dspace/dspace-solr:${DSPACE_TAG:-dspace-9_x}
+    image: dspace/dspace-solr:${DSPACE_TAG:-dspace-10_x}
     restart: "no"
     user: root
     entrypoint: ["sh", "-c", "cp -a /opt/solr/server/solr/configsets/. /configsets/"]
@@ -99,7 +99,7 @@ services:
 
   dataverse-configset:
     profiles: [real]
-    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
+    image: gdcc/configbaker:${DATAVERSE_TAG:-6.12.1-noble}
     restart: "no"
     user: root
     entrypoint: ["sh", "-c", "mkdir -p /configsets/dataverse && cp -a /template/. /configsets/dataverse/"]
@@ -145,7 +145,7 @@ services:
       - |
         set -eu
         api=http://solr:8983/solr/admin/collections
-        for cs in authority oai search statistics dataverse; do
+        for cs in authority oai search statistics qaevent suggestion audit dataverse; do
           solr zk upconfig -z zookeeper:2181 -n $$cs -d /configsets/$$cs
         done
         existing=$$(wget -qO- "$$api?action=LIST&wt=json")
@@ -156,7 +156,7 @@ services:
                echo "created collection $$1" ;;
           esac
         }
-        for c in authority oai search statistics; do create $$c $$c; done
+        for c in authority oai search statistics qaevent suggestion audit; do create $$c $$c; done
         create collection1 dataverse
 
   # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
@@ -165,21 +165,25 @@ services:
 
   dspacedb:
     profiles: [real]
-    image: dspace/dspace-postgres-pgcrypto:${DSPACE_TAG:-dspace-9_x}
+    image: postgres:${DSPACE_POSTGRES_VERSION:-15}
     environment:
       PGDATA: /pgdata
+      POSTGRES_DB: dspace
+      POSTGRES_USER: dspace
       POSTGRES_PASSWORD: dspace
     volumes:
       - dspace_pgdata:/pgdata
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      test: ["CMD-SHELL", "pg_isready -U dspace"]
       interval: 5s
       timeout: 3s
       retries: 20
 
   dspace:
     profiles: [real]
-    image: dspace/dspace:${DSPACE_TAG:-dspace-9_x}
+    # The -test image carries the development configuration the DSpace project's
+    # own docker-compose.yml uses.
+    image: dspace/dspace:${DSPACE_TAG:-dspace-10_x}-test
     depends_on:
       dspacedb:
         condition: service_healthy
@@ -188,10 +192,11 @@ services:
     ports:
       - "${DSPACE_PORT:-8080}:8080"
     environment:
-      dspace__P__dir: /dspace
       dspace__P__server__P__url: http://localhost:${DSPACE_PORT:-8080}/server
       dspace__P__ui__P__url: http://localhost:4000
+      dspace__P__server__P__ssr__P__url: http://dspace:8080/server
       dspace__P__name: DSpace local test
+      proxies__P__trusted__P__ipranges: "172."
       solr__P__server: http://solr:8983/solr
       db__P__url: jdbc:postgresql://dspacedb:5432/dspace
       LOGGING_CONFIG: /dspace/config/log4j2-container.xml
@@ -200,11 +205,16 @@ services:
       - "-c"
       - |
         /dspace/bin/dspace database migrate ignored
-        exec catalina.sh run
+        exec java -jar /dspace/webapps/server-boot.jar --dspace.dir=/dspace
     volumes:
       - dspace_assetstore:/dspace/assetstore
     healthcheck:
-      test: ["CMD-SHELL", "curl -sf http://localhost:8080/server/api >/dev/null"]
+      # bash-only probe: the image is not known to ship curl or wget.
+      test:
+        - CMD
+        - /bin/bash
+        - "-c"
+        - "exec 3<>/dev/tcp/localhost/8080 && printf 'GET /server/api HTTP/1.0\\r\\n\\r\\n' >&3 && head -1 <&3 | grep -q ' 200'"
       interval: 15s
       timeout: 5s
       retries: 40
@@ -217,7 +227,7 @@ services:
 
   dataverse-db:
     profiles: [real]
-    image: postgres:17
+    image: postgres:${DATAVERSE_POSTGRES_VERSION:-17}
     environment:
       POSTGRES_USER: dataverse
       POSTGRES_PASSWORD: secret
@@ -232,7 +242,7 @@ services:
 
   dataverse:
     profiles: [real]
-    image: gdcc/dataverse:${DATAVERSE_TAG:-6.10.1}
+    image: gdcc/dataverse:${DATAVERSE_TAG:-6.12.1-noble}
     depends_on:
       dataverse-db:
         condition: service_healthy
@@ -261,7 +271,7 @@ services:
 
   dataverse-bootstrap:
     profiles: [real]
-    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
+    image: gdcc/configbaker:${DATAVERSE_TAG:-6.12.1-noble}
     restart: "no"
     depends_on:
       dataverse:
