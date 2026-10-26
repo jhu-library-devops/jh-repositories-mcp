@@ -31,10 +31,12 @@ code they describe in `sources:` front matter. When you change that code, check
 those pages and bump their `verified:` date. Pages describe the system as built:
 no task numbers, plans, or progress notes. See `docs/guides/maintaining-docs.md`.
 
-`CONTEXT.md` is the domain glossary (SearchResult, ItemDetail, Candidate,
-Public_Record, Canonical_API, Field_Allowlist, Immutable_Public_Filter, Cursor,
-Repository_Rank). Use its vocabulary precisely. `docs/adr/` holds 12 accepted
-ADRs recording why each structural decision was made.
+`docs/glossary.md` is the domain glossary (SearchResult, ItemDetail, Candidate,
+Public Record, Canonical API, Field Allowlist, Immutable Public Filter, Cursor,
+Repository Rank); `CONTEXT.md` points to it and keeps the example dialogue. Use
+that vocabulary precisely. `docs/adr/` holds 13 accepted ADRs recording why each
+structural decision was made. `.kiro/steering/docs-writing-style.md` is the
+register for every page under `docs/` and the root documents.
 
 ## What this project is
 
@@ -62,12 +64,16 @@ before implementation — don't casually add scope.
 These are cross-cutting. Do not answer a question about behavior, or change
 behavior, from a single file — trace the path end to end.
 
-- **Two adapters behind one interface.** JScholarship and JHRDR are *not* made
-  to look identical internally. `RepositoryAdapter` in `src/adapters/index.ts`
-  (`search`, `get`, `facets`, `related`, `validateSchema`, optional
-  `probePublic`) is implemented once per platform, and only adapters may know
-  Solr field names or construct repository URLs. There is deliberately no shared
-  `isPublic()`. (ADR-004)
+- **Adapters behind one versioned interface.** JScholarship and JHRDR are *not*
+  made to look identical internally. `RepositoryAdapter` in
+  `src/adapters/index.ts` (`contractVersion`, `search`, `get`, `facets`,
+  `related`, `validateSchema`, `probePublic`, all required) is implemented once
+  per platform, and only adapters may know Solr field names or construct
+  repository URLs. There is deliberately no shared `isPublic()`. At startup the
+  constructed adapters are registered into an immutable `AdapterRegistry`
+  (`src/adapters/registry.ts`) that records each one's fusion weight and
+  dispatch eligibility; the federation layer resolves adapters only through it
+  and names no repository. (ADR-004, ADR-013)
 - **Solr for candidates, Canonical API for truth.** Adapters query their private
   Solr collections for fast candidate retrieval, but only records validated
   through the platform's public API should enter results; failures are silently
@@ -94,12 +100,19 @@ behavior, from a single file — trace the path end to end.
   identifiers from the two platforms cannot collide.
 - **No cross-repository score comparison.** DSpace and Dataverse Solr scores
   aren't comparable. Each adapter preserves its own `Repository_Rank`, and
-  `src/federation/index.ts` merges via balanced reciprocal-rank fusion
-  (`weight / (60 + rank)`) with deterministic alternating tie-breaks. (ADR-007)
-- **Stateless federation via opaque cursor.** Per-repository offsets, query
-  hash, and next tie source live entirely in a versioned base64url `Cursor` — no
-  server-side session state. A cursor whose query hash doesn't match resets to
-  page 1 with a warning rather than erroring. (ADR-006, ADR-012)
+  `src/federation/merge.ts` merges N pages via weighted reciprocal-rank fusion
+  (`weight / (k + rank)`, `k = 60`, weights default 1.0) with a round-robin tie
+  sequence over the participating repositories and the namespaced ID as the
+  final tie-break. (ADR-007, ADR-013)
+- **Stateless federation via opaque cursor.** The versioned base64url `Cursor`
+  (v2: `queryHash`, one offset per contributing repository, the participating
+  set, and the tie-sequence position; v1 still decodes) carries all pagination
+  state — no server-side session. A cursor whose query hash doesn't match, or
+  that names a repository no longer selected, resets to page 1 with
+  `cursor_reset`; a newly selected repository starts at zero with
+  `cursor_expanded`. Fan-out is bounded by a canonicalization budget (150
+  candidates) and a 10 s federation deadline (`deadline_exceeded` on a partial).
+  (ADR-006, ADR-012, ADR-013)
 - **Fail-closed everywhere.** Backend timeout, validation failure, or schema
   mismatch results in omission or an error, never unvalidated data. Config
   validation is fail-fast at startup. Readiness fails if a repository's
@@ -136,10 +149,12 @@ not add tools/resources/prompts without updating the spec first.
 src/
   index.ts                   Hono app, health/version routes, adapter wiring, startup schema validation
   mcp/                       transport.ts, registry.ts, tools/, resources.ts, prompts.ts, errors.ts
-  adapters/                  index.ts (the interface), solr-query.ts, solr-client.ts,
-                             solr-schema-validator.ts, canonicalize.ts, caching.ts, retry.ts,
-                             explain.ts, jscholarship/, jhrdr/
-  federation/index.ts        RRF merge, cursor encode/decode, response assembly
+  adapters/                  index.ts (the interface), registry.ts (startup adapter registry),
+                             solr-query.ts, solr-client.ts, solr-schema-validator.ts,
+                             canonicalize.ts, caching.ts, retry.ts, explain.ts, jscholarship/, jhrdr/
+  federation/                service.ts (the pipeline), selector.ts, cursor.ts, reconcile.ts,
+                             window-allocation.ts, deadline.ts, merge.ts, tie-sequence.ts,
+                             partial-assembly.ts, facet-merge.ts (unwired), index.ts (barrel)
   models/                    domain types, zod schemas, ID namespacing, factories
   observability/index.ts     redacting logger, CloudWatch EMF metrics
   security/index.ts          host/origin checks, edge + deadline middleware, semaphore
@@ -242,6 +257,15 @@ Verify before relying on any of these; they may have been fixed.
   `unsupported_filter` warning; no adapter implements it.
 - `find_related_items` can return fewer than `limit` results, because the source
   record is filtered out after the merge trims.
+- `src/federation/facet-merge.ts` (N-way facet merging) exists but `list_facets`
+  does not call it; facets are still returned per repository.
+- Federation limits (`k`, canonicalization budget, deadline, fusion weights, max
+  adapters = 8) are code constants in `src/index.ts` and the handlers, not
+  environment configuration.
+- The 10 s federation deadline sits under `TIMEOUT_DEADLINE_MS`; raising the
+  latter past 10 s does not give a search more time.
+- `GET /health/ready` also reports 503 with a `code` when the adapter registry
+  could not be built; the process then exits.
 - The ECS container health check and the ALB target group both probe
   `/health/live`, not `/health/ready`, so a task whose schema validation failed
   still receives traffic.
