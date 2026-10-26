@@ -1,5 +1,5 @@
 ---
-title: Maintaining these docs
+title: Maintain these docs
 sources:
   - scripts/docs/
   - docs/.vitepress/
@@ -9,26 +9,30 @@ sources:
   - .github/workflows/docs-freshness.yml
   - .claude/skills/jh-repo-mcp-onboarding/
   - package.json
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
-# Maintaining these docs
+# Maintain these docs
 
-This site is a technical reference for the current system. It describes interfaces, behavior, and procedures. It does not track plans, progress, or history: release notes go in `changelog.d/` fragments, and design intent stays in the project specifications. A page should never need to say what is "coming" or what was "recently" done.
+This site is a technical reference for the current system. It describes interfaces, behavior, and procedures. It does not track plans, progress, or history: release notes go in `changelog.d/` fragments, and design intent stays in the project specifications. A page should never need to say what is "coming" or what was "recently" done, and it should never cite a requirement or task number; those belong in source comments and the specifications.
+
+## When a page and the code disagree
+
+The code is the ground truth. If a page and the code disagree, the code wins: fix the page in the same pull request when the fix is small, or open an issue naming the page and the file. Behavior that differs from the design's intent belongs on [Known limitations](../architecture/known-limitations.md), described as what the code does, not as what is planned.
 
 ## Where things go
 
 | Content | Location | Published |
 | --- | --- | --- |
 | Tools, schemas, configuration, repository capabilities, errors, infrastructure | `docs/reference/` (generated) | Yes |
-| How the system works | `docs/architecture/` | Yes |
+| How the system works, and the vocabulary | `docs/architecture/`, `docs/glossary.md` | Yes |
 | How to extend or operate it | `docs/guides/` | Yes |
 | Why a structural choice was made | `docs/adr/` (append-only; supersede, don't edit) | Yes |
 | Schema and endpoint investigations | `docs/spike/` | No: working records |
 | Requirements, design, task plans | `.kiro/specs/` | No: working records |
 | Release notes | `changelog.d/` → `CHANGELOG.md` | No |
 
-The root files (`README.md`, `CONTRIBUTING.md`, `ONBOARDING.md`, `CLAUDE.md`, `AGENTS.md`) stay short and link here instead of repeating reference content.
+The root files (`README.md`, `CONTRIBUTING.md`, `ONBOARDING.md`, `CONTEXT.md`, `CLAUDE.md`, `AGENTS.md`) stay short and link here instead of repeating reference content. Each fact has one home: the setup commands live in [Run the server locally](./local-development.md), the disclosure guarantee in [Canonical gate](../architecture/canonical-gate.md), the source layout in the [overview](../architecture/overview.md), and the vocabulary in the [glossary](../glossary.md). When you are tempted to restate one of them, link instead.
 
 ## How freshness is enforced
 
@@ -62,6 +66,10 @@ verified: 2026-10-21
 - `sources` drives both the doc-impact comment and the weekly sweep. List the code a reader would need to check to know the page is still right, and nothing broader.
 - `verified` is the date someone last read the page against those sources. Update it whenever you check the page, even if nothing needed to change. It is maintenance metadata and isn't shown on the page.
 
+## Writing style
+
+Write for someone who is competent but new: a repository engineer who has not used MCP, or an MCP developer who has not used DSpace or Dataverse. Address the reader as "you". Use the present tense. Give guides imperative titles ("Add a repository") and give architecture pages noun titles ("Canonical gate"). When you state a rule, follow it with the failure it prevents; "errors never explain" is a slogan, but "an error that said *withdrawn* would confirm the record exists" is a reason. Keep team asides and opinions out of published pages.
+
 ## Generated pages and injected regions
 
 Generators live in `scripts/docs/generators/`. Each reads the code directly (the live MCP server's `tools/list`, the zod configuration schema, the repository profiles run through the real query builder, the error unions, and terraform-docs) and owns its page completely. Never edit a file under `docs/reference/` by hand.
@@ -88,6 +96,7 @@ Specs record intent; this site records the result. Finish every spec's task plan
   - Update the architecture and guide pages whose `sources:` cover the changed code; set `verified:` to today.
   - Describe the system as built. Leave out task numbers, phases, and "new" or "now" language.
   - Record any structural decision as an ADR in `docs/adr/`.
+  - Remove any entry on docs/architecture/known-limitations.md that the change resolves.
   - Revise the onboarding skill in `.claude/skills/jh-repo-mcp-onboarding/` wherever it names
     the changed code (function and type names, paths, the request path, invariants, recipes).
   - Run `bun run docs:check` and `bun run docs:build`.

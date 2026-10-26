@@ -46,28 +46,31 @@ const sidebar: DefaultTheme.Sidebar = [
       { text: "Errors and warnings", link: "/reference/errors" },
       { text: "Infrastructure", link: "/reference/infrastructure" },
       { text: "Related resources", link: "/related-resources" },
+      { text: "Glossary", link: "/glossary" },
     ],
   },
   {
     text: "Architecture",
     items: [
+      { text: "Concepts", link: "/architecture/concepts" },
       { text: "Overview", link: "/architecture/overview" },
       { text: "Canonical gate", link: "/architecture/canonical-gate" },
       { text: "Federation and pagination", link: "/architecture/federation" },
       { text: "Security model", link: "/architecture/security" },
       { text: "Observability", link: "/architecture/observability" },
+      { text: "Known limitations", link: "/architecture/known-limitations" },
     ],
   },
   {
     text: "Guides",
     items: [
-      { text: "Local development", link: "/guides/local-development" },
-      { text: "Changing the MCP surface", link: "/guides/change-the-mcp-surface" },
-      { text: "Adding a repository", link: "/guides/add-a-repository" },
-      { text: "Testing and fixtures", link: "/guides/testing-and-fixtures" },
-      { text: "Deploying and rolling back", link: "/guides/deploy-and-rollback" },
+      { text: "Run the server locally", link: "/guides/local-development" },
+      { text: "Change the MCP surface", link: "/guides/change-the-mcp-surface" },
+      { text: "Add a repository", link: "/guides/add-a-repository" },
+      { text: "Write tests and fixtures", link: "/guides/testing-and-fixtures" },
+      { text: "Deploy and roll back", link: "/guides/deploy-and-rollback" },
       { text: "Troubleshooting", link: "/guides/troubleshooting" },
-      { text: "Maintaining these docs", link: "/guides/maintaining-docs" },
+      { text: "Maintain these docs", link: "/guides/maintaining-docs" },
     ],
   },
   {
@@ -113,13 +116,21 @@ const sidebar: DefaultTheme.Sidebar = [
         text: "012 Cursor mismatch resets",
         link: "/adr/ADR-012-cursor-mismatch-resets-instead-of-errors",
       },
+      {
+        text: "013 N-repository federation",
+        link: "/adr/ADR-013-n-repository-federation-through-an-adapter-registry",
+      },
+      {
+        text: "014 Local stack topology",
+        link: "/adr/ADR-014-local-stack-mirrors-deployed-topology",
+      },
     ],
   },
 ];
 
 export default withMermaid(
   defineConfig({
-    title: "JHU Repositories MCP",
+    title: "JHULM Repositories MCP",
     description:
       "Developer reference for jh-repositories-mcp, a read-only MCP server for Johns Hopkins repositories.",
     lang: "en-US",
@@ -144,10 +155,10 @@ export default withMermaid(
       theme: "github-light-high-contrast",
     },
     themeConfig: {
-      siteTitle: "JHU Repositories MCP",
+      siteTitle: "JHULM Repositories MCP",
       nav: [
         { text: "Reference", link: "/reference/mcp-surface", activeMatch: "/reference/" },
-        { text: "Architecture", link: "/architecture/overview", activeMatch: "/architecture/" },
+        { text: "Architecture", link: "/architecture/concepts", activeMatch: "/architecture/" },
         { text: "Guides", link: "/guides/local-development", activeMatch: "/guides/" },
         { text: "Decisions", link: "/adr/", activeMatch: "/adr/" },
       ],

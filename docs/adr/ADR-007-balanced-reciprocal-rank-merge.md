@@ -1,54 +1,51 @@
 # ADR-007: Repository-Local Relevance Plus Balanced Reciprocal-Rank Merge
 
 **Date:** 2024-07-24
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR-013](./ADR-013-n-repository-federation-through-an-adapter-registry.md).
 **Deciders:** Platform engineering, library research services
 **Supersedes:** N/A
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-When searching both repositories, we must merge two result lists into one ranked response. JScholarship and JHRDR use independently configured Solr instances with different schemas, boost configurations, and document populations. Raw relevance scores from separate indexes are not comparable.
+A search across both repositories has to merge two result lists into one ranked response. JScholarship and JHRDR run independently configured Solr instances with different schemas, boosts, and document populations, so their raw relevance scores are not comparable.
 
 ## Decision Drivers
 
-- Requirement 11.1-11.3: Preserve repository-local rank, do not compare raw scores, use balanced merge
-- Requirement 4.6: Do not expose raw Solr scores as confidence values
-- The two Solr instances have different configurations, document counts, and scoring behavior
-- Researchers expect balanced representation from both repositories
+- Preserve each repository's own ranking; never compare raw scores
+- Never expose a raw Solr score as a confidence value
+- Give researchers balanced representation from both repositories
 
 ## Considered Options
 
-1. Balanced reciprocal-rank fusion with equal default weights and deterministic tie handling
-2. Raw score normalization (min-max or z-score across repositories)
-3. Interleaving (strict round-robin alternation)
-4. Single merged Solr index
+1. **Balanced reciprocal-rank fusion with equal weights and deterministic tie handling.** Chosen.
+2. **Normalizing raw scores (min-max or z-score) across repositories.** Rejected: normalization assumes the two score distributions mean the same thing, and they do not; a query that matches one repository weakly and the other strongly would still be forced onto one scale.
+3. **Strict round-robin interleaving.** Rejected: it ignores rank entirely, so a repository's tenth result would sit beside the other's first.
+4. **One merged Solr index.** Rejected: it would require a new indexing pipeline fed from both platforms, and the platforms' own re-index lag is already the problem the canonical gate exists to cover.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Repository-local relevance plus balanced reciprocal-rank merge, because raw scores from separately configured Solr indexes are not comparable.
+Each repository's order is kept as its Repository Rank, and the lists are merged with reciprocal-rank fusion:
 
-The fusion formula is: `fusionScore = repositoryWeight / (60 + repositoryRank)`
+```text
+fusionScore = repositoryWeight / (60 + repositoryRank)      repositoryWeight = 1
+```
 
-Equal-rank ties use a deterministic alternating source from the Cursor's `nextTieSource`, preventing one repository from always winning ties. A stable namespaced ID is the final tie-breaker.
+Ties use the cursor's `nextTieSource`, which alternates after each tie so neither repository always wins, with the namespaced record ID as the final tie-breaker.
 
 ### Positive Consequences
 
-- Score magnitude and distribution differences between indexes cannot bias results
-- Neither repository dominates by virtue of having more documents or different boost configurations
-- Deterministic: same input + same index state = same output
-- Tie handling alternates fairly and is encoded in the cursor for consistency across pages
+- Differences in score magnitude and distribution cannot bias results.
+- Neither repository dominates by having more documents or stronger boosts.
+- The merge is deterministic: the same input and index state give the same output.
+- Tie handling is fair across pages because the cursor carries it.
 
 ### Negative Consequences
 
-- Cannot express "this result is genuinely more relevant across both repositories" (by design)
-- Equal weights may not reflect actual collection relevance for all queries (tunable post-pilot)
-- Reciprocal-rank fusion is a heuristic; it may not always match human relevance judgments
+- The service cannot say that one result is more relevant than another across repositories. That is intended.
+- Equal weights may not reflect each collection's relevance for every query; the weights are tunable.
+- Reciprocal-rank fusion is a heuristic and will not always match a human's judgment.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table, Component 8
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 11.1-11.3, 4.6
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 10.1, 10.4
-- Branch: tofu-iac-starter
+- [Federation and pagination](../architecture/federation.md), merging rankings
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

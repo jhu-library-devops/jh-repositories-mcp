@@ -7,45 +7,40 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-MCP servers can either return raw evidence for the host model to synthesize, or embed their own LLM/vector-search to generate summaries, rewrite queries, or expand terms. We must decide where synthesis responsibility lives.
+An MCP server can return raw evidence for the host model to synthesize, or it can embed its own language model or vector search to summarize results, rewrite queries, or expand terms. We had to decide where synthesis lives.
 
 ## Decision Drivers
 
-- Requirement 17.2: No embedded LLM, generated summary, vector database, embedding pipeline, or autonomous agent loop
-- Requirement 17.5: Host-model synthesis is outside MCP responsibility; return attributable evidence only
-- The MCP returns evidence and citations; the host model (HopGPT, Claude, etc.) handles interpretation
-- Embedding an LLM would add cost, latency, complexity, and a new failure mode
-- Citation accuracy requires the host model to work from authoritative source data
+- No embedded language model, generated summaries, vector database, embedding pipeline, or autonomous agent loop in the service
+- The service returns attributable evidence; interpretation is the host model's job
+- An embedded model would add cost, latency, complexity, and a new failure mode
+- Citation accuracy depends on the host working from authoritative source data
 
 ## Considered Options
 
-1. Host model performs synthesis (MCP returns evidence only)
-2. Embedded LLM for query expansion and result summarization
-3. Hybrid: optional server-side summarization with raw data fallback
+1. **The host model performs synthesis; the server returns evidence only.** Chosen.
+2. **An embedded model for query expansion and result summarization.** Rejected: a summary generated inside the service would be returned under the repository's name, and a reader could not tell a canonical abstract from a model's paraphrase of it.
+3. **Optional server-side summarization with a raw-data fallback.** Rejected: the same laundering risk as option 2, plus two code paths to secure and test.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Host model performs synthesis, because the MCP returns evidence and citations and it does not embed an LLM or vector search system.
+The server returns evidence and citations. The host model (HopGPT, Claude, or another) interprets them.
 
 ### Positive Consequences
 
-- No LLM cost, latency, or hallucination risk inside the MCP service
-- Attributable, verifiable results: every field comes from the canonical API
-- Host model can apply its own reasoning, style, and user context
-- Simpler service with fewer dependencies and failure modes
-- No risk of the MCP "laundering" inaccurate AI-generated content as repository data
+- No model cost, latency, or hallucination risk inside the service.
+- Every returned field comes from the canonical API and can be verified.
+- The host applies its own reasoning, style, and user context.
+- Fewer dependencies and failure modes.
+- The service cannot present generated text as repository data.
 
 ### Negative Consequences
 
-- Quality of synthesis depends entirely on the host model's capabilities
-- No server-side query expansion (host must refine queries iteratively)
-- Cannot provide "smart" zero-result suggestions without host model participation
+- Synthesis quality depends entirely on the host model.
+- No server-side query expansion; the host refines queries iteratively.
+- No "smart" suggestions on zero results without the host's participation.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 17.2, 17.5
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 15.3
-- Branch: tofu-iac-starter
+- [Concepts](../architecture/concepts.md), MCP for repository engineers
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

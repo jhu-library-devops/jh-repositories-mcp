@@ -4,13 +4,14 @@ sources:
   - src/observability/
   - src/mcp/registry.ts
   - src/mcp/tools/get-item.ts
+  - src/federation/service.ts
   - infra/modules/mcp-service/observability.tf
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
 # Observability
 
-All telemetry is JSON lines on stdout, collected by the container's log driver. `src/observability/index.ts` builds every line.
+All telemetry is JSON lines on stdout, collected by the container's log driver. `src/observability/index.ts` builds every line, and it builds each one from an approved list of fields rather than by filtering an object. That choice is what keeps query text and record metadata out of the logs.
 
 ## Log events
 
@@ -19,6 +20,7 @@ Each line has a `type`.
 | `type` | When | Fields |
 | --- | --- | --- |
 | `tool_invocation` | Once per tool call | `timestamp`, `requestId`, `client` (name and version, when known), `tool`, `repositories`, `latencyMs`, `resultCount`, `partial`, `cache`, `backendStatus`, `outcome`, `build` |
+| `federated_invocation` | Once per federated search, after the merge | `timestamp`, `requestId`, `tool`, `totalAdapters`, `respondingAdapters`, `outcome`, and `perRepository`, one entry per dispatched repository with `repository`, `latencyMs`, `resultCount`, `validationOmissions`, and `outcome` |
 | `backend_fault` | When a backend failure shaped what the client got | `timestamp`, `tool`, `repository`, `operation`, `errorName`, `status`, `effect` |
 | `log` | Free-text operational messages | `level`, `timestamp`, `message` (at most 500 characters) |
 
@@ -45,6 +47,8 @@ Each tool call also emits one CloudWatch Embedded Metric Format line in the `Jhu
 | `LatencyMs` | Milliseconds | Call latency |
 | `ZeroResults` | Count | Successful calls with no results |
 | `PartialResults` | Count | Calls where at least one repository failed |
+
+A federated search also emits per-repository metrics in the same namespace, dimensioned by `Repository`: `Invocations`, `LatencyMs`, `Errors`, `ValidationOmissions`, and `Available` (1 when the repository answered, 0 when it failed), plus two dimensioned by `Service`: `DispatchFanOut` (adapters called in the request) and `MaxAdapters` (the registry limit), so an alarm can fire when a single request fans out to most of the registered set. A failed metric emission is logged and never reaches the client.
 
 CloudWatch alarms on CPU, latency, target 5xx responses, and unhealthy tasks are defined in the service module; see [Infrastructure](../reference/infrastructure.md).
 

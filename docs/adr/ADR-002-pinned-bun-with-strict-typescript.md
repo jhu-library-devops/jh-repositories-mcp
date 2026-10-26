@@ -7,45 +7,39 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-The MCP server needs a JavaScript/TypeScript runtime, package manager, bundler, and test runner. Reproducibility across local development, CI, and production containers is critical. We must choose a runtime and toolchain strategy.
+The server needs a JavaScript runtime, a package manager, a bundler, and a test runner, and its behavior has to be reproducible across local development, CI, and the production container. We had to choose a runtime and a toolchain strategy.
 
 ## Decision Drivers
 
-- Requirement 12.7: Strict TypeScript with pinned Bun as runtime, package manager, build tool, and test runner
-- Requirement 12.8: Web Standard transport compatibility (no Node.js-specific APIs)
 - Reproducibility across local, CI, and container environments
-- Minimizing toolchain fragmentation (separate bundler, test runner, package manager)
+- Web Standard transport compatibility, with no dependence on Node.js-specific APIs
+- As few separately versioned tools as possible
 
 ## Considered Options
 
-1. Pinned Bun release (runtime + package manager + bundler + test runner) with strict TypeScript
-2. Node.js + npm/pnpm + esbuild/rollup + vitest/jest
-3. Deno with TypeScript
+1. **A pinned Bun release with strict TypeScript.** Chosen.
+2. **Node.js with npm or pnpm, esbuild or rollup, and vitest or jest.** Rejected: four tools with four version streams to keep aligned, and the MCP SDK's Web Standard transport would need a compatibility layer over Node's HTTP APIs.
+3. **Deno.** Rejected: its npm compatibility was less complete at the time, and the team had no Deno experience to draw on.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Pinned Bun release with strict TypeScript, because Bun provides the runtime, package manager, bundler, and test runner in one tool; a single pinned version keeps local, CI, and container behavior reproducible.
+A pinned Bun release, recorded in `.bun-version`, serves as runtime, package manager, bundler, and test runner, with strict TypeScript checked separately by `tsc --noEmit`.
 
 ### Positive Consequences
 
-- One version file (`.bun-version`) governs all environments
-- Faster installs, builds, and test execution compared to Node.js toolchains
-- Native Web Standard Request/Response APIs align with the MCP SDK's transport
-- `bun install --frozen-lockfile` ensures reproducible lockfile installs
-- Single multi-stage Docker image uses the same Bun for all phases
+- One version file governs every environment.
+- Installs, builds, and tests are faster than the equivalent Node.js toolchain.
+- Bun's native Web Standard `Request` and `Response` match the MCP SDK's transport directly.
+- `bun install --frozen-lockfile` keeps installs reproducible, and one multi-stage image uses the same Bun for every phase.
 
 ### Negative Consequences
 
-- Bun is less mature than Node.js; edge-case runtime bugs are possible
-- Team members must install Bun locally
-- Some npm packages with Node.js-specific native addons may not work (not expected for this project)
-- `tsc --noEmit` is still required separately for type-checking (Bun does not replace the TypeScript compiler)
+- Bun is younger than Node.js, so runtime edge cases are possible.
+- Contributors must install Bun locally.
+- Packages with Node.js-specific native addons may not work. None are needed here.
+- Bun's bundler does not type-check, so `tsc --noEmit` remains a separate gate.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 12.7, 12.8
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 2.1, 19.1
-- Branch: tofu-iac-starter
+- [Run the server locally](../guides/local-development.md)
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

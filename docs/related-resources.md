@@ -2,7 +2,7 @@
 title: Related resources
 sources:
   - src/mcp/instructions.ts
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
 # Related JHU research resources
@@ -12,9 +12,6 @@ This is the maintained source for the onward-referral list in
 trimmed projection of this file, and it is **protocol-visible** — it goes out in
 every MCP `initialize` response, so a change here that lands in the constant
 changes what every connected AI assistant is told.
-
-**Owner:** _unassigned — should be someone in the Sheridan Libraries who tracks
-platform changes._
 
 ## Why the list exists
 

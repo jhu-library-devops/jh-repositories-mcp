@@ -1,91 +1,75 @@
 # Contributing
 
 Thanks for working on this. Before your first change, get the toolchain running
-with the [quick start](README.md#quick-start), and read [`CONTEXT.md`](CONTEXT.md)
-for the domain vocabulary — the terms are used precisely throughout the code and
-specs, and picking them up early makes everything cheaper to read.
+with [Run the server locally](docs/guides/local-development.md), and read the
+[glossary](docs/glossary.md): the terms are used precisely throughout the code
+and specs, and picking them up early makes everything cheaper to read.
 
-If you're new to the codebase, the fastest way in is the onboarding skill at
-[`.claude/skills/jh-repo-mcp-onboarding/`](.claude/skills/jh-repo-mcp-onboarding/SKILL.md):
-open the repo in Claude Code and ask for a walkthrough. [`ONBOARDING.md`](ONBOARDING.md)
-covers installing it, including from another project.
+If you're new to the codebase, [`ONBOARDING.md`](ONBOARDING.md) is the path:
+a reading order, a guided tour through a Claude Code skill, and three good
+first changes.
 
 ## Before you change behavior
 
-This service exists to guarantee one thing: **never disclose a record that isn't
-public, and never let a client infer that one exists.** That guarantee is enforced
-in four places, and a change that looks safe in one can defeat another:
+The service exists to guarantee one thing: it never discloses a record that
+isn't public, and never lets a client infer that one exists. That guarantee is
+enforced in four layers, and a change that looks safe in one can defeat
+another, so trace the path end to end before you touch it. The layers, and
+what each covers for, are on [Canonical gate](docs/architecture/canonical-gate.md).
+[ADR-005](docs/adr/ADR-005-solr-candidates-canonical-api-gate.md) is the
+decision the rest follows from.
 
-1. Immutable public filters in the repository profiles (`config/repositories/`)
-2. Field allowlists — there is no raw Solr passthrough
-3. The canonical API gate (`src/adapters/canonicalize.ts` plus each platform client)
-4. Indistinguishable not-found, and opaque client-visible errors
-
-So: **don't reason about behavior from a single file.** Trace the path end to end
-before you touch it. [ADR-005](docs/adr/ADR-005-solr-candidates-canonical-api-gate.md)
-is the decision the rest follows from; the full set is in [`docs/adr/`](docs/adr/README.md).
-
-The other structural rule is the adapter seam. [`src/adapters/index.ts`](src/adapters/index.ts)
-is the boundary: Solr field names, platform URLs, and platform-specific access
-semantics live below it, and nothing above it — federation, tools, registry,
-transport — may know that Solr, DSpace, or Dataverse exist. Leaking across that
-line is always locally convenient and always the wrong call.
+The other structural rule is the adapter seam.
+[`src/adapters/index.ts`](src/adapters/index.ts) is the boundary: Solr field
+names, platform URLs, and platform access rules live below it, and nothing above
+it may know that Solr, DSpace, or Dataverse exist. See
+[the adapter seam](docs/architecture/overview.md#the-adapter-seam).
 
 ## Scope
 
-The MCP surface is closed: five tools, two resource templates, two prompts, strict
-schemas, no dynamic registration. `test/integration/excluded-capabilities.test.ts`
-exists to fail when it grows.
+The MCP surface is closed: five tools, two resource templates, two prompts,
+strict schemas, no dynamic registration.
+`test/integration/excluded-capabilities.test.ts` exists to fail when it grows.
 
-Adding a capability is a **spec change first** — update
-[`.kiro/specs/jscholarship-jhrdr-mcp/`](.kiro/specs/jscholarship-jhrdr-mcp/) and get
-it reviewed, then implement. The friction is deliberate; every new tool is new
-attack surface against the disclosure guarantee. The same applies to anything
-outside Requirement 17's boundaries — auth, writes, file-content proxying, vector
-search, embedded models.
+Adding a capability is a **spec change first**: update
+[`.kiro/specs/jscholarship-jhrdr-mcp/`](.kiro/specs/jscholarship-jhrdr-mcp/) and
+get it reviewed, then implement. Every new tool is new attack surface against
+the disclosure guarantee. The same applies to anything outside the v1
+boundaries the spec sets: auth, writes, file-content proxying, vector search,
+embedded models.
 
-When you do change the spec, keep `requirements.md`, `design.md`, and `tasks.md`
-mutually consistent. They cross-reference each other by requirement number, and so
-do source comments (`_Requirements: 2.4-2.6_`).
+When you change the spec, keep `requirements.md`, `design.md`, and `tasks.md`
+mutually consistent. They cross-reference each other by requirement number, and
+so do source comments (`_Requirements: 2.4-2.6_`).
 
 ## Tests
 
-Add tests with each behavior change. `bun test` runs everything; name files
-`*.test.ts`. The directories under `test/` are kinds, not arbitrary grouping:
+Add tests with each behavior change. [Write tests and fixtures](docs/guides/testing-and-fixtures.md)
+explains what each directory under `test/` is for and what to cover first. The
+rules that matter most:
 
-- **`unit/`** — single-module behavior, no I/O.
-- **`property/`** — invariants as `fast-check` generated cases, **at least 100 per
-  property**. If you can state a guarantee as a universal claim — "every emitted
-  Solr field is allowlisted", "namespaced ids never collide", "unsafe query syntax
-  cannot change query structure" — it belongs here as one property rather than
-  three examples. New invariants go here by default.
-- **`contract/`** — platform clients against recorded fixtures, pinning the shape of
-  DSpace REST and Dataverse Native responses.
-- **`integration/`** — the assembled server. `non-public-disclosure.test.ts` and
-  `excluded-capabilities.test.ts` are guardrails; if a change makes one fail, the
-  change is the suspect.
-
-Prioritize the disclosure-critical paths: public-record filtering, Solr escaping,
-canonical API validation, indistinguishable not-found, cursor determinism, log
-redaction, and fail-closed behavior.
-
-**Changing an immutable filter or a public gate** means adding a fixture for the
-newly excluded case and extending `non-public-disclosure.test.ts`. Never change one
-enforcement layer without a test proving the others still hold.
+- Invariants go in `test/property/` as `fast-check` generated cases, **at least
+  100 per property**. One property beats three examples.
+- `test/integration/non-public-disclosure.test.ts` and
+  `test/integration/excluded-capabilities.test.ts` are guardrails. If a change
+  makes one fail, the change is the suspect.
+- Changing an immutable filter or a public check means adding a fixture for the
+  newly excluded case and extending `non-public-disclosure.test.ts`. Never
+  change one enforcement layer without a test showing the others still hold.
 
 ## Fixtures
 
-`test/fixtures/` holds sanitized real payloads, including deliberately withdrawn and
-restricted records. Read the `README.md` in the relevant fixture directory before
-adding one, and sanitize before committing — remove credentials, private endpoints,
-and any content that isn't already public.
+`test/fixtures/` holds sanitized payloads, including deliberately withdrawn and
+restricted records. Read the `README.md` in the relevant fixture directory
+before adding one, and sanitize before committing: remove credentials, private
+endpoints, and any content that isn't already public.
 
 ## Style
 
 Biome owns formatting (`bun run lint`, `bun run format`). Strict TypeScript with
 `bun run typecheck` as a separate gate from the build. Team standards live in
-[`.kiro/steering/`](.kiro/steering/) — TypeScript, error handling, logging, security,
-and testing — and they're short; read them once.
+[`.kiro/steering/`](.kiro/steering/): TypeScript, error handling, logging,
+security, and testing. They're short; read them once.
 
 Naming: `camelCase` functions and variables, `PascalCase` types and classes,
 lowercase repository ids (`jscholarship`, `jhrdr`), and the fixed snake_case MCP
@@ -94,8 +78,8 @@ tool names (`search_items`) exactly as the registry declares them.
 ### Documentation checks
 
 `bun run docs:check` runs everything CI enforces on documentation: Markdown
-style, local links and anchors, cited repository paths, the public-content guard,
-and whether the generated reference is current. Link validation is
+style, local links and anchors, cited repository paths, the public-content
+guard, and whether the generated reference is current. Link validation is
 repository-local and does not probe external URLs, so the gate is deterministic.
 
 ## Changelog
@@ -110,7 +94,7 @@ bun run changelog:preview   # dry-run the assembled changelog
 
 ## Commits and pull requests
 
-Commits use short, imperative, sentence-case subjects — `Add cursor reset warning
+Commits use short, imperative, sentence-case subjects: `Add cursor reset warning
 to search_items`. Keep them focused.
 
 Pull requests should:
@@ -121,10 +105,11 @@ Pull requests should:
 - call out schema, security, configuration, or infrastructure impacts
 - link the relevant issue when there is one
 
-CI runs lint, documentation checks, typecheck, test, build, and a dependency audit. Get it green before
-requesting review.
+CI runs lint, documentation checks, typecheck, test, build, and a dependency
+audit. Get it green before requesting review.
 
-**Never commit credentials, private endpoints, or unreviewed repository payloads.**
+**Never commit credentials, private endpoints, or unreviewed repository
+payloads.**
 
 ## Attribution
 
@@ -229,4 +214,4 @@ notes. Release notes go in `changelog.d/`, intent stays in the specs.
 Where a document and the source disagree, the source wins. If you find drift, say
 so in the PR and fix the document. ADRs are append-only: supersede a decision with
 a new ADR rather than editing the old one. Details are in
-[Maintaining these docs](docs/guides/maintaining-docs.md).
+[Maintain these docs](docs/guides/maintaining-docs.md).

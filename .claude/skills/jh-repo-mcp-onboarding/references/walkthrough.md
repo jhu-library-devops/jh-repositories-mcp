@@ -57,7 +57,7 @@ defend reflexively. Give the honest answer *including the cost*: yes, it's an
 extra round trip per result; the index is owned by another team and its
 access-control fields have drifted before; and the failure mode being bought
 off is publishing a withdrawn thesis, which is unrecoverable in a way that
-latency isn't. Then point them at the ADR — several of this repo's twelve record
+latency isn't. Then point them at the ADR — several of this repo's fourteen record
 roads not taken, and reading one is a better answer than anything you'll
 improvise. If they're actually right about something, say so; "that's a live
 question, here's where it was argued" is a fine answer, and pretending the
@@ -231,7 +231,7 @@ Then the constraint, stated plainly: the service must never disclose a record
 that isn't public — withdrawn theses, embargoed datasets, drafts, restricted
 deposits — and must never let a client *infer* one exists.
 
-Point them at `CONTEXT.md` and have them read it now, not later. It's the domain
+Point them at `docs/glossary.md` and have them read it now, not later. It's the domain
 glossary, it's short, and the terms are used precisely throughout the code and
 specs. The one distinction to draw their attention to: a **Candidate** is a Solr
 hit that hasn't been validated and is never returned to anyone; a

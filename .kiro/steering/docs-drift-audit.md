@@ -8,7 +8,7 @@ Use this when asked to audit or refresh the developer reference in `docs/`, typi
 
 ## Scope
 
-- Audit the hand-written pages: `docs/index.md`, `docs/architecture/`, `docs/guides/`, and `docs/related-resources.md`.
+- Audit the hand-written pages: `docs/index.md`, `docs/architecture/`, `docs/guides/`, `docs/glossary.md`, and `docs/related-resources.md`.
 - Do not hand-edit `docs/reference/`. Regenerate it with `bun run docs:generate`.
 - Do not edit ADRs in `docs/adr/` except to fix broken links. A changed decision gets a new ADR.
 - `docs/spike/` and `.kiro/specs/` are working records, not published docs. Read them as background; don't treat them as the description of current behavior.
@@ -26,7 +26,4 @@ Use this when asked to audit or refresh the developer reference in `docs/`, typi
 
 ## Writing rules
 
-- Describe the system as built. No task numbers, phases, "planned", "coming soon", "new", "now", or "recently".
-- The repository is public. Never write hostnames, account IDs, resource IDs, security group IDs, or IP addresses into `docs/`.
-- Use the domain terms in `CONTEXT.md` exactly.
-- Keep relative Markdown links between pages (`./federation.md`) so they work on GitHub and on the site.
+Follow `docs-writing-style.md` in this directory: audience, register, one home per fact, no specification identifiers, nothing private, the glossary's terms exactly. When an audit finds behavior that differs from the design's intent, record it on `docs/architecture/known-limitations.md` rather than softening the page that describes the intent.

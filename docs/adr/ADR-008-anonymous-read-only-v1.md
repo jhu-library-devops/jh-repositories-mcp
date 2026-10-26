@@ -7,45 +7,40 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-The MCP server will be publicly accessible for AI research assistants to discover JHU repository content. We must decide whether v1 requires authentication/authorization or operates anonymously.
+The server is publicly reachable so that AI research assistants can discover JHU repository content. We had to decide whether the first release requires authentication and authorization, or operates anonymously.
 
 ## Decision Drivers
 
-- Requirement 14.1: No repository credentials, API tokens, or user identity attributes
-- Requirement 17: Disciplined first release; higher-risk capabilities deferred
-- Both repositories publish public material accessible without authentication
-- Adding authentication would increase friction for the pilot without expanding available data
-- OAuth adds significant complexity (token management, session handling, consent flows)
+- No repository credentials, API tokens, or user identity attributes in the service
+- A disciplined first release that defers higher-risk capabilities
+- Both repositories already publish their public material without authentication
+- Authentication would add friction to the pilot without exposing any more data
 
 ## Considered Options
 
-1. Anonymous, read-only v1 (no authentication)
-2. API key required for access
-3. OAuth 2.0 with user identity
+1. **Anonymous, read-only.** Chosen.
+2. **An API key per client.** Rejected: a key would identify a client without authorizing it to see anything more, so it adds key issuance and rotation for no change in what the service may return.
+3. **OAuth 2.0 with user identity.** Rejected: token management, session handling, and consent flows are a large build, and the only payoff, access to restricted content, is explicitly out of scope for the first release.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Anonymous, read-only v1, because both repositories publish public material and authentication would add friction without expanding authorized data.
+The first release is anonymous and read-only. Access to anything beyond public records requires a new specification.
 
 ### Positive Consequences
 
-- Zero-friction pilot: any MCP client can connect with just the server URL
-- No credential management, token rotation, or session infrastructure
-- Simpler security model: WAF rate limits and concurrency bounds provide abuse protection
-- Clear scope boundary: if protected data is needed later, it requires a new specification
+- Any MCP client can connect with only the server URL.
+- No credential management, token rotation, or session infrastructure.
+- A simpler security model: the WAF, rate limits, and concurrency bounds provide abuse protection.
+- A clear scope boundary.
 
 ### Negative Consequences
 
-- Cannot offer user-specific results or personalization
-- Cannot access restricted or embargoed content (accepted limitation for v1)
-- Abuse protection relies entirely on network controls (WAF, rate limits, concurrency)
-- No audit trail of who is making requests (only IP-level visibility)
+- No user-specific results or personalization.
+- No access to restricted or embargoed content.
+- Abuse protection rests entirely on network controls.
+- No audit trail of who is calling, beyond IP-level visibility.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table, Security Design
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 14.1, 14.7, 17
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 21, 16.4
-- Branch: tofu-iac-starter
+- [Security model](../architecture/security.md)
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

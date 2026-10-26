@@ -7,14 +7,17 @@ sources:
   - src/mcp/registry.ts
   - src/mcp/tools/
   - src/mcp/resources.ts
-verified: 2026-10-21
+  - infra/modules/mcp-service/
+verified: 2026-10-26
 ---
 
 # Architecture overview
 
 `jh-repositories-mcp` is a stateless HTTP service. It accepts MCP requests, searches each repository's private Solr index for candidates, confirms every candidate through that repository's public API, and returns the confirmed records merged into one ranked list.
 
-The guarantee the design protects: **never disclose a record that isn't public, and never let a client infer that one exists.** The [canonical gate](./canonical-gate.md) is how.
+One guarantee shapes everything else: **the service never discloses a record that isn't public, and never lets a client infer that one exists.** If the Solr index were trusted on its own, a thesis withdrawn this morning would still be returned this afternoon, abstract and all, until the next re-index. The [canonical gate](./canonical-gate.md) is the mechanism that prevents that, and most of what follows exists to protect it.
+
+If MCP, DSpace, or Dataverse is new to you, read [Concepts](./concepts.md) first.
 
 ## Runtime
 
@@ -42,12 +45,14 @@ flowchart LR
     federation --> registry
 ```
 
-1. **Edge** (`src/security/index.ts`). Every `/mcp` request gets an `x-request-id`, an exact `Host` allowlist check, an `Origin` check when the header is present, a `Content-Length` bound, and an overall deadline. See [Security](./security.md).
+Follow a `search_items` call through the code:
+
+1. **Edge** (`src/security/index.ts`). Every `/mcp` request gets an `x-request-id`, an exact `Host` allowlist check, an `Origin` check when the header is present, a `Content-Length` bound, and an overall deadline. See [Security model](./security.md).
 2. **Transport** (`src/mcp/transport.ts`). Only `POST` is served. Each request gets a new MCP server and transport with no session ID, so any task can serve any request. `GET` and `DELETE` return 405.
 3. **Registry** (`src/mcp/registry.ts`). A closed, static table of five tools, two resource templates, and two prompts. Arguments are parsed with strict zod schemas before a handler runs; unknown properties are rejected, not stripped. A tool-concurrency semaphore bounds in-flight calls.
-4. **Tool handlers** (`src/mcp/tools/`). Select repositories, fan out to adapters with `Promise.allSettled` so one failing repository yields a [partial result](../reference/errors.md#warning-codes) rather than an error, then hand the per-repository pages to federation.
-5. **Adapters** (`src/adapters/`). Translate MCP concepts into allowlisted Solr queries, then run the canonical gate. Wrapped by `withCaching`.
-6. **Federation** (`src/federation/index.ts`). Merges repository-local rankings and encodes the cursor. See [Federation and pagination](./federation.md).
+4. **Tool handler** (`src/mcp/tools/`). Hands the request to the federation pipeline, which resolves the selected repositories through the adapter registry and fans out to them concurrently, so one failing repository yields a [partial result](../reference/errors.md#warning-codes) rather than an error.
+5. **Adapters** (`src/adapters/`). Translate MCP concepts into allowlisted Solr queries, then run the canonical gate. Each adapter is wrapped by `withCaching`.
+6. **Federation** (`src/federation/`). Merges repository-local rankings by weighted reciprocal rank and encodes the cursor. See [Federation and pagination](./federation.md).
 7. **Rendering**. Each tool result carries `structuredContent`, a compact text rendering, and `resource_link` entries for the returned records.
 
 `get_item` skips Solr and federation: it resolves one identifier directly through the canonical API. Resource reads (`jhu-repo://…`) parse the URI and call the same `get_item` handler, so there is one code path to a single record.
@@ -59,16 +64,17 @@ flowchart LR
 ```ts
 export interface RepositoryAdapter {
   readonly id: RepositoryId;
+  readonly contractVersion: typeof ADAPTER_CONTRACT_VERSION;
   validateSchema(): Promise<SchemaValidationResult>;
   search(request: RepositorySearchRequest): Promise<RepositoryPage>;
   get(identifier: RepositoryIdentifier, options?: GetOptions): Promise<ItemDetail | null>;
   facets(request: RepositoryFacetRequest): Promise<RepositoryFacets>;
   related(source: ItemDetail, request: RelatedRequest): Promise<RepositoryPage>;
-  probePublic?(record: RepositoryRecord): Promise<boolean>;
+  probePublic(record: RepositoryRecord): Promise<boolean>;
 }
 ```
 
-Solr field names, platform URLs, and platform access rules live below this interface. Nothing above it (federation, tools, registry, transport) knows that Solr, DSpace, or Dataverse exist.
+Solr field names, platform URLs, and platform access rules live below this interface. Nothing above it (federation, tools, registry, transport) knows that Solr, DSpace, or Dataverse exist. The contract is versioned: an adapter written for an older contract fails to compile rather than at runtime. When you find yourself wanting a Solr field name in a tool handler, the fix is a new adapter method, not an import.
 
 Each platform implements the interface separately ([ADR-004](../adr/ADR-004-two-platform-specific-adapters.md)). There is no shared `isPublic()`, because "public" means different things on each platform:
 
@@ -85,16 +91,56 @@ What each adapter supports is listed in [Repositories](../reference/repositories
 
 - Configuration is parsed once at module load (`src/config/env.ts`). Any invalid variable stops the process with every problem listed. See [Configuration](../reference/configuration.md).
 - The JScholarship adapter is always constructed. The JHRDR adapter is constructed only when its Solr and API URLs are both set; otherwise the server runs JScholarship alone.
+- The constructed adapters are registered in an immutable adapter registry before readiness can succeed. A registry that cannot be built (a duplicate ID, no adapter, every adapter failing schema validation) stops the process. See [Federation and pagination](./federation.md#the-adapter-registry).
 - At startup, in the background, each adapter checks its Solr schema for the fields its profile depends on. `GET /health/ready` returns 503 until that check finishes, and keeps returning 503 if any *required* field is missing. Missing *optional* fields are reported as `disabledFeatures` but do not fail readiness.
 - On `SIGTERM`, readiness reports not ready and the process exits one request deadline later, giving in-flight requests time to finish.
-- In deployment, the container and load balancer health checks use `/health/live`, not `/health/ready`. See [Deploying and rolling back](../guides/deploy-and-rollback.md#how-an-environment-picks-its-image).
+- In deployment, the container and load balancer health checks use `/health/live`, not `/health/ready`. See [Known limitations](./known-limitations.md#routing-health-does-not-include-schema-validation).
 
 | Route | Purpose |
 | --- | --- |
 | `GET /health/live` | Process liveness. Always 200 while the process runs. |
-| `GET /health/ready` | 200 once schema validation has passed; 503 before that or if it failed. Includes per-repository results and build info. |
+| `GET /health/ready` | 200 once the registry is built and schema validation has passed; 503 before that or if either failed, with a `reason` and, for a registry failure, a `code`. Includes per-repository results and build info. |
 | `GET /version` | Build version and commit. |
 | `POST /mcp` | The MCP endpoint. |
+
+## Deployment topology
+
+Everything runs in one VPC. The MCP tasks attach to the same private subnets as both repository deployments, so each backend is one hop away with no NAT and no peering.
+
+```mermaid
+flowchart LR
+    client["AI assistant<br/>LibreChat · HopGPT · Claude"]
+
+    subgraph vpc["VPC shared with the repositories"]
+        walb["Public ALB + WAF"]
+
+        subgraph priv["Private subnets"]
+            mcp["<b>jh-repositories-mcp</b><br/>ECS Fargate"]
+
+            subgraph jhrdr["JHRDR · Dataverse"]
+                dvapi["Dataverse Native API"]
+                dvsolr["Solr · collection1"]
+            end
+
+            subgraph js["JScholarship · DSpace"]
+                dalb["Internal ALB"]
+                drest["DSpace REST"]
+                dsolr["Solr · search"]
+            end
+        end
+    end
+
+    client -->|"POST /mcp"| walb
+    walb --> mcp
+    mcp -->|"candidates"| dalb
+    mcp -->|"canonical"| dalb
+    dalb --> dsolr
+    dalb --> drest
+    mcp -.->|"candidates, via service discovery"| dvsolr
+    mcp -.->|"canonical, via service discovery"| dvapi
+```
+
+Two hops per repository, and the split is the architecture: the Solr hop finds candidates, the canonical API hop decides which of them are real and public. DSpace is reached through an internal load balancer that fronts both its REST API and its Solr collection; Dataverse is reached directly through service discovery. Inputs and resources are listed in [Infrastructure](../reference/infrastructure.md).
 
 ## Source layout
 
@@ -115,4 +161,4 @@ infra/            OpenTofu: shared stack, per-environment service
 test/             unit, property, contract, integration, fixtures
 ```
 
-Domain vocabulary (Candidate, SearchResult, ItemDetail, Public_Record, Cursor, and the rest) is defined in [`CONTEXT.md`](../../CONTEXT.md). Use those terms exactly.
+The vocabulary this site uses (Candidate, SearchResult, ItemDetail, Public Record, Cursor, and the rest) is defined in the [glossary](../glossary.md). Use those terms exactly. Behavior that differs from the design's intent is collected in [Known limitations](./known-limitations.md).

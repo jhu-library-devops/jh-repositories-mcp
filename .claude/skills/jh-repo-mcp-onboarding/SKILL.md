@@ -198,6 +198,13 @@ describe the system as built, so never write task numbers, plans, or progress
 notes into `docs/`, and never write hostnames, account or resource IDs, or IP
 addresses there either: the site is public.
 
+When you write or revise a page, follow `.kiro/steering/docs-writing-style.md`:
+second person, present tense, imperative guide titles, each rule followed by
+the failure it prevents, one home per fact, no team asides, and behavior that
+differs from the design on `docs/architecture/known-limitations.md`. The
+published summary is the "Writing style" section of
+`docs/guides/maintaining-docs.md`.
+
 ## Reference files
 
 Read these as needed rather than upfront:
