@@ -214,7 +214,13 @@ export interface RepositorySearchRequest {
 
 export interface RepositoryWarning {
   repository: RepositoryId;
-  code: "backend_unavailable" | "validation_attrition" | "cursor_reset" | "unsupported_filter";
+  code:
+    | "backend_unavailable"
+    | "validation_attrition"
+    | "cursor_reset"
+    | "cursor_expanded"
+    | "deadline_exceeded"
+    | "unsupported_filter";
   message: string;
 }
 
