@@ -50,7 +50,7 @@ Solr filter clauses appended to every search, facet, and related-record query. N
 ## Federation
 
 **Federation**
-The merged search experience across both repositories: one query, two sources, one ranked list. It describes what the client sees. The service queries each Solr index directly and validates through the Canonical APIs; it does not delegate to the platforms' own search endpoints.
+The merged search experience across the selected repositories: one query, any number of sources, one ranked list. It describes what the client sees. The service queries each Solr index directly and validates through the Canonical APIs; it does not delegate to the platforms' own search endpoints.
 *Avoid:* metasearch, cross-search.
 
 **Repository Rank**
@@ -66,7 +66,7 @@ An opaque, versioned token carrying per-repository pagination offsets and a hash
 *Avoid:* page token, session state, continuation token.
 
 **Partial Result**
-A successful response that contains results from one repository and a warning that another was unavailable.
+A successful response that contains results from the repositories that answered and one warning for each that did not.
 *Avoid:* degraded response, fallback result.
 
 ## How the terms relate
@@ -74,7 +74,7 @@ A successful response that contains results from one repository and a warning th
 - A **Candidate** becomes a **SearchResult** only after passing validation through its **Canonical API**.
 - A **SearchResult** and an **ItemDetail** are projections of the same canonical data. They differ in depth, not in source.
 - A **Cursor** is bound to the normalized query that produced it. A mismatched cursor resets pagination; it is not an error.
-- A **Partial Result** holds **SearchResult** records from one repository and a warning about the other.
+- A **Partial Result** holds **SearchResult** records from the repositories that succeeded and a warning for each that did not.
 - **Repository Rank** is the input to the merge that produces **Federated Rank**.
 - The **Field Allowlist** is the only path from an MCP concept to a Solr field.
 
