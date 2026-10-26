@@ -6,7 +6,9 @@ sources:
   - src/index.ts
   - src/adapters/jscholarship/index.ts
   - src/mcp/tools/find-related-items.ts
-  - src/federation/index.ts
+  - src/federation/
+  - src/mcp/tools/list-facets.ts
+  - src/mcp/tools/search-items.ts
   - config/repositories/jhrdr-profile.ts
   - config/repositories/jhrdr-endpoints.ts
   - infra/modules/mcp-service/
@@ -49,6 +51,14 @@ The ECS container health check and the load balancer target group both probe `GE
 
 The JHRDR profile's Solr clause for anonymous discoverability is commented out pending verification against the deployed index, so the Dataverse public check (a `RELEASED` version state, retrieved anonymously) carries the whole gate for JHRDR. The gate still holds, because the canonical check is the layer that decides. The Solr filter would only narrow candidates earlier. `config/repositories/jhrdr-endpoints.ts` is likewise a declared placeholder.
 
-## Federation is written for exactly two repositories
+## Facet merging is not wired to `list_facets`
 
-The cursor stores one offset per repository in named fields, the tie-break alternates between two sources, and several schemas bound repository lists at two entries. Adding a third repository needs a new cursor version and a generalized merge, not only a new adapter. See [Add a repository](../guides/add-a-repository.md).
+`src/federation/facet-merge.ts` merges facet values across repositories: labels that normalize to the same form are combined, counts are summed with a per-repository breakdown, and each facet is capped at ten values. `list_facets` does not call it. The tool still returns each repository's facet values separately, as it did before the federation layer was generalized.
+
+## Federation limits and fusion weights are fixed in code
+
+The federation layer accepts a per-request `rrfK`, canonicalization budget, and deadline, and the registry accepts a fusion weight per adapter, but nothing reads them from the environment. `search_items` uses the defaults: `k = 60`, a budget of 150 candidates, a 10 s deadline, every weight 1.0, and at most 8 registered adapters. Changing any of them is a code change in `src/index.ts` or the handler, not a configuration change.
+
+## Two deadlines apply to one request
+
+The edge middleware enforces `TIMEOUT_DEADLINE_MS` (default 10 s, at most 30 s) on the whole HTTP request, and the federation pipeline enforces its own 10 s deadline on the adapter dispatch. Raising `TIMEOUT_DEADLINE_MS` above 10 s does not give a search more time; the federation deadline fires first and returns a partial result with a `deadline_exceeded` warning.

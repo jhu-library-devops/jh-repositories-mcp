@@ -1,7 +1,7 @@
 # ADR-012: Cursor Hash Mismatch Resets Pagination Instead of Returning an Error
 
 **Date:** 2024-07-24
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR-013](./ADR-013-n-repository-federation-through-an-adapter-registry.md).
 **Deciders:** Platform engineering, library research services
 **Supersedes:** N/A
 

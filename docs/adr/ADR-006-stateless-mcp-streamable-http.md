@@ -1,7 +1,7 @@
 # ADR-006: Stateless MCP Streamable HTTP with JSON Responses
 
 **Date:** 2024-07-24
-**Status:** Accepted
+**Status:** Accepted. Amended by [ADR-013](./ADR-013-n-repository-federation-through-an-adapter-registry.md).
 **Deciders:** Platform engineering
 **Supersedes:** N/A
 

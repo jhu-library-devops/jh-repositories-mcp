@@ -19,7 +19,7 @@ fastest, because nothing fails when they're wrong.
 | --- | --- | --- |
 | `src/`, `config/`, `test/` | What the system actually does | Always, for behavior questions |
 | `docs/` (published at <https://jhu-library-devops.github.io/jh-repositories-mcp/>) | The developer reference: `docs/reference/` is generated from source (MCP surface, configuration, repository capabilities, errors, infrastructure); `docs/architecture/` (including `concepts.md` and `known-limitations.md`), `docs/guides/`, and `docs/glossary.md` are hand-written and declare their `sources:` | Pointing someone at the canonical write-up of a behavior, or checking an exact schema or default |
-| `docs/adr/` (12 ADRs, MADR format, published on the site) | **Why** a structural choice was made, and what it cost | Someone asks "why is it like this" or proposes reversing a decision |
+| `docs/adr/` (13 ADRs, MADR format, published on the site) | **Why** a structural choice was made, and what it cost | Someone asks "why is it like this" or proposes reversing a decision |
 | `.kiro/specs/jscholarship-jhrdr-mcp/requirements.md` | Numbered acceptance criteria (Requirements 1–17) + the authoritative glossary | You need to know whether a behavior is required or incidental |
 | `.kiro/specs/jscholarship-jhrdr-mcp/design.md` | The intended architecture, component interfaces, the correctness properties, rollout phases | Deep design questions; the property list is what `test/property/` implements |
 | `.kiro/specs/*/tasks.md` | Dependency-ordered build plans with completion state, one per feature spec (`jscholarship-jhrdr-mcp`, `n-repository-federation`, `agent-knowledge-base`) | "What's left to build" / picking up work. Read the checkboxes; don't trust a summary of them elsewhere |
@@ -56,6 +56,7 @@ context and consequences that a one-line summary loses.
 | 010 | New cross-repository service stack |
 | 011 | Search cache never bypasses the canonical API gate |
 | 012 | Cursor hash mismatch resets pagination instead of returning an error |
+| 013 | N-repository federation through an adapter registry (amends 006, 007, 012) |
 
 ADR-005 is the one to read first. It is the architecture.
 

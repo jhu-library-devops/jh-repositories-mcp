@@ -116,6 +116,10 @@ const sidebar: DefaultTheme.Sidebar = [
         text: "012 Cursor mismatch resets",
         link: "/adr/ADR-012-cursor-mismatch-resets-instead-of-errors",
       },
+      {
+        text: "013 N-repository federation",
+        link: "/adr/ADR-013-n-repository-federation-through-an-adapter-registry",
+      },
     ],
   },
 ];
