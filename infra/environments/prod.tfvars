@@ -1,5 +1,5 @@
 # =============================================================================
-# JHU Repository MCP Server — Production Environment
+# jh-repositories-mcp — Production Environment
 # Usage:
 #   tofu init -backend-config=backend-prod.hcl
 #   tofu plan -var-file=prod.tfvars

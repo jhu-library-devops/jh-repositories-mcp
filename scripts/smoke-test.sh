@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # =============================================================================
-# Post-deployment smoke tests for the JHU Repository MCP Server.
+# Post-deployment smoke tests for jh-repositories-mcp.
 #
 # Validates that the deployed service is healthy and functional by checking
 # health endpoints and executing MCP protocol operations.
