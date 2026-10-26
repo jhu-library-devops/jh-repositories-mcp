@@ -38,7 +38,7 @@ services:
       - ./dev/mock-backend:/app/dev/mock-backend:ro
       - ./test/fixtures:/app/test/fixtures:ro
     healthcheck:
-      test: ["CMD", "bun", "-e", "if (!(await fetch('http://127.0.0.1:8090/health')).ok) process.exit(1)"]
+      test: ["CMD-SHELL", "wget -qO-  >/dev/null"]
       interval: 5s
       timeout: 3s
       retries: 10
