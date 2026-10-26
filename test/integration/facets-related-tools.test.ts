@@ -90,6 +90,10 @@ function stub(repository: RepositoryId, behavior: Behavior = {}): RepositoryAdap
   });
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,

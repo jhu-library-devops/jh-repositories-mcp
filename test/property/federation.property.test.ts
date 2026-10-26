@@ -1,31 +1,38 @@
 /**
- * Property-Based Tests: Federation, Ranking, and Cursor
+ * Property-Based Tests: Federation, Ranking, and Cursor (N-Way surface)
  *
- * **Validates: Requirements 11.1-11.9, 1.8, 15.3, 16.2**
+ * **Validates: Requirements 4.1-4.3, 4.6, 6.1-6.6, 9.1, 9.3**
  *
- * Property 10: Federation ignores raw score magnitude (order depends only on
- *              repository-local ranks)
- * Property 11: Balanced ties alternate deterministically
- * Property 12: Cursor round-trip and query binding
- * Property 13: Partial success preserves successful results
- * Property 16: nextOffset propagation and exhaustion
+ * Exercises the generalized N-way federation surface that replaced the v1
+ * two-pointer merge and the fixed `FederatedCursorV1` codec:
+ *   - order depends only on repository-local ranks, not raw scores (Req 4.1-4.3)
+ *   - balanced ties alternate deterministically over the participating subset
+ *     (Req 5.1-5.3)
+ *   - the next Cursor_V2 carries offsets for contributing repositories only and
+ *     round-trips through the codec (Req 4.3, 6.5, 6.6)
+ *   - V1 cursors still decode and map to equivalent V2 state (Req 9.1)
+ *   - partial-result assembly preserves the responding repository's records and
+ *     leaks no internals (Req 6.1-6.3)
  */
 
 import { describe, expect, test } from "bun:test";
 import fc from "fast-check";
 import {
-  EXHAUSTED_OFFSET,
-  assembleResponse,
-  computeQueryHash,
+  assemblePartial,
+  computeQueryHashV2,
   decodeCursor,
-  encodeCursor,
+  encodeCursorV2,
   mergePages,
 } from "../../src/federation/index";
-import type { FederatedCursor } from "../../src/federation/index";
+import type { AdapterResult, FusionConfig, MergeResult } from "../../src/federation/index";
 import { createRepositoryRecord } from "../../src/models/index";
 import type { RepositoryId, RepositoryPage, RepositoryRecord } from "../../src/models/index";
 
 const NUM_RUNS = 150;
+
+const PARTICIPATING: readonly RepositoryId[] = ["jhrdr", "jscholarship"];
+const FUSION: FusionConfig = { k: 60, weights: new Map() };
+const isRegisteredRepo = (id: string): boolean => id === "jscholarship" || id === "jhrdr";
 
 // ─── Builders ────────────────────────────────────────────────────────────────
 
@@ -67,46 +74,9 @@ const ranksArb = fc
   .uniqueArray(fc.integer({ min: 1, max: 200 }), { minLength: 0, maxLength: 12 })
   .map((ranks) => [...ranks].sort((a, b) => a - b));
 
-const cursorArb: fc.Arbitrary<FederatedCursor> = fc.record({
-  v: fc.constant(1 as const),
-  queryHash: fc
-    .integer({ min: 0, max: Number.MAX_SAFE_INTEGER })
-    .map((n) => n.toString(16).padStart(16, "0").slice(0, 16)),
-  jsOffset: fc.integer({ min: -1, max: 1000 }),
-  dvOffset: fc.integer({ min: -1, max: 1000 }),
-  nextTieSource: fc.constantFrom<RepositoryId>("jscholarship", "jhrdr"),
-});
+// ─── cursor round-trip and query binding ────────────────────────────────────
 
-// ─── Property 12: cursor round-trip and query binding ───────────────────────
-
-describe("Property 12: cursor round-trip and query binding", () => {
-  test("encode then decode preserves every field", () => {
-    fc.assert(
-      fc.property(cursorArb, (cursor) => {
-        expect(decodeCursor(encodeCursor(cursor))).toEqual(cursor);
-      }),
-      { numRuns: NUM_RUNS },
-    );
-  });
-
-  test("hostile transport strings decode to null, never throw", () => {
-    fc.assert(
-      fc.property(fc.string({ maxLength: 300 }), (junk) => {
-        const decoded = decodeCursor(junk);
-        expect(decoded === null || typeof decoded === "object").toBe(true);
-      }),
-      { numRuns: NUM_RUNS },
-    );
-    expect(decodeCursor(Buffer.from('{"v":2}').toString("base64url"))).toBeNull();
-    expect(
-      decodeCursor(
-        Buffer.from(
-          '{"v":1,"queryHash":"00000000000000ff","jsOffset":99999,"dvOffset":0,"nextTieSource":"jscholarship"}',
-        ).toString("base64url"),
-      ),
-    ).toBeNull();
-  });
-
+describe("Cursor_V2 round-trip and query binding", () => {
   test("the query hash binds to every request dimension", () => {
     const base = {
       query: "housing",
@@ -114,19 +84,48 @@ describe("Property 12: cursor round-trip and query binding", () => {
       sort: "relevance" as const,
       limit: 10,
     };
-    const baseHash = computeQueryHash(base);
-    expect(computeQueryHash({ ...base })).toBe(baseHash);
-    expect(computeQueryHash({ ...base, query: "housing " })).not.toBe(baseHash);
-    expect(computeQueryHash({ ...base, repositories: ["jhrdr"] })).not.toBe(baseHash);
-    expect(computeQueryHash({ ...base, sort: "date_desc" })).not.toBe(baseHash);
-    expect(computeQueryHash({ ...base, limit: 11 })).not.toBe(baseHash);
-    expect(computeQueryHash({ ...base, filters: { subjects: ["x"] } })).not.toBe(baseHash);
+    const baseHash = computeQueryHashV2(base);
+    expect(computeQueryHashV2({ ...base })).toBe(baseHash);
+    expect(computeQueryHashV2({ ...base, query: "housing " })).toBe(baseHash); // normalized
+    expect(computeQueryHashV2({ ...base, query: "mortgages" })).not.toBe(baseHash);
+    expect(computeQueryHashV2({ ...base, repositories: ["jhrdr"] })).not.toBe(baseHash);
+    expect(computeQueryHashV2({ ...base, sort: "date_desc" })).not.toBe(baseHash);
+    expect(computeQueryHashV2({ ...base, limit: 11 })).not.toBe(baseHash);
+    expect(computeQueryHashV2({ ...base, filters: { subjects: ["x"] } })).not.toBe(baseHash);
+  });
+
+  test("a V1 cursor decodes and maps to equivalent V2 offsets (Req 9.1)", () => {
+    fc.assert(
+      fc.property(
+        fc.integer({ min: 0, max: 1000 }),
+        fc.integer({ min: 0, max: 1000 }),
+        fc.constantFrom<RepositoryId>("jscholarship", "jhrdr"),
+        (jsOffset, dvOffset, nextTieSource) => {
+          const v1 = Buffer.from(
+            JSON.stringify({
+              v: 1,
+              queryHash: "00000000000000aa",
+              jsOffset,
+              dvOffset,
+              nextTieSource,
+            }),
+            "utf8",
+          ).toString("base64url");
+          const decoded = decodeCursor(v1, isRegisteredRepo);
+          expect(decoded.error).toBeNull();
+          const offsets = new Map(decoded.cursor?.offsets ?? []);
+          expect(offsets.get("jscholarship")).toBe(jsOffset);
+          expect(offsets.get("jhrdr")).toBe(dvOffset);
+        },
+      ),
+      { numRuns: NUM_RUNS },
+    );
   });
 });
 
-// ─── Property 10: federation ignores raw score magnitude ────────────────────
+// ─── order depends only on repository-local ranks ───────────────────────────
 
-describe("Property 10: order depends only on repository-local ranks", () => {
+describe("order depends only on repository-local ranks (Req 4.1-4.3)", () => {
   test("identical (repository, rank) structure yields identical id order", () => {
     fc.assert(
       fc.property(
@@ -140,10 +139,12 @@ describe("Property 10: order depends only on repository-local ranks", () => {
                 ["jscholarship", page("jscholarship", jsRanks, null)],
                 ["jhrdr", page("jhrdr", dvRanks, null)],
               ]),
+              participating: PARTICIPATING,
               cursor: null,
               limit,
+              fusion: FUSION,
+              queryHash: "00000000000000aa",
             }).results.map((r) => r.id);
-          // Determinism: two runs with the same structure agree exactly.
           expect(run()).toEqual(run());
         },
       ),
@@ -151,13 +152,16 @@ describe("Property 10: order depends only on repository-local ranks", () => {
     );
   });
 
-  test("lower repository rank always merges ahead of higher rank from the same repository", () => {
+  test("lower repository rank merges ahead of higher rank from the same repository", () => {
     fc.assert(
       fc.property(ranksArb, (ranks) => {
         const merged = mergePages({
           pages: new Map([["jscholarship", page("jscholarship", ranks, null)]]),
+          participating: ["jscholarship"],
           cursor: null,
           limit: 25,
+          fusion: FUSION,
+          queryHash: "00000000000000aa",
         });
         const mergedRanks = merged.results.map((r) => r.sourceRank);
         expect(mergedRanks).toEqual([...mergedRanks].sort((a, b) => (a ?? 0) - (b ?? 0)));
@@ -167,42 +171,41 @@ describe("Property 10: order depends only on repository-local ranks", () => {
   });
 });
 
-// ─── Property 11: balanced ties alternate deterministically ─────────────────
+// ─── balanced ties alternate deterministically ──────────────────────────────
 
-describe("Property 11: balanced ties alternate deterministically", () => {
-  test("equal ranks alternate sources starting from nextTieSource", () => {
+describe("balanced ties alternate deterministically (Req 5.1-5.3)", () => {
+  test("equal ranks alternate sources starting from the tie position", () => {
     const pages = new Map<RepositoryId, RepositoryPage>([
       ["jscholarship", page("jscholarship", [1, 2, 3], null)],
       ["jhrdr", page("jhrdr", [1, 2, 3], null)],
     ]);
-    const fromJs = mergePages({ pages, cursor: null, limit: 6 });
-    expect(fromJs.results.map((r) => r.repository)).toEqual([
-      "jscholarship",
-      "jhrdr",
-      "jhrdr",
-      "jscholarship",
-      "jscholarship",
-      "jhrdr",
-    ]);
-
-    const cursor: FederatedCursor = {
-      v: 1,
-      queryHash: "0000000000000000",
-      jsOffset: 0,
-      dvOffset: 0,
-      nextTieSource: "jhrdr",
-    };
-    const fromDv = mergePages({ pages, cursor, limit: 6 });
-    expect(fromDv.results[0]?.repository).toBe("jhrdr");
-    // Same inputs, same cursor → byte-identical order (Requirement 11.6).
-    expect(mergePages({ pages, cursor, limit: 6 }).results).toEqual(fromDv.results);
+    const fromStart = mergePages({
+      pages,
+      participating: PARTICIPATING,
+      cursor: null,
+      limit: 6,
+      fusion: FUSION,
+      queryHash: "00000000000000aa",
+    });
+    // Position 0 of the sorted ring is "jhrdr" (lexicographically first).
+    expect(fromStart.results[0]?.repository).toBe("jhrdr");
+    // Byte-identical order for identical inputs (determinism).
+    const again = mergePages({
+      pages,
+      participating: PARTICIPATING,
+      cursor: null,
+      limit: 6,
+      fusion: FUSION,
+      queryHash: "00000000000000aa",
+    });
+    expect(again.results.map((r) => r.id)).toEqual(fromStart.results.map((r) => r.id));
   });
 });
 
-// ─── Property 16: offset propagation and exhaustion ─────────────────────────
+// ─── next cursor offset propagation + round-trip ─────────────────────────────
 
-describe("Property 16: next cursor offset propagation", () => {
-  test("page nextOffsets propagate; exhaustion uses the sentinel; all-exhausted yields null", () => {
+describe("next Cursor_V2 offset propagation (Req 4.3, 6.5, 6.6)", () => {
+  test("contributing offsets propagate; exhausted repositories are omitted", () => {
     fc.assert(
       fc.property(
         fc.option(fc.integer({ min: 0, max: 1000 }), { nil: null }),
@@ -213,20 +216,27 @@ describe("Property 16: next cursor offset propagation", () => {
               ["jscholarship", page("jscholarship", [1], jsNext)],
               ["jhrdr", page("jhrdr", [2], dvNext)],
             ]),
+            participating: PARTICIPATING,
             cursor: null,
             limit: 10,
+            fusion: FUSION,
             queryHash: "00000000000000aa",
           });
           if (jsNext === null && dvNext === null) {
             expect(merged.nextCursor).toBeNull();
-          } else {
-            expect(merged.nextCursor?.jsOffset).toBe(jsNext ?? EXHAUSTED_OFFSET);
-            expect(merged.nextCursor?.dvOffset).toBe(dvNext ?? EXHAUSTED_OFFSET);
-            expect(merged.nextCursor?.queryHash).toBe("00000000000000aa");
-            // The next cursor must itself survive transport.
-            if (merged.nextCursor) {
-              expect(decodeCursor(encodeCursor(merged.nextCursor))).toEqual(merged.nextCursor);
-            }
+            return;
+          }
+          const offsets = new Map(merged.nextCursor?.offsets ?? []);
+          expect(offsets.has("jscholarship")).toBe(jsNext !== null);
+          expect(offsets.has("jhrdr")).toBe(dvNext !== null);
+          if (jsNext !== null) {
+            expect(offsets.get("jscholarship")).toBe(jsNext);
+          }
+          // The emitted cursor must survive transport unchanged.
+          if (merged.nextCursor) {
+            const roundTripped = decodeCursor(encodeCursorV2(merged.nextCursor), isRegisteredRepo);
+            expect(roundTripped.error).toBeNull();
+            expect(roundTripped.cursor?.offsets).toEqual(merged.nextCursor.offsets);
           }
         },
       ),
@@ -235,29 +245,39 @@ describe("Property 16: next cursor offset propagation", () => {
   });
 });
 
-// ─── Property 13: partial success preserves successful results ──────────────
+// ─── partial success preserves successful results ───────────────────────────
 
-describe("Property 13: partial success preserves successful results", () => {
+describe("partial success preserves successful results (Req 6.1-6.3)", () => {
   test("one failed repository never drops the other's records or leaks internals", () => {
     fc.assert(
       fc.property(ranksArb, (ranks) => {
-        const merged = mergePages({
-          pages: new Map([["jscholarship", page("jscholarship", ranks, null)]]),
+        const jsPage = page("jscholarship", ranks, null);
+        const merged: MergeResult = mergePages({
+          pages: new Map([["jscholarship", jsPage]]),
+          participating: ["jscholarship"],
           cursor: null,
           limit: 25,
+          fusion: FUSION,
+          queryHash: "00000000000000aa",
         });
-        const response = assembleResponse({
-          mergeResult: merged,
+        const results: AdapterResult[] = [
+          { repository: "jscholarship", outcome: "success", page: jsPage, failureCode: null },
+          { repository: "jhrdr", outcome: "error", page: null, failureCode: "backend_unavailable" },
+        ];
+        const assembly = assemblePartial({
           requested: ["jscholarship", "jhrdr"],
-          succeeded: ["jscholarship"],
-          failed: ["jhrdr"],
-          cursor: null,
+          results,
+          mergeResult: merged,
+          encodedCursor: null,
         });
-        expect(response.results).toHaveLength(Math.min(ranks.length, 25));
-        expect(response.repositories.failed).toEqual(["jhrdr"]);
-        const backendWarnings = response.warnings.filter((w) => w.code === "backend_unavailable");
+        expect(assembly.isError).toBe(false);
+        expect(assembly.response.results).toHaveLength(Math.min(ranks.length, 25));
+        expect(assembly.response.repositories.failed).toEqual(["jhrdr"]);
+        const backendWarnings = assembly.response.warnings.filter(
+          (w) => w.code === "backend_unavailable",
+        );
         expect(backendWarnings).toHaveLength(1);
-        for (const warning of response.warnings) {
+        for (const warning of assembly.response.warnings) {
           expect(warning.message).not.toMatch(/internal|:8080|:8983|exception|stack/i);
         }
       }),

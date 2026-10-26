@@ -74,8 +74,18 @@ const WARNINGS: Readonly<Record<WarningCode, CodeDoc>> = {
   },
   cursor_reset: {
     meaning:
-      "The cursor did not match the current query, so pagination restarted at the first page.",
+      "The cursor did not match the current query, or named a repository that is no longer selected, so pagination restarted at the first page.",
     clientAction: "Continue from the returned results and cursor.",
+  },
+  cursor_expanded: {
+    meaning:
+      "A repository joined the selection after the cursor was issued. It starts from its first page; the others continue from their offsets.",
+    clientAction: "Continue from the returned results and cursor.",
+  },
+  deadline_exceeded: {
+    meaning:
+      "The federation deadline passed while some repositories were still answering. The result holds what had arrived; the slow repository is named.",
+    clientAction: "Say the result is partial. Retrying later may fill it in.",
   },
   unsupported_filter: {
     meaning:

@@ -150,6 +150,7 @@ No modules.
 | [aws_appautoscaling_policy.cpu](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_policy.requests](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_policy) | resource |
 | [aws_appautoscaling_target.mcp](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/appautoscaling_target) | resource |
+| [aws_cloudwatch_metric_alarm.dispatch_fan_out](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.high_cpu](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.high_latency](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
 | [aws_cloudwatch_metric_alarm.target_5xx](https://registry.terraform.io/providers/hashicorp/aws/latest/docs/resources/cloudwatch_metric_alarm) | resource |
@@ -217,6 +218,7 @@ No modules.
 | container\_port | Port the MCP application listens on. | `number` | `3000` | no |
 | dataverse\_api\_security\_group\_id | Security group ID of the Dataverse API service. Null disables Dataverse API SG rules. | `string` | `null` | no |
 | dataverse\_solr\_security\_group\_id | Security group ID of the Dataverse Solr service. Null disables Dataverse Solr SG rules. | `string` | `null` | no |
+| max\_adapter\_count | Configured maximum federated adapter count (FederationLimits.maxAdapters, 2-16). The dispatch fan-out alarm triggers when any single request calls >= 75% of this many adapters. | `number` | `8` | no |
 | service\_desired\_count | Initial desired task count. | `number` | `1` | no |
 | service\_max\_count | Maximum task count for autoscaling. | `number` | `6` | no |
 | service\_min\_count | Minimum task count for autoscaling. | `number` | `1` | no |

@@ -90,6 +90,23 @@ describe("applyRegions", () => {
 });
 
 describe("flattenSchema", () => {
+  it("brackets a union item type inside an array", () => {
+    const rows = flattenSchema({
+      type: "object",
+      properties: {
+        repositories: {
+          anyOf: [
+            { type: "string", enum: ["all", "a", "b"] },
+            { type: "array", items: { type: "string", enum: ["a", "b"] } },
+          ],
+        },
+      },
+    });
+    expect(rows.find((row) => row.path === "repositories")?.type).toBe(
+      '"all" or "a" or "b" or ("a" or "b")[]',
+    );
+  });
+
   it("flattens nested objects and arrays with requiredness and defaults", () => {
     const rows = flattenSchema({
       type: "object",

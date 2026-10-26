@@ -72,6 +72,10 @@ interface StubBehavior {
 function behaviorAdapter(repository: RepositoryId, behavior: StubBehavior): RepositoryAdapter {
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,

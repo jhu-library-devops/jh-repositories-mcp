@@ -60,6 +60,10 @@ function stubAdapter(repository: RepositoryId): RepositoryAdapter {
   const { files: _files, filesStatus: _filesStatus, metadata: _metadata, ...summary } = item;
   return {
     id: repository,
+    contractVersion: 2,
+    async probePublic() {
+      return true;
+    },
     async validateSchema() {
       return {
         repository,
