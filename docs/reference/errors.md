@@ -37,7 +37,9 @@ Warnings ride along on successful results in the `warnings` array, each with a `
 | --- | --- | --- |
 | `backend_unavailable` | One repository failed; results come from the others (a partial result). | Say the result is partial. Retrying later may fill it in. |
 | `validation_attrition` | Some candidates were dropped because the canonical API did not confirm them as public. Counts are lower bounds. | None needed. Do not treat counts as totals. |
-| `cursor_reset` | The cursor did not match the current query, so pagination restarted at the first page. | Continue from the returned results and cursor. |
+| `cursor_reset` | The cursor did not match the current query, or named a repository that is no longer selected, so pagination restarted at the first page. | Continue from the returned results and cursor. |
+| `cursor_expanded` | A repository joined the selection after the cursor was issued. It starts from its first page; the others continue from their offsets. | Continue from the returned results and cursor. |
+| `deadline_exceeded` | The federation deadline passed while some repositories were still answering. The result holds what had arrived; the slow repository is named. | Say the result is partial. Retrying later may fill it in. |
 | `unsupported_filter` | A filter or facet has no mapping for this repository and was not applied. The rest of the request ran. | Interpret results as unfiltered on that concept for that repository. |
 
 ## Protocol-level errors

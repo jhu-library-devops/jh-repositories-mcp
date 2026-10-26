@@ -37,7 +37,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | Field | Type | Required | Default | Constraints |
 | --- | --- | --- | --- | --- |
 | `query` | string | yes |  | min length 1, max length 512 |
-| `repositories` | "all" or "jscholarship" or "jhrdr" | no | "all" |  |
+| `repositories` | "all" or "jscholarship" or "jhrdr" or ("jscholarship" or "jhrdr")[] | no | "all" |  |
 | `field` | "keyword" or "title" or "creator" or "subject" or "abstract" | no |  |  |
 | `filters` | object | no |  |  |
 | `filters.dateFrom` | string | no |  | max length 10, pattern `^\d{4}(-\d{2}(-\d{2})?)?$` |
@@ -98,12 +98,12 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | `count` | integer | yes | ≥ 0, integer |
 | `cursor` | string or null | yes | max length 2048 |
 | `repositories` | object | yes |  |
-| `repositories.requested` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
-| `repositories.succeeded` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
-| `repositories.failed` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
+| `repositories.requested` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
+| `repositories.succeeded` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
+| `repositories.failed` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
 | `warnings` | object[] | yes | max items 10 |
 | `warnings[].repository` | "jscholarship" or "jhrdr" | yes |  |
-| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "unsupported_filter" | yes |  |
+| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "cursor_expanded" or "deadline_exceeded" or "unsupported_filter" | yes |  |
 | `warnings[].message` | string | yes | min length 1, max length 1000 |
 | `facets` | object[] | no | max items 6 |
 | `facets[].facet` | "repository" or "creator" or "subject" or "year" or "resourceType" or "collection" | yes |  |
@@ -195,7 +195,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | Field | Type | Required | Default | Constraints |
 | --- | --- | --- | --- | --- |
 | `query` | string | no |  | min length 0, max length 512 |
-| `repositories` | "all" or "jscholarship" or "jhrdr" | no | "all" |  |
+| `repositories` | "all" or "jscholarship" or "jhrdr" or ("jscholarship" or "jhrdr")[] | no | "all" |  |
 | `field` | "keyword" or "title" or "creator" or "subject" or "abstract" | no |  |  |
 | `filters` | object | no |  |  |
 | `filters.dateFrom` | string | no |  | max length 10, pattern `^\d{4}(-\d{2}(-\d{2})?)?$` |
@@ -205,7 +205,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | `filters.subjects` | string[] | no |  | max items 20; each item: min length 1, max length 200 |
 | `filters.collections` | string[] | no |  | max items 10; each item: min length 1, max length 100 |
 | `filters.access` | "open" or "metadata_only" | no |  |  |
-| `facets` | "repository" or "creator" or "subject" or "year" or "resourceType" or "collection"[] | no |  | min items 1, max items 6 |
+| `facets` | ("repository" or "creator" or "subject" or "year" or "resourceType" or "collection")[] | no |  | min items 1, max items 6 |
 
 #### Output (`structuredContent`)
 
@@ -220,12 +220,12 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | `facets[].values[].repositoryBreakdown.jscholarship` | integer | no | ≥ 0, integer |
 | `facets[].values[].repositoryBreakdown.jhrdr` | integer | no | ≥ 0, integer |
 | `repositories` | object | yes |  |
-| `repositories.requested` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
-| `repositories.succeeded` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
-| `repositories.failed` | "jscholarship" or "jhrdr"[] | yes | max items 2 |
+| `repositories.requested` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
+| `repositories.succeeded` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
+| `repositories.failed` | ("jscholarship" or "jhrdr")[] | yes | max items 16 |
 | `warnings` | object[] | yes | max items 10 |
 | `warnings[].repository` | "jscholarship" or "jhrdr" | yes |  |
-| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "unsupported_filter" | yes |  |
+| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "cursor_expanded" or "deadline_exceeded" or "unsupported_filter" | yes |  |
 | `warnings[].message` | string | yes | min length 1, max length 1000 |
 | `retrievedAt` | string | yes | min length 1, max length 30 |
 
@@ -241,7 +241,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | --- | --- | --- | --- | --- |
 | `repository` | "jscholarship" or "jhrdr" | yes |  |  |
 | `identifier` | string | yes |  | min length 1, max length 512 |
-| `targetRepositories` | "all" or "jscholarship" or "jhrdr" | no | "all" |  |
+| `targetRepositories` | "all" or "jscholarship" or "jhrdr" or ("jscholarship" or "jhrdr")[] | no | "all" |  |
 | `limit` | integer | no | 5 | ≥ 1, ≤ 25, integer |
 
 #### Output (`structuredContent`)
@@ -295,7 +295,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | `count` | integer | yes | ≥ 0, integer |
 | `warnings` | object[] | yes | max items 10 |
 | `warnings[].repository` | "jscholarship" or "jhrdr" | yes |  |
-| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "unsupported_filter" | yes |  |
+| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "cursor_expanded" or "deadline_exceeded" or "unsupported_filter" | yes |  |
 | `warnings[].message` | string | yes | min length 1, max length 1000 |
 | `retrievedAt` | string | yes | min length 1, max length 30 |
 
@@ -310,7 +310,7 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | Field | Type | Required | Default | Constraints |
 | --- | --- | --- | --- | --- |
 | `query` | string | yes |  | min length 1, max length 512 |
-| `repositories` | "all" or "jscholarship" or "jhrdr" | no | "all" |  |
+| `repositories` | "all" or "jscholarship" or "jhrdr" or ("jscholarship" or "jhrdr")[] | no | "all" |  |
 | `field` | "keyword" or "title" or "creator" or "subject" or "abstract" | no |  |  |
 | `filters` | object | no |  |  |
 | `filters.dateFrom` | string | no |  | max length 10, pattern `^\d{4}(-\d{2}(-\d{2})?)?$` |
@@ -334,9 +334,12 @@ Annotations: `readOnlyHint`: `true`, `destructiveHint`: `false`, `idempotentHint
 | `repositoryStrategies[].filtersApplied` | string[] | yes | max items 20; each item: max length 200 |
 | `repositoryStrategies[].filtersUnsupported` | string[] | yes | max items 20; each item: max length 200 |
 | `repositoryStrategies[].sortApplied` | string | yes | max length 100 |
+| `availableRepositories` | object[] | no | max items 16 |
+| `availableRepositories[].repository` | "jscholarship" or "jhrdr" | yes |  |
+| `availableRepositories[].description` | string | yes | min length 1, max length 500 |
 | `warnings` | object[] | yes | max items 10 |
 | `warnings[].repository` | "jscholarship" or "jhrdr" | yes |  |
-| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "unsupported_filter" | yes |  |
+| `warnings[].code` | "backend_unavailable" or "validation_attrition" or "cursor_reset" or "cursor_expanded" or "deadline_exceeded" or "unsupported_filter" | yes |  |
 | `warnings[].message` | string | yes | min length 1, max length 1000 |
 | `retrievedAt` | string | yes | min length 1, max length 30 |
 

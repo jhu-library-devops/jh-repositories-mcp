@@ -56,7 +56,11 @@ export function typeName(schema: JsonSchema): string {
     .filter((type): type is string => typeof type === "string")
     .map((type) => {
       if (type === "array" && isSchema(schema.items)) {
-        return `${typeName(schema.items)}[]`;
+        {
+          // A union item type is bracketed so `("a" or "b")[]` is not read as `"a" or "b"[]`.
+          const item = typeName(schema.items);
+          return item.includes(" or ") ? `(${item})[]` : `${item}[]`;
+        }
       }
       return type;
     });
