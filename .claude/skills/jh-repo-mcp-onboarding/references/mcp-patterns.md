@@ -1,7 +1,7 @@
 # Building another MCP server on these bones
 
 Use this when someone wants to build a *different* MCP server modeled on
-`jhu-repository-mcp` — another repository federation, a different set of
+`jh-repositories-mcp` — another repository federation, a different set of
 backends, a similar read-only discovery service over systems that have their own
 access rules.
 

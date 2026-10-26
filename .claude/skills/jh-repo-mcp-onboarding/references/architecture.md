@@ -1,4 +1,4 @@
-# Architecture reference — jhu-repository-mcp
+# Architecture reference — jh-repositories-mcp
 
 Everything here was read out of the source. Paths are repo-relative. If
 something below no longer matches the code, the code wins — say so and correct

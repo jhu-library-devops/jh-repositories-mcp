@@ -1,6 +1,6 @@
 # syntax=docker/dockerfile:1
 #
-# jhu-repository-mcp — multi-stage production image
+# jh-repositories-mcp — multi-stage production image
 #
 # Every stage uses the SAME pinned Bun release (.bun-version = 1.3.11),
 # pinned by version AND digest so local, CI, and production builds use the
@@ -52,7 +52,7 @@ RUN apt-get update \
  && apt-get clean \
  && rm -rf /var/lib/apt/lists/*
 
-LABEL org.opencontainers.image.title="jhu-repository-mcp" \
+LABEL org.opencontainers.image.title="jh-repositories-mcp" \
       org.opencontainers.image.description="Read-only federated MCP server for JScholarship (DSpace) and JHRDR (Dataverse)" \
       org.opencontainers.image.source="https://github.com/jhu-library-devops/jh-repositories-mcp" \
       org.opencontainers.image.vendor="Johns Hopkins University Libraries" \

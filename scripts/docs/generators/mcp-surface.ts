@@ -47,7 +47,7 @@ async function readSurface(): Promise<Surface> {
   // The list handlers never touch adapters, so an empty context is enough.
   const context: ToolContext = { adapters: new Map() };
   const server = createRepositoryServer({
-    name: "jhu-repository-mcp",
+    name: "jh-repositories-mcp",
     version: "docs",
     context,
     observer: () => {},

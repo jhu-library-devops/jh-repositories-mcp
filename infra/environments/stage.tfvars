@@ -1,5 +1,5 @@
 # =============================================================================
-# JHU Repository MCP Server — Stage Environment
+# jh-repositories-mcp — Stage Environment
 # Usage:
 #   tofu init -backend-config=backend-stage.hcl
 #   tofu plan -var-file=stage.tfvars
