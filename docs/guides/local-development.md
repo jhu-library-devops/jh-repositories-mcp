@@ -50,7 +50,7 @@ Leaving the `JHRDR_*` URLs unset is normal: the server then serves JScholarship 
 
 ## Run against a local stack
 
-`compose.yaml` runs the server against either a fixture-backed mock (`docker compose --profile mock up --build`) or real DSpace and Dataverse containers (`--profile real`). The mock is for exercising the assembled server quickly; it replays canned Solr pages, so filters, sorting, and paging are not exercised. The real profile is empty until you load records. Setup and loading steps are in `dev/README.md` in the repository.
+`compose.yaml` runs the server against either a fixture-backed mock (`docker compose --profile mock up --build`) or real DSpace and Dataverse containers sharing one SolrCloud (`--profile real`). The mock is for exercising the assembled server quickly; it replays canned Solr pages, so filters, sorting, and paging are not exercised. The real profile is empty until you load records. Setup and loading steps are in `dev/README.md` in the repository.
 
 ## Check health
 

@@ -7,7 +7,7 @@ publish the MCP at `http://localhost:3000/mcp`.
 | Profile | What runs | Startup | Fidelity |
 | --- | --- | --- | --- |
 | `mock` | The MCP plus `dev/mock-backend`, a Bun server replaying `test/fixtures/` | seconds | Canned: every Solr `/select` returns the same page, so filters, sorts, paging and relevance are **not** exercised |
-| `real` | The MCP plus DSpace, Dataverse, their Solr cores and Postgres | minutes, empty until loaded | Real Solr, real public-record filtering, real canonical APIs |
+| `real` | The MCP plus DSpace, Dataverse, Postgres, and one SolrCloud (with ZooKeeper) serving both | minutes, empty until loaded | Real Solr, real public-record filtering, real canonical APIs |
 
 ```bash
 docker compose --profile mock up --build      # or: --profile real
@@ -38,18 +38,36 @@ restricted records; use the `test/integration` suites for that behavior.
 
 ## Real profile
 
-**Status:** written from the DSpace and Dataverse container documentation but
-not yet booted end to end. Expect to adjust image tags or environment names.
-Override tags with `DSPACE_TAG` (default `dspace-8_x`), `DATAVERSE_TAG`
-(default `6.10.1`, the version in the fixtures) and `DATAVERSE_SOLR_TAG`.
+**Status:** written from the DSpace, Dataverse and Solr container documentation
+but not yet booted end to end. Expect to adjust image tags or environment names.
 
-Ports: DSpace API `8080`, DSpace Solr `8983`, Dataverse `8081`, Dataverse Solr
-`8984` (see `compose.yaml` for the override variables).
+**One SolrCloud for both repositories.** A single Solr node in cloud mode
+(`solr`, backed by `zookeeper`) hosts DSpace's `search`, `authority`, `oai` and
+`statistics` collections and Dataverse's `collection1`, as in the JHU
+deployment. On startup `dspace-configsets` and `dataverse-configset` copy each
+platform's Solr configset out of its image, and the one-shot `solr-init` job
+uploads them to ZooKeeper and creates any missing collection (one shard, one
+replica; safe to re-run). Because one Solr version serves both platforms:
+
+- `DSPACE_TAG` defaults to `dspace-9_x`. DSpace 8 targets Solr 8.11 and cannot
+  share a Solr 9 node with Dataverse 6.10.
+- `SOLR_TAG` defaults to `9.8.0`, the version Dataverse 6.10 documents.
+- Dataverse's own documentation describes standalone Solr, so SolrCloud is the
+  least-trodden path here. Changing its metadata blocks later means uploading
+  the updated configset to ZooKeeper and reloading the collection, not the
+  standalone `update-fields.sh` flow.
+
+Other overrides: `DATAVERSE_TAG` (default `6.10.1`, the version in the
+fixtures) and `ZOOKEEPER_TAG`.
+
+Ports: DSpace API `8080`, Dataverse `8081`, SolrCloud `8983` (see
+`compose.yaml` for the override variables). Open `http://localhost:8983/solr`
+for the Solr admin UI and its Cloud view.
 
 Things to know:
 
 - The MCP validates the Solr schemas **once at startup** and does not retry.
-  `mcp-real` therefore waits for both Solr cores. If readiness is 503 anyway,
+  `mcp-real` therefore waits for `solr-init` to finish creating the collections. If readiness is 503 anyway,
   `curl localhost:3000/health/ready` lists the missing required fields, then
   `docker compose --profile real restart mcp-real`.
 - A stock DSpace or Dataverse schema may differ from the JHU deployments the

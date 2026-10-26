@@ -8,8 +8,13 @@
 # The real stack is empty until you load records (dev/README.md). The MCP
 # validates the Solr schemas ONCE at startup, so it waits on the Solr healthchecks.
 #
-# Host ports (override with env): MCP 3000, DSpace API 8080, DSpace Solr 8983,
-# Dataverse 8081, Dataverse Solr 8984.
+# The real profile runs ONE SolrCloud (a ZooKeeper plus a Solr node) that serves
+# both repositories, as the JHU deployment does: DSpace's `search` collection
+# (JScholarship) and Dataverse's `collection1` (JHRDR). A one-shot `solr-init`
+# job uploads each platform's configset and creates the collections.
+#
+# Host ports (override with env): MCP 3000, DSpace API 8080, Dataverse 8081,
+# SolrCloud 8983.
 
 name: jhu-repository-mcp
 
@@ -61,13 +66,105 @@ services:
       JHRDR_API_URL: http://mock-backend:8090/jhrdr/api
       JHRDR_PUBLIC_URL: https://archive.data.jhu.edu
 
+  # ─── Real profile: one SolrCloud for both repositories ─────────────────────
+  # Solr 9 must serve DSpace and Dataverse at once, so DSPACE_TAG defaults to a
+  # DSpace release built for Solr 9 (dspace-9_x). DSpace 8 targets Solr 8.11 and
+  # cannot share this node.
+
+  zookeeper:
+    profiles: [real]
+    image: zookeeper:${ZOOKEEPER_TAG:-3.9}
+    environment:
+      ZOO_4LW_COMMANDS_WHITELIST: ruok,srvr
+    volumes:
+      - zookeeper_data:/data
+      - zookeeper_datalog:/datalog
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep -q imok"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  # Each platform ships its Solr configset in its own image; copy them into a
+  # shared volume so solr-init can upload them to ZooKeeper.
+  dspace-configsets:
+    profiles: [real]
+    image: dspace/dspace-solr:${DSPACE_TAG:-dspace-9_x}
+    restart: "no"
+    user: root
+    entrypoint: ["sh", "-c", "cp -a /opt/solr/server/solr/configsets/. /configsets/"]
+    volumes:
+      - solr_configsets:/configsets
+
+  dataverse-configset:
+    profiles: [real]
+    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
+    restart: "no"
+    user: root
+    entrypoint: ["sh", "-c", "mkdir -p /configsets/dataverse && cp -a /template/. /configsets/dataverse/"]
+    volumes:
+      - solr_configsets:/configsets
+
+  solr:
+    profiles: [real]
+    image: solr:${SOLR_TAG:-9.8.0}
+    depends_on:
+      zookeeper:
+        condition: service_healthy
+    command: ["solr-foreground", "-c", "-z", "zookeeper:2181"]
+    ports:
+      - "${SOLR_PORT:-8983}:8983"
+    volumes:
+      - solr_data:/var/solr
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/admin/collections?action=LIST >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  # Idempotent: uploads the configsets and creates any collection that is
+  # missing (single shard, single replica).
+  solr-init:
+    profiles: [real]
+    image: solr:${SOLR_TAG:-9.8.0}
+    restart: "no"
+    depends_on:
+      solr:
+        condition: service_healthy
+      dspace-configsets:
+        condition: service_completed_successfully
+      dataverse-configset:
+        condition: service_completed_successfully
+    volumes:
+      - solr_configsets:/configsets:ro
+    entrypoint:
+      - /bin/bash
+      - "-c"
+      - |
+        set -eu
+        api=http://solr:8983/solr/admin/collections
+        for cs in authority oai search statistics dataverse; do
+          solr zk upconfig -z zookeeper:2181 -n $$cs -d /configsets/$$cs
+        done
+        existing=$$(wget -qO- "$$api?action=LIST&wt=json")
+        create() {
+          case "$$existing" in
+            *"\"$$1\""*) echo "collection $$1 already exists" ;;
+            *) wget -qO- "$$api?action=CREATE&name=$$1&collection.configName=$$2&numShards=1&replicationFactor=1&wt=json" >/dev/null
+               echo "created collection $$1" ;;
+          esac
+        }
+        for c in authority oai search statistics; do create $$c $$c; done
+        create collection1 dataverse
+
   # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
-  # Mirrors the DSpace project's own docker-compose.yml (backend only; no
-  # Angular UI). DSPACE_TAG must be a DSpace 7+ image tag.
+  # Backend only (no Angular UI). Uses the shared SolrCloud above instead of the
+  # standalone Solr in the DSpace project's own docker-compose.yml.
 
   dspacedb:
     profiles: [real]
-    image: dspace/dspace-postgres-pgcrypto:${DSPACE_TAG:-dspace-8_x}
+    image: dspace/dspace-postgres-pgcrypto:${DSPACE_TAG:-dspace-9_x}
     environment:
       PGDATA: /pgdata
       POSTGRES_PASSWORD: dspace
@@ -79,41 +176,14 @@ services:
       timeout: 3s
       retries: 20
 
-  dspacesolr:
-    profiles: [real]
-    image: dspace/dspace-solr:${DSPACE_TAG:-dspace-8_x}
-    ports:
-      - "${DSPACE_SOLR_PORT:-8983}:8983"
-    volumes:
-      - dspace_solr_authority:/var/solr/data/authority
-      - dspace_solr_oai:/var/solr/data/oai
-      - dspace_solr_search:/var/solr/data/search
-      - dspace_solr_statistics:/var/solr/data/statistics
-    entrypoint:
-      - /bin/bash
-      - "-c"
-      - |
-        init-var-solr
-        for core in authority oai search statistics; do
-          precreate-core $$core /opt/solr/server/solr/configsets/$$core
-          cp -r -u /opt/solr/server/solr/configsets/$$core/* $$core
-        done
-        exec solr -f
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/search/schema/fields >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 20s
-
   dspace:
     profiles: [real]
-    image: dspace/dspace:${DSPACE_TAG:-dspace-8_x}
+    image: dspace/dspace:${DSPACE_TAG:-dspace-9_x}
     depends_on:
       dspacedb:
         condition: service_healthy
-      dspacesolr:
-        condition: service_healthy
+      solr-init:
+        condition: service_completed_successfully
     ports:
       - "${DSPACE_PORT:-8080}:8080"
     environment:
@@ -121,7 +191,7 @@ services:
       dspace__P__server__P__url: http://localhost:${DSPACE_PORT:-8080}/server
       dspace__P__ui__P__url: http://localhost:4000
       dspace__P__name: DSpace local test
-      solr__P__server: http://dspacesolr:8983/solr
+      solr__P__server: http://solr:8983/solr
       db__P__url: jdbc:postgresql://dspacedb:5432/dspace
       LOGGING_CONFIG: /dspace/config/log4j2-container.xml
     entrypoint:
@@ -140,9 +210,9 @@ services:
       start_period: 60s
 
   # ─── Real profile: Dataverse (JHRDR) ───────────────────────────────────────
-  # Follows the Dataverse project's container (gdcc) layout: a configbaker
-  # image supplies the Solr config for the matching release and bootstraps the
-  # installation. DATAVERSE_TAG should match the version being tested.
+  # Follows the Dataverse project's container (gdcc) layout: the configbaker
+  # image supplies the Solr configset and bootstraps the installation.
+  # DATAVERSE_TAG should match the version being tested.
 
   dataverse-db:
     profiles: [real]
@@ -159,42 +229,14 @@ services:
       timeout: 3s
       retries: 20
 
-  dataverse-solr-init:
-    profiles: [real]
-    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
-    restart: "no"
-    command: ["sh", "-c", "fix-fs-perms.sh solr && cp -a /template/* /solr-template"]
-    volumes:
-      - dataverse_solr_data:/var/solr
-      - dataverse_solr_template:/solr-template
-
-  dataverse-solr:
-    profiles: [real]
-    image: solr:${DATAVERSE_SOLR_TAG:-9.8.0}
-    depends_on:
-      dataverse-solr-init:
-        condition: service_completed_successfully
-    command: ["solr-precreate", "collection1", "/template"]
-    ports:
-      - "${DATAVERSE_SOLR_PORT:-8984}:8983"
-    volumes:
-      - dataverse_solr_data:/var/solr
-      - dataverse_solr_template:/template
-    healthcheck:
-      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/collection1/schema/fields >/dev/null"]
-      interval: 10s
-      timeout: 5s
-      retries: 30
-      start_period: 20s
-
   dataverse:
     profiles: [real]
     image: gdcc/dataverse:${DATAVERSE_TAG:-6.10.1}
     depends_on:
       dataverse-db:
         condition: service_healthy
-      dataverse-solr:
-        condition: service_healthy
+      solr-init:
+        condition: service_completed_successfully
     ports:
       - "${DATAVERSE_PORT:-8081}:8080"
     environment:
@@ -202,8 +244,9 @@ services:
       DATAVERSE_DB_USER: dataverse
       DATAVERSE_DB_PASSWORD: secret
       DATAVERSE_DB_NAME: dataverse
-      DATAVERSE_SOLR_HOST: dataverse-solr
-      DATAVERSE_SOLR_COLLECTION: collection1
+      DATAVERSE_SOLR_HOST: solr
+      DATAVERSE_SOLR_PORT: "8983"
+      DATAVERSE_SOLR_CORE: collection1
       DATAVERSE_URL: http://localhost:${DATAVERSE_PORT:-8081}
       DATAVERSE_FQDN: localhost
     volumes:
@@ -228,36 +271,32 @@ services:
       TIMEOUT: 10m
 
   # ─── Real profile: the MCP server ──────────────────────────────────────────
-  # Waits only on the Solr cores: Solr schema validation runs once at startup.
+  # Waits for solr-init: Solr schema validation runs once at startup.
 
   mcp-real:
     <<: *mcp-common
     profiles: [real]
     depends_on:
-      dspacesolr:
-        condition: service_healthy
-      dataverse-solr:
-        condition: service_healthy
+      solr-init:
+        condition: service_completed_successfully
     environment:
       ENVIRONMENT: stage
       BUILD_VERSION: local
       BUILD_COMMIT: local
       ALLOWED_HOSTS: localhost:3000
-      JSCHOLARSHIP_SOLR_URL: http://dspacesolr:8983/solr/search
+      JSCHOLARSHIP_SOLR_URL: http://solr:8983/solr/search
       JSCHOLARSHIP_API_URL: http://dspace:8080/server/api
       JSCHOLARSHIP_PUBLIC_URL: ${JSCHOLARSHIP_PUBLIC_URL:-http://localhost:4000}
-      JHRDR_SOLR_URL: http://dataverse-solr:8983/solr/collection1
+      JHRDR_SOLR_URL: http://solr:8983/solr/collection1
       JHRDR_API_URL: http://dataverse:8080/api
       JHRDR_PUBLIC_URL: ${JHRDR_PUBLIC_URL:-http://localhost:8081}
 
 volumes:
   dspace_pgdata:
   dspace_assetstore:
-  dspace_solr_authority:
-  dspace_solr_oai:
-  dspace_solr_search:
-  dspace_solr_statistics:
   dataverse_pgdata:
   dataverse_data:
-  dataverse_solr_data:
-  dataverse_solr_template:
+  zookeeper_data:
+  zookeeper_datalog:
+  solr_data:
+  solr_configsets:
