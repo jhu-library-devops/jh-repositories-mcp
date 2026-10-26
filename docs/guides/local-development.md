@@ -71,6 +71,21 @@ curl -s http://localhost:3000/mcp \
 
 Any MCP client that supports Streamable HTTP can connect to `http://localhost:3000/mcp`. Clients that only support SSE sessions cannot, because `GET /mcp` returns 405.
 
+## Run against a local stack
+
+`compose.yaml` runs the server against either of two backends. Choose one profile per run; both publish the server on port 3000, so a second profile fails to bind.
+
+```bash
+docker compose --profile mock up --build   # replays recorded fixtures, ready in seconds
+docker compose --profile real up --build   # DSpace and Dataverse, ready in minutes
+```
+
+Use the `mock` profile to exercise the assembled server: transport, tool schemas, and canonical resolution by UUID, Handle, or DOI. Do not use it to judge search behavior. Every Solr `/select` returns the same page whatever the query, so a broken filter, sort, or cursor still appears to work. The mock serves only the sanitized records under `test/fixtures/` and never enforces the public filters; the integration suites cover those.
+
+The `real` profile runs DSpace, Dataverse, Postgres, and one SolrCloud that serves both repositories, as the deployed stack does. Each collection belongs to one platform and has its own configset, so no collection is shared; a collection that already exists with a different configset stops provisioning rather than being adopted. Start it with Compose and not by launching the server on its own: schema validation runs once at startup, so a server that starts before the collections exist stays at 503 on `/health/ready` until you restart it. Compose holds the server until provisioning finishes.
+
+The `real` profile starts empty, and the server returns only records that are public and validated through the platform API, so load at least one published record into each repository before you search. Stock DSpace and Dataverse schemas can differ from the customized deployments the repository profiles describe; a missing required field leaves readiness at 503 and the response body names it. The image tags (`DSPACE_TAG`, `DATAVERSE_TAG`, `SOLR_TAG`), the steps for loading records, and the known caveats are in `dev/README.md`.
+
 ## Common commands
 
 | Command | Purpose |
