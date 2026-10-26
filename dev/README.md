@@ -66,6 +66,10 @@ Caveats:
   the updated configset to ZooKeeper and reloading the collection, not the
   standalone `update-fields.sh` flow. A new Dataverse release can also change
   the Solr schema and require a reindex.
+- DSpace's `solrconfig.xml` loads the ICU analysis jars through `<lib>`, which
+  Solr 9.8+ only allows with `-Dsolr.config.lib.enabled=true`; the `solr`
+  service sets it in `SOLR_OPTS`. If a DSpace collection fails to load, check
+  `docker compose logs solr` for a missing-class error first.
 - The JHU deployments are customized; stock images may lack fields the
   profiles in `config/repositories/` expect (see below).
 

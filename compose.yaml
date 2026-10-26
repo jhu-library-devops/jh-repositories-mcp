@@ -81,7 +81,11 @@ services:
       - zookeeper_data:/data
       - zookeeper_datalog:/datalog
     healthcheck:
-      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep -q imok"]
+      test:
+        - CMD
+        - bash
+        - "-c"
+        - "exec 3<>/dev/tcp/localhost/2181 && printf ruok >&3 && head -c4 <&3 | grep -q imok"
       interval: 5s
       timeout: 3s
       retries: 20
@@ -113,6 +117,16 @@ services:
       zookeeper:
         condition: service_healthy
     command: ["solr-foreground", "-c", "-z", "zookeeper:2181"]
+    environment:
+      # DSpace's solrconfig loads the ICU analysis jars through <lib> and says
+      # Solr 9.8+ must be started with solr.config.lib.enabled=true. The rest
+      # matches the Dataverse dev compose: a larger Jetty header limit and a
+      # 100 ms soft commit (the property applies to every collection here, so
+      # DSpace also gets near-real-time search, which suits development).
+      SOLR_OPTS: >-
+        -Dsolr.config.lib.enabled=true
+        -Dsolr.jetty.request.header.size=102400
+        -Dsolr.autoSoftCommit.maxTime=100
     ports:
       - "${SOLR_PORT:-8983}:8983"
     volumes:
