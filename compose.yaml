@@ -1,0 +1,263 @@
+# Local test environment for jhu-repository-mcp. See dev/README.md.
+#
+# Two mutually exclusive profiles (pick one; both publish the MCP on :3000):
+#
+#   docker compose --profile mock up --build   # canned fixtures, ready in seconds
+#   docker compose --profile real up --build   # DSpace + Dataverse + their Solr/Postgres
+#
+# The real stack is empty until you load records (dev/README.md). The MCP
+# validates the Solr schemas ONCE at startup, so it waits on the Solr healthchecks.
+#
+# Host ports (override with env): MCP 3000, DSpace API 8080, DSpace Solr 8983,
+# Dataverse 8081, Dataverse Solr 8984.
+
+name: jhu-repository-mcp
+
+x-mcp-common: &mcp-common
+  image: jhu-repository-mcp:local
+  build:
+    context: .
+    args:
+      BUILD_VERSION: local
+      BUILD_COMMIT: local
+  ports:
+    - "${MCP_PORT:-3000}:3000"
+  restart: unless-stopped
+
+services:
+  # ─── Mock profile ──────────────────────────────────────────────────────────
+
+  mock-backend:
+    profiles: [mock]
+    image: oven/bun:1.3.11
+    working_dir: /app
+    command: ["bun", "dev/mock-backend/server.ts"]
+    environment:
+      PORT: "8090"
+    volumes:
+      - ./dev/mock-backend:/app/dev/mock-backend:ro
+      - ./test/fixtures:/app/test/fixtures:ro
+    healthcheck:
+      test: ["CMD", "bun", "-e", "if (!(await fetch('http://127.0.0.1:8090/health')).ok) process.exit(1)"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  mcp-mock:
+    <<: *mcp-common
+    profiles: [mock]
+    depends_on:
+      mock-backend:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: stage
+      BUILD_VERSION: local
+      BUILD_COMMIT: local
+      ALLOWED_HOSTS: localhost:3000
+      JSCHOLARSHIP_SOLR_URL: http://mock-backend:8090/jscholarship/solr/search
+      JSCHOLARSHIP_API_URL: http://mock-backend:8090/jscholarship/server/api
+      JSCHOLARSHIP_PUBLIC_URL: https://jscholarship.library.jhu.edu
+      JHRDR_SOLR_URL: http://mock-backend:8090/jhrdr/solr/collection1
+      JHRDR_API_URL: http://mock-backend:8090/jhrdr/api
+      JHRDR_PUBLIC_URL: https://archive.data.jhu.edu
+
+  # ─── Real profile: DSpace (JScholarship) ───────────────────────────────────
+  # Mirrors the DSpace project's own docker-compose.yml (backend only; no
+  # Angular UI). DSPACE_TAG must be a DSpace 7+ image tag.
+
+  dspacedb:
+    profiles: [real]
+    image: dspace/dspace-postgres-pgcrypto:${DSPACE_TAG:-dspace-8_x}
+    environment:
+      PGDATA: /pgdata
+      POSTGRES_PASSWORD: dspace
+    volumes:
+      - dspace_pgdata:/pgdata
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  dspacesolr:
+    profiles: [real]
+    image: dspace/dspace-solr:${DSPACE_TAG:-dspace-8_x}
+    ports:
+      - "${DSPACE_SOLR_PORT:-8983}:8983"
+    volumes:
+      - dspace_solr_authority:/var/solr/data/authority
+      - dspace_solr_oai:/var/solr/data/oai
+      - dspace_solr_search:/var/solr/data/search
+      - dspace_solr_statistics:/var/solr/data/statistics
+    entrypoint:
+      - /bin/bash
+      - "-c"
+      - |
+        init-var-solr
+        for core in authority oai search statistics; do
+          precreate-core $$core /opt/solr/server/solr/configsets/$$core
+          cp -r -u /opt/solr/server/solr/configsets/$$core/* $$core
+        done
+        exec solr -f
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/search/schema/fields >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  dspace:
+    profiles: [real]
+    image: dspace/dspace:${DSPACE_TAG:-dspace-8_x}
+    depends_on:
+      dspacedb:
+        condition: service_healthy
+      dspacesolr:
+        condition: service_healthy
+    ports:
+      - "${DSPACE_PORT:-8080}:8080"
+    environment:
+      dspace__P__dir: /dspace
+      dspace__P__server__P__url: http://localhost:${DSPACE_PORT:-8080}/server
+      dspace__P__ui__P__url: http://localhost:4000
+      dspace__P__name: DSpace local test
+      solr__P__server: http://dspacesolr:8983/solr
+      db__P__url: jdbc:postgresql://dspacedb:5432/dspace
+      LOGGING_CONFIG: /dspace/config/log4j2-container.xml
+    entrypoint:
+      - /bin/bash
+      - "-c"
+      - |
+        /dspace/bin/dspace database migrate ignored
+        exec catalina.sh run
+    volumes:
+      - dspace_assetstore:/dspace/assetstore
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/server/api >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 60s
+
+  # ─── Real profile: Dataverse (JHRDR) ───────────────────────────────────────
+  # Follows the Dataverse project's container (gdcc) layout: a configbaker
+  # image supplies the Solr config for the matching release and bootstraps the
+  # installation. DATAVERSE_TAG should match the version being tested.
+
+  dataverse-db:
+    profiles: [real]
+    image: postgres:17
+    environment:
+      POSTGRES_USER: dataverse
+      POSTGRES_PASSWORD: secret
+      POSTGRES_DB: dataverse
+    volumes:
+      - dataverse_pgdata:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U dataverse"]
+      interval: 5s
+      timeout: 3s
+      retries: 20
+
+  dataverse-solr-init:
+    profiles: [real]
+    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
+    restart: "no"
+    command: ["sh", "-c", "fix-fs-perms.sh solr && cp -a /template/* /solr-template"]
+    volumes:
+      - dataverse_solr_data:/var/solr
+      - dataverse_solr_template:/solr-template
+
+  dataverse-solr:
+    profiles: [real]
+    image: solr:${DATAVERSE_SOLR_TAG:-9.8.0}
+    depends_on:
+      dataverse-solr-init:
+        condition: service_completed_successfully
+    command: ["solr-precreate", "collection1", "/template"]
+    ports:
+      - "${DATAVERSE_SOLR_PORT:-8984}:8983"
+    volumes:
+      - dataverse_solr_data:/var/solr
+      - dataverse_solr_template:/template
+    healthcheck:
+      test: ["CMD-SHELL", "wget -qO- http://localhost:8983/solr/collection1/schema/fields >/dev/null"]
+      interval: 10s
+      timeout: 5s
+      retries: 30
+      start_period: 20s
+
+  dataverse:
+    profiles: [real]
+    image: gdcc/dataverse:${DATAVERSE_TAG:-6.10.1}
+    depends_on:
+      dataverse-db:
+        condition: service_healthy
+      dataverse-solr:
+        condition: service_healthy
+    ports:
+      - "${DATAVERSE_PORT:-8081}:8080"
+    environment:
+      DATAVERSE_DB_HOST: dataverse-db
+      DATAVERSE_DB_USER: dataverse
+      DATAVERSE_DB_PASSWORD: secret
+      DATAVERSE_DB_NAME: dataverse
+      DATAVERSE_SOLR_HOST: dataverse-solr
+      DATAVERSE_SOLR_COLLECTION: collection1
+      DATAVERSE_URL: http://localhost:${DATAVERSE_PORT:-8081}
+      DATAVERSE_FQDN: localhost
+    volumes:
+      - dataverse_data:/dv
+    healthcheck:
+      test: ["CMD-SHELL", "curl -sf http://localhost:8080/api/info/version >/dev/null"]
+      interval: 15s
+      timeout: 5s
+      retries: 40
+      start_period: 90s
+
+  dataverse-bootstrap:
+    profiles: [real]
+    image: gdcc/configbaker:${DATAVERSE_TAG:-6.10.1}
+    restart: "no"
+    depends_on:
+      dataverse:
+        condition: service_healthy
+    command: ["bootstrap.sh", "dev"]
+    environment:
+      DATAVERSE_URL: http://dataverse:8080
+      TIMEOUT: 10m
+
+  # ─── Real profile: the MCP server ──────────────────────────────────────────
+  # Waits only on the Solr cores: Solr schema validation runs once at startup.
+
+  mcp-real:
+    <<: *mcp-common
+    profiles: [real]
+    depends_on:
+      dspacesolr:
+        condition: service_healthy
+      dataverse-solr:
+        condition: service_healthy
+    environment:
+      ENVIRONMENT: stage
+      BUILD_VERSION: local
+      BUILD_COMMIT: local
+      ALLOWED_HOSTS: localhost:3000
+      JSCHOLARSHIP_SOLR_URL: http://dspacesolr:8983/solr/search
+      JSCHOLARSHIP_API_URL: http://dspace:8080/server/api
+      JSCHOLARSHIP_PUBLIC_URL: ${JSCHOLARSHIP_PUBLIC_URL:-http://localhost:4000}
+      JHRDR_SOLR_URL: http://dataverse-solr:8983/solr/collection1
+      JHRDR_API_URL: http://dataverse:8080/api
+      JHRDR_PUBLIC_URL: ${JHRDR_PUBLIC_URL:-http://localhost:8081}
+
+volumes:
+  dspace_pgdata:
+  dspace_assetstore:
+  dspace_solr_authority:
+  dspace_solr_oai:
+  dspace_solr_search:
+  dspace_solr_statistics:
+  dataverse_pgdata:
+  dataverse_data:
+  dataverse_solr_data:
+  dataverse_solr_template:
