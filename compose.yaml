@@ -1,4 +1,4 @@
-# Local test environment for jhu-repository-mcp. See dev/README.md.
+# Local test environment for jh-repositories-mcp. See dev/README.md.
 #
 # Two mutually exclusive profiles (pick one; both publish the MCP on :3000):
 #
@@ -19,10 +19,10 @@
 # Host ports (override with env): MCP 3000, DSpace API 8080, Dataverse 8081,
 # Solr nodes 8983 and 8984.
 
-name: jhu-repository-mcp
+name: jh-repositories-mcp
 
 x-mcp-common: &mcp-common
-  image: jhu-repository-mcp:local
+  image: jh-repositories-mcp:local
   build:
     context: .
     args:
