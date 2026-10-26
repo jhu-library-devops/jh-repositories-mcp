@@ -33,6 +33,7 @@ fastest, because nothing fails when they're wrong.
 | `CLAUDE.md` | Orientation for AI agents: invariants, commands, conventions, known rough edges. Its tool and environment lists are injected by the docs generator | Starting any task in the repo |
 | `AGENTS.md` | Same role, different tool — style, testing, and PR guidance | With the same skepticism as any instruction file |
 | `.kiro/steering/docs-drift-audit.md` | The procedure for auditing `docs/` against the code (manual inclusion) | Someone asks to refresh or audit the developer docs |
+| `.kiro/steering/docs-writing-style.md` | Audience, register, and content rules for every page under `docs/` and the root documents | Before writing or revising any documentation |
 | `changelog.d/` → `CHANGELOG.md` | Release notes, assembled from fragments | Never hand-edit `CHANGELOG.md`; add a fragment |
 | `infra/`, `.github/workflows/` | Deployment and CI reality | Deployment questions |
 
