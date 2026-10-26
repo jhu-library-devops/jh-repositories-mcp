@@ -83,7 +83,10 @@ missing optional fields disable specific features and are reported.
 passthrough, so client input can never reach the backend's query language. The
 immutable filters are a cheap first line before the expensive canonical gate.
 And the startup check turns "the index was reconfigured last night" from a
-silent behavior change into a failed deployment.
+silent behavior change into a failed readiness check — provided readiness
+actually gates traffic, which in this repo's deployed stack it does not (the
+load balancer probes `/health/live`). Wire the health check to readiness if you
+copy this pattern.
 
 **Cost.** Adding a searchable field is a code change plus a re-verification,
 not a config tweak. That friction is the feature.
@@ -205,7 +208,9 @@ or an error, never unvalidated data. Config validation is fail-fast at startup
 and reports *all* problems at once. Readiness is gated on backend schema
 validation. A concurrency semaphore bounds in-flight work and sheds load as
 `rate_limited`. Host/Origin validation and body-size bounds sit at the edge.
-`SIGTERM` flips readiness off *before* exiting, so the load balancer drains.
+`SIGTERM` flips readiness off and waits one request deadline before exiting, so
+in-flight requests finish. (For that to drain traffic, the load balancer's
+health check must probe readiness; here it probes liveness.)
 Client-visible errors are deliberately opaque, so failures never distinguish
 "missing" from "not permitted."
 

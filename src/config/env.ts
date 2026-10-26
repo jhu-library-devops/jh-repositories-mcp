@@ -45,7 +45,8 @@ const positiveNumber = (fieldName: string) =>
 
 // ─── Schema ──────────────────────────────────────────────────────────────────
 
-const envSchema = z.object({
+/** Exported so the configuration reference can be generated from it. */
+export const envSchema = z.object({
   // Required
   PORT: z
     .string()

@@ -1,0 +1,105 @@
+name: Docs
+
+# Builds the developer reference site from docs/ and publishes it to GitHub
+# Pages from main. Pull requests build and check the site without deploying.
+# Generated-reference freshness is checked in ci.yml (bun run docs:check).
+
+on:
+  pull_request:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/docs/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/docs.yml"
+  push:
+    branches: [main]
+    paths:
+      - "docs/**"
+      - "scripts/docs/**"
+      - "package.json"
+      - "bun.lock"
+      - ".github/workflows/docs.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: docs-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build site
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Cache Bun dependencies
+        uses: actions/cache@v4
+        with:
+          path: ~/.bun/install/cache
+          key: bun-${{ runner.os }}-${{ hashFiles('bun.lock') }}
+          restore-keys: |
+            bun-${{ runner.os }}-
+
+      - name: Install dependencies
+        run: bun install --frozen-lockfile
+
+      # Fails on dead links between pages.
+      - name: Build
+        run: bun run docs:build
+
+      - name: Public-content guard (sources and built output)
+        run: bun run docs:public docs/.vitepress/dist
+
+      - name: Accessibility check
+        run: |
+          set -euo pipefail
+          ./node_modules/.bin/vitepress preview docs --port 4173 > "${RUNNER_TEMP}/preview.log" 2>&1 &
+          for _ in $(seq 1 30); do
+            # Silent while the preview server starts; the loop waits up to 30 s.
+            curl -fs -o /dev/null http://localhost:4173/jh-repositories-mcp/ && break
+            sleep 1
+          done
+          base=http://localhost:4173/jh-repositories-mcp
+          npx --yes @axe-core/cli@4.14.0 \
+            "${base}/" \
+            "${base}/architecture/overview" \
+            "${base}/reference/mcp-surface" \
+            "${base}/guides/local-development" \
+            --chromedriver-path "${CHROMEWEBDRIVER}/chromedriver" \
+            --exit
+
+      - name: Upload Pages artifact
+        if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+        uses: actions/upload-pages-artifact@v3
+        with:
+          path: docs/.vitepress/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@v4

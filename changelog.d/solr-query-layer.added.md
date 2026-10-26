@@ -1,1 +1,0 @@
-Implement the safe Solr query layer: Lucene/Solr value encoder, RepositoryProfile-parameterized search/facet/MoreLikeThis builders with a non-client-accessible immutable-public-filter step, bounded request parameters (fl, rows, start, timeAllowed), and a fixed-URL Solr client restricted to /select and /mlt with redirects disabled

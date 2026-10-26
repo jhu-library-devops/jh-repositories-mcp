@@ -1,1 +1,0 @@
-Add privacy-preserving observability: a deny-by-default tool-invocation serializer that constructs every emitted key explicitly, bounded free-text logging that never emits metadata objects, CloudWatch EMF metric lines dimensioned by tool, and registry wiring with correlation IDs and client info; Property 14 tests prove hostile fields and research content cannot reach logs

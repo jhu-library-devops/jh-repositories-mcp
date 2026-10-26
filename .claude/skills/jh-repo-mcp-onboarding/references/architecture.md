@@ -50,8 +50,14 @@ src/
 config/repositories/        RepositoryProfiles (field allowlists, immutable filters) and endpoints
 test/{unit,property,contract,integration,spike,fixtures}/
 infra/                      OpenTofu: modules/mcp-service, modules/mcp-shared, environments/
-docs/adr/                   12 accepted ADRs
-.kiro/specs/jscholarship-jhrdr-mcp/   requirements.md, design.md, tasks.md
+docs/                       Published developer reference (VitePress site)
+  reference/                Generated from source by `bun run docs:generate`; never hand-edit
+  architecture/, guides/    Hand-written; each page lists its `sources:` in front matter
+  adr/                      12 accepted ADRs
+  spike/                    Schema and route investigations (not published)
+  .vitepress/               Site config and the JHU brand theme
+scripts/docs/               Reference generators and docs checks (paths, public content, staleness, PR impact)
+.kiro/specs/<feature>/      requirements.md, design.md, tasks.md per feature (working records, not published)
 ```
 
 The single most important structural fact: **`src/adapters/index.ts` is the
@@ -68,7 +74,8 @@ Trace `search_items` and you have traced 80% of the system.
 1. **`src/index.ts`** — `loadConfig()` at module scope; on failure the process
    exits 1 (fail-fast config). Adapters are constructed once at module scope and
    wrapped: `withCaching(new JScholarshipAdapter({...}))`, and the same for
-   `JhrdrAdapter` **only if all three JHRDR env URLs are set** — so JHRDR is
+   `JhrdrAdapter` **only if `JHRDR_SOLR_URL` and `JHRDR_API_URL` are set**
+   (`JHRDR_PUBLIC_URL` has a default) — so JHRDR is
    optional at runtime and the server happily serves JScholarship alone.
    `createSemaphore(config.concurrency.maxToolConcurrency)` bounds in-flight
    tool calls. Routes: `GET /health/live`, `GET /health/ready`, `GET /version`,
@@ -159,7 +166,9 @@ ADR-004 and it is the decision to preserve if you extend the system.
 
 Where the two adapters legitimately diverge:
 
-- **Related records.** JScholarship uses Solr MoreLikeThis (`/mlt`). Dataverse
+- **Related records.** JScholarship uses Solr MoreLikeThis as a search
+  component on `/select` (`mlt=true`); the Solr client refuses any other path.
+  Dataverse
   has no MLT configuration, so JHRDR builds a bounded keyword string from
   title + creators + subjects (capped around 400 chars) and runs an ordinary
   keyword search, then filters the source record out.
@@ -211,7 +220,9 @@ filters, and the required vs optional Solr schema field lists. Changing what the
 service can search means editing a profile and re-running the schema validator —
 that deliberate friction is the point.
 
-Environment (`src/config/env.ts`, zod `safeParse`, all issues reported at once):
+Environment (`src/config/env.ts`, zod `safeParse`, all issues reported at once).
+The generated `docs/reference/configuration.md` is the maintained list with
+descriptions; the summary below is for orientation:
 
 Required — startup fails without them: `ENVIRONMENT` (`stage`|`production`),
 `BUILD_VERSION`, `BUILD_COMMIT`, `JSCHOLARSHIP_SOLR_URL`, `JSCHOLARSHIP_API_URL`,
@@ -230,8 +241,10 @@ and calls `validateSchema()` → `validateSolrSchema` GETs `/schema/fields` and
 `optionalSchemaFields` (missing ⇒ `missingOptional` + `disabledFeatures`, with
 dynamic-pattern matching for `*_mlt`-style fields). Results land in
 `readinessState`; `/health/ready` returns 503 until validated. `SIGTERM` flips
-readiness off first, then exits after the deadline — that ordering is what lets
-the load balancer drain.
+readiness off, then exits one request deadline later so in-flight requests can
+finish. Note that the deployed container health check and the ALB target group
+both probe `/health/live`, not `/health/ready`, so readiness is reported but does
+not gate routing.
 
 ## Security and observability
 
@@ -240,13 +253,18 @@ the load balancer drain.
 does Host/Origin validation (DNS-rebinding defense), body-size bounding, and
 sets the `x-request-id` header that the transport later reads back. Note that
 host checking is **skipped entirely when `ALLOWED_HOSTS` is empty** — which is
-why env validation requires at least one entry.
+why env validation requires at least one entry. When it runs, it compares the raw
+`Host` header exactly, port included, so a local client needs
+`ALLOWED_HOSTS=localhost:3000`, not `localhost`.
 
 `src/observability/index.ts` — `serializeToolInvocation` is **deny-by-default**:
 it constructs the log object field by field from a known set rather than
 filtering a payload. That's the right shape for redaction, because the failure
-mode of a denylist is silent leakage of a field someone added later. Free text
-is truncated; metrics go out as CloudWatch EMF (`Calls`, `Errors`, `LatencyMs`,
+mode of a denylist is silent leakage of a field someone added later.
+`serializeBackendFault` does the same for `backend_fault` lines, which give
+operators the failing operation, error class, and HTTP status behind an opaque
+`backend_unavailable` without any URL, identifier, or message. Free text is
+truncated and metadata objects passed to `info`/`warn`/`error` are dropped; metrics go out as CloudWatch EMF (`Calls`, `Errors`, `LatencyMs`,
 `ZeroResults`, `PartialResults`, dimensioned by `Tool`). Query strings and
 record metadata are not logged.
 
@@ -273,13 +291,13 @@ Multi-stage `Dockerfile` (Bun, non-root). `infra/` is OpenTofu with two modules
 service, networking, observability) — driven by `environments/{stage,prod}.tfvars`.
 One MCP service per environment (ADR-001).
 
-`.github/workflows/`: `ci.yml` (install → lint → typecheck → test → build, plus
-a dependency audit), `build-push.yml`, `deploy.yml`, `infra-validate.yml`,
-`smoke-test.yml`, `public-readiness.yml`.
+`.github/workflows/`: `ci.yml` (install → lint → docs checks → typecheck → test →
+build, plus a dependency audit), `build-push.yml`, `deploy.yml`, `infra-validate.yml`,
+`smoke-test.yml`, and `docs.yml`, `docs-impact.yml`, `docs-freshness.yml` for the
+developer reference site.
 
-Per `.kiro/specs/…/tasks.md`, tasks 1–19 and 22–24 are complete; the open work
-is 20 (OpenTofu stack), 21 (public edge), 25 (pilot evaluation), and 26
-(production release).
+For what remains to be built, read the unchecked items in
+`.kiro/specs/*/tasks.md` directly rather than relying on a summary.
 
 ## Sharp edges worth knowing
 
@@ -301,7 +319,7 @@ have been fixed since this was written.
   TTL at or below Solr re-index lag; cached records are re-probed via
   `probePublic` before being served. Don't "optimize" the record probe away.
 - **`disabledFeatures` is computed and reported but not enforced** — the
-  JScholarship `related()` path will still issue an `/mlt` query even when the
+  JScholarship `related()` path will still issue a MoreLikeThis query even when the
   schema validator reported those dynamic fields missing.
 - **`filters.access` is accepted by the schema and always unsupported** —
   `translateFilters` unconditionally marks it unsupported, so clients get a
@@ -314,6 +332,17 @@ have been fixed since this was written.
 - **JHRDR's Solr-side `discoverableBy:Anonymous` clause is commented out**
   pending verification, so for JHRDR the canonical `versionState === "RELEASED"`
   check is doing the real work.
+- **Readiness does not gate traffic in deployment.** The ECS container health
+  check and the ALB target group both probe `/health/live`. A task whose schema
+  validation failed still receives requests; only the smoke test checks
+  `/health/ready`.
+- **Three declared error codes are never emitted.** `deadline_exceeded`,
+  `unsupported_parameter`, and `capability_unavailable` exist in `ToolErrorCode`
+  but no handler throws them. An overrun deadline is an HTTP 504 JSON-RPC error
+  from `deadlineMiddleware`, not a tool error.
+- **JHRDR's keyword search includes `_text_`** (boost 1) in `queryFields.keyword`,
+  even though the profile's `fulltextDecision.rationale` says that field is kept
+  out of the keyword list. Code wins; the rationale text is stale.
 
 ## Common change recipes
 
@@ -322,7 +351,10 @@ have been fixed since this was written.
 `optionalSchemaFields`; extend `translateFilters` in `src/adapters/solr-query.ts`;
 extend the zod input schema in `src/models/schemas.ts`; add a property test
 proving the emitted field stays allowlisted. Run the schema validator against a
-real Solr before assuming the field exists in the deployed index.
+real Solr before assuming the field exists in the deployed index. Then run
+`bun run docs:generate`: the repository capability tables in
+`docs/reference/repositories.md` are produced by running each concept through
+the real query builder, and CI fails until they are regenerated.
 
 **Add a tool.** This is a scope change, not just a code change — the registry is
 a closed table by design (Requirement 17, ADR-008). Update the spec first, then
@@ -330,6 +362,9 @@ add `src/mcp/tools/<name>.ts`, a strict zod input/output schema with
 `additionalProperties: false`, an entry in `TOOLS` with a text renderer, and an
 integration test. `test/integration/excluded-capabilities.test.ts` exists
 specifically to fail when the surface grows, so expect to update it deliberately.
+Regenerate the docs (`bun run docs:generate`) so `docs/reference/mcp-surface.md`
+and the injected tool tables in `README.md` and `CLAUDE.md` pick it up, and
+update `EXPECTED_TOOLS` in `scripts/smoke-test.sh`.
 
 **Add a third repository.** Implement `RepositoryAdapter` in a new
 `src/adapters/<id>/` with its own platform client and public gate; add a profile
@@ -337,10 +372,24 @@ under `config/repositories/`; add the id to `RepositoryId` and the namespacing
 in `src/models/identifiers.ts`; then extend `src/federation/index.ts` — and note
 that the cursor is currently a two-repository shape (`jsOffset`/`dvOffset`) and
 the tie-break alternates between exactly two sources. That cursor version bump
-is the real work.
+is the real work; `.kiro/specs/n-repository-federation/` covers generalizing it,
+so read it before starting.
 
 **Change a public-access rule.** Change the profile's immutable filters *and*
 the platform client's public gate together, add a fixture for the newly
 excluded case in `test/fixtures/`, and extend
 `test/integration/non-public-disclosure.test.ts`. Never change one of the two
-layers alone.
+layers alone. Then regenerate the docs: the public-access rules listed in
+`docs/reference/repositories.md` come from the profile's filter descriptions.
+
+**Change configuration or error codes.** A new environment variable needs a
+description in `scripts/docs/generators/configuration.ts`, and a new
+`ToolErrorCode` or warning code needs one in `scripts/docs/generators/errors.ts`.
+Both are `Record`s keyed by the code's own types, so `bun run typecheck` fails
+until you add them.
+
+**Change behavior a hand-written doc describes.** Pages under
+`docs/architecture/` and `docs/guides/` list the files they describe in
+`sources:` front matter. The PR gets an advisory comment naming the affected
+pages; re-read each against the code, fix it, and set `verified:` to today.
+Pages describe the system as built: no task numbers, plans, or progress notes.

@@ -1,0 +1,66 @@
+name: Docs Freshness
+
+# Weekly sweep: keeps one open issue listing hand-written docs pages whose
+# sources changed after their `verified:` date, or that are overdue for review.
+# Closes the issue when every page is current.
+
+on:
+  schedule:
+    - cron: "0 13 * * 1" # Mondays 13:00 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  issues: write
+
+concurrency:
+  group: docs-freshness
+  cancel-in-progress: false
+
+jobs:
+  sweep:
+    name: Freshness sweep
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Install Bun
+        uses: oven-sh/setup-bun@v2
+        with:
+          bun-version-file: .bun-version
+
+      - name: Build report
+        id: report
+        run: |
+          set -euo pipefail
+          bun run scripts/docs/staleness.ts --output docs-freshness.md
+          cat docs-freshness.md >> "${GITHUB_STEP_SUMMARY}"
+          if grep -q '^- \[ \]' docs-freshness.md; then
+            echo "attention=true" >> "${GITHUB_OUTPUT}"
+          else
+            echo "attention=false" >> "${GITHUB_OUTPUT}"
+          fi
+
+      - name: Update tracking issue
+        env:
+          GH_TOKEN: ${{ github.token }}
+          ATTENTION: ${{ steps.report.outputs.attention }}
+        run: |
+          set -euo pipefail
+          label=docs-freshness
+          title="Developer docs need review"
+          gh label create "${label}" --color 68ACE5 \
+            --description "Developer reference pages whose sources changed" 2>/dev/null || true
+          issue=$(gh issue list --label "${label}" --state open --json number --jq '.[0].number // empty')
+          if [ "${ATTENTION}" = "true" ]; then
+            if [ -n "${issue}" ]; then
+              gh issue edit "${issue}" --body-file docs-freshness.md
+            else
+              gh issue create --title "${title}" --label "${label}" --body-file docs-freshness.md
+            fi
+          elif [ -n "${issue}" ]; then
+            gh issue close "${issue}" --comment "Every tracked documentation page is current."
+          fi
