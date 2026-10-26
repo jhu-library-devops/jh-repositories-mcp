@@ -1,5 +1,5 @@
 ---
-title: Adding a repository
+title: Add a repository
 sources:
   - src/adapters/index.ts
   - src/adapters/jscholarship/
@@ -9,12 +9,14 @@ sources:
   - src/index.ts
   - src/config/env.ts
   - config/repositories/
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
-# Adding a repository
+# Add a repository
 
 A repository is an adapter behind the `RepositoryAdapter` seam plus a profile. Use the two existing adapters as the pattern: they share query-building and validation helpers but keep their own platform client and public check ([ADR-004](../adr/ADR-004-two-platform-specific-adapters.md)).
+
+Before you write code, decide what "public" means on the new platform, and plan to enforce it twice: as immutable Solr filters in the profile, and as the canonical check in the platform client. See [Canonical gate](../architecture/canonical-gate.md).
 
 ## What to build
 
@@ -26,19 +28,11 @@ A repository is an adapter behind the `RepositoryAdapter` seam plus a profile. U
 | Endpoints | `config/repositories/<id>-endpoints.ts` | Private network locations per environment. Never publish these. |
 | Repository ID | `RepositoryId` and the namespacing in `src/models/identifiers.ts` | Record IDs are `<id>:<platform-id>`, so platforms cannot collide. |
 | Configuration | `src/config/env.ts` and `src/index.ts` | New URL variables, and wiring the adapter (wrapped in `withCaching`) into the tool context and startup schema validation. |
-| Fixtures and tests | `test/fixtures/<id>/`, `test/contract/`, `test/integration/` | Include deliberately non-public records. See [Testing and fixtures](./testing-and-fixtures.md). |
-
-Decide what "public" means on the new platform before writing code, and enforce it twice: as immutable Solr filters in the profile, and as the canonical check in the platform client. See [Canonical gate](../architecture/canonical-gate.md).
+| Fixtures and tests | `test/fixtures/<id>/`, `test/contract/`, `test/integration/` | Include deliberately non-public records. See [Write tests and fixtures](./testing-and-fixtures.md). |
 
 ## Federation limits today
 
-The federation layer is written for two repositories:
-
-- The cursor stores one offset per repository in named fields (`jsOffset`, `dvOffset`).
-- The tie-break alternates between exactly two sources.
-- Several schemas bound repository lists at two entries.
-
-A third repository therefore needs a new cursor version and a generalized merge, not only a new adapter. Treat that as a structural change and record it in an ADR. See [Federation and pagination](../architecture/federation.md).
+The federation layer is written for two repositories: the cursor stores one offset per repository in named fields, the tie-break alternates between exactly two sources, and several schemas bound repository lists at two entries. A third repository therefore needs a new cursor version and a generalized merge, not only a new adapter. Treat that as a structural change and record it in an ADR. See [Federation and pagination](../architecture/federation.md) and [Known limitations](../architecture/known-limitations.md#federation-is-written-for-exactly-two-repositories).
 
 ## Checklist
 

@@ -18,17 +18,18 @@ fastest, because nothing fails when they're wrong.
 | Path | Authoritative for | Read it when |
 | --- | --- | --- |
 | `src/`, `config/`, `test/` | What the system actually does | Always, for behavior questions |
-| `docs/` (published at <https://jhu-library-devops.github.io/jh-repositories-mcp/>) | The developer reference: `docs/reference/` is generated from source (MCP surface, configuration, repository capabilities, errors, infrastructure); `docs/architecture/` and `docs/guides/` are hand-written and declare their `sources:` | Pointing someone at the canonical write-up of a behavior, or checking an exact schema or default |
+| `docs/` (published at <https://jhu-library-devops.github.io/jh-repositories-mcp/>) | The developer reference: `docs/reference/` is generated from source (MCP surface, configuration, repository capabilities, errors, infrastructure); `docs/architecture/` (including `concepts.md` and `known-limitations.md`), `docs/guides/`, and `docs/glossary.md` are hand-written and declare their `sources:` | Pointing someone at the canonical write-up of a behavior, or checking an exact schema or default |
 | `docs/adr/` (12 ADRs, MADR format, published on the site) | **Why** a structural choice was made, and what it cost | Someone asks "why is it like this" or proposes reversing a decision |
 | `.kiro/specs/jscholarship-jhrdr-mcp/requirements.md` | Numbered acceptance criteria (Requirements 1–17) + the authoritative glossary | You need to know whether a behavior is required or incidental |
 | `.kiro/specs/jscholarship-jhrdr-mcp/design.md` | The intended architecture, component interfaces, the correctness properties, rollout phases | Deep design questions; the property list is what `test/property/` implements |
 | `.kiro/specs/*/tasks.md` | Dependency-ordered build plans with completion state, one per feature spec (`jscholarship-jhrdr-mcp`, `n-repository-federation`, `agent-knowledge-base`) | "What's left to build" / picking up work. Read the checkboxes; don't trust a summary of them elsewhere |
-| `CONTEXT.md` | Domain language — the terms to use and the ones to avoid | Early, and whenever naming something |
+| `docs/glossary.md` (published), with `CONTEXT.md` keeping the example dialogue | Domain language — the terms to use and the ones to avoid | Early, and whenever naming something |
 | `docs/spike/` | Verified real-world facts about the deployed DSpace/Dataverse Solr schemas and routes. Working records: excluded from the published site | Before assuming a Solr field exists |
 | `test/fixtures/*/README.md` | Provenance and sanitization rules for fixtures | Before adding any fixture |
 | `.kiro/steering/` | Team standards: TypeScript formatting, error handling, logging, security, testing | Writing code, especially error handling and logging |
 | `.claude/skills/` | This skill — the only committed part of `.claude/`. Agents, system prompts, and settings under `.claude/` are gitignored and per-developer | Working out what agent configuration ships with the repo |
-| `ONBOARDING.md` | Human-facing setup guide: toolchain, installing this skill (project, `--add-dir`, personal, Claude.ai), and using it to build a sibling server | Someone asks how to install or share this skill |
+| `ONBOARDING.md` | The new-contributor path: get it running, reading order, first change | Someone is new |
+| `.claude/skills/jh-repo-mcp-onboarding/README.md` | Installing this skill (project, `--add-dir`, personal, Claude.ai), using it, and building a sibling server with it | Someone asks how to install or share this skill |
 | `CLAUDE.md` | Orientation for AI agents: invariants, commands, conventions, known rough edges. Its tool and environment lists are injected by the docs generator | Starting any task in the repo |
 | `AGENTS.md` | Same role, different tool — style, testing, and PR guidance | With the same skepticism as any instruction file |
 | `.kiro/steering/docs-drift-audit.md` | The procedure for auditing `docs/` against the code (manual inclusion) | Someone asks to refresh or audit the developer docs |

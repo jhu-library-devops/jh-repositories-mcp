@@ -7,18 +7,18 @@ sources:
   - src/mcp/transport.ts
   - src/mcp/tools/search-items.ts
   - src/observability/index.ts
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
 # Troubleshooting
 
-Start from the symptom. Codes and messages are explained in [Errors and warnings](../reference/errors.md); log fields in [Observability](../architecture/observability.md).
+Find your symptom below and follow the row. Codes and messages are explained in [Errors and warnings](../reference/errors.md); log fields in [Observability](../architecture/observability.md).
 
 ## The process exits at startup
 
 The log starts with `Environment configuration validation failed:` and lists every invalid variable. Set or fix each one; see [Configuration](../reference/configuration.md).
 
-If the JHRDR variables are set to a malformed non-empty value, the process can also exit while constructing the JHRDR adapter, after configuration validation has passed. `JHRDR_SOLR_URL` and `JHRDR_API_URL` are not URL-validated.
+If the JHRDR variables are set to a malformed non-empty value, the process can also exit while constructing the JHRDR adapter, after configuration validation has passed. `JHRDR_SOLR_URL` and `JHRDR_API_URL` are not URL-validated; see [Known limitations](../architecture/known-limitations.md#jhrdr-urls-are-not-validated-at-startup).
 
 ## `/health/ready` returns 503
 

@@ -6,12 +6,12 @@ sources:
   - src/mcp/tools/list-facets.ts
   - src/mcp/tools/find-related-items.ts
   - src/adapters/canonicalize.ts
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
 # Federation and pagination
 
-A search fans out to each selected repository, and the per-repository pages are merged into one list. Federation lives in `src/federation/index.ts`; the tool handlers in `src/mcp/tools/` call it.
+A search fans out to each selected repository, and the per-repository pages are merged into one list. Federation lives in `src/federation/index.ts`; the tool handlers in `src/mcp/tools/` call it. Nothing in this layer knows which platform a page came from; it sees ranked lists of namespaced records.
 
 ## Fan-out and partial results
 
@@ -23,7 +23,7 @@ A search fans out to each selected repository, and the per-repository pages are 
 
 ## Merging rankings
 
-DSpace and Dataverse Solr scores are not comparable, so they are never read. Each repository's order is kept as its **Repository_Rank**, and the lists are merged with balanced reciprocal-rank fusion ([ADR-007](../adr/ADR-007-balanced-reciprocal-rank-merge.md)):
+DSpace and Dataverse Solr scores are not comparable: the two indexes have different schemas, boosts, and document counts, so a score of 4.2 from one says nothing against a 4.2 from the other. The scores are never read. Each repository's order is kept as its **Repository_Rank**, and the lists are merged with balanced reciprocal-rank fusion ([ADR-007](../adr/ADR-007-balanced-reciprocal-rank-merge.md)):
 
 ```text
 fusionScore = weight / (60 + repositoryRank)      weight = 1 for every repository
@@ -37,7 +37,7 @@ Equal scores are broken deterministically:
 
 ## The cursor
 
-Pagination state lives entirely in an opaque cursor, so any task can serve any page. There is no server-side session.
+Pagination state lives entirely in an opaque cursor, so any task can serve any page. There is no server-side session, which is what lets the service run as several identical Fargate tasks behind one load balancer.
 
 | Field | Meaning |
 | --- | --- |
@@ -55,4 +55,4 @@ Offsets advance by the number of candidates each repository *consumed*, includin
 ## Facets and related records
 
 - `list_facets` asks each selected repository for counts on the requested facets. The `repository` facet is synthesized from each repository's match total. A facet a repository cannot provide is skipped with an `unsupported_filter` warning. `list_facets` also accepts an empty query.
-- `find_related_items` resolves the source record, asks the target repositories for related candidates, merges them the same way as a search, and removes the source record. Because the source is removed after the merge trims to `limit`, a response can hold fewer than `limit` results.
+- `find_related_items` resolves the source record, asks the target repositories for related candidates, merges them the same way as a search, and removes the source record. Because the source is removed after the merge trims to `limit`, a response can hold fewer than `limit` results; see [Known limitations](./known-limitations.md#related-record-pages-can-be-short).

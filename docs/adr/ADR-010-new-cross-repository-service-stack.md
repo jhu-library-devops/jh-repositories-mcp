@@ -7,46 +7,42 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-The MCP service integrates with both JScholarship and JHRDR but belongs to neither repository alone. We must decide whether to deploy it within an existing repository's infrastructure stack or create an independent stack.
+The service integrates with both JScholarship and JHRDR but belongs to neither. We had to decide whether to deploy it inside an existing repository's infrastructure stack or to give it a stack of its own.
 
 ## Decision Drivers
 
-- The MCP belongs to neither repository alone and should be deployable independently
-- Requirement 13: Independent ECS cluster, security groups, ALB, and WAF
-- Cross-stack security-group rules must avoid circular remote-state dependencies
-- Repository stacks should not depend on the MCP stack (one-way reference)
-- Independent release cadence from either repository
+- The service belongs to neither repository and should deploy independently
+- Its own ECS cluster, security groups, load balancer, and WAF
+- Cross-stack security-group rules without circular remote-state dependencies
+- Repository stacks must not depend on the MCP stack
+- A release cadence independent of either repository
 
 ## Considered Options
 
-1. New cross-repository service stack (independent infrastructure)
-2. Deploy within the JScholarship infrastructure stack
-3. Deploy within a shared platform infrastructure stack
+1. **A new, independent cross-repository stack.** Chosen.
+2. **Deploy inside the JScholarship stack.** Rejected: a JHRDR-only change would then ship through the JScholarship pipeline, and a JScholarship infrastructure change could take the JHRDR integration down with it.
+3. **Deploy inside a shared platform stack.** Rejected: no such stack existed, and creating one for a single service is this option under another name.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — New cross-repository service stack, because the MCP belongs to neither repository alone and should be deployable independently.
+The service has its own OpenTofu stack: a shared layer (IAM, load balancer, WAF) and one service per environment. It reads the repository stacks' exported outputs (VPC, subnets, security-group IDs) and owns the cross-stack ingress rules itself, so the dependency runs one way.
 
 ### Positive Consequences
 
-- Independent release and deployment cadence
-- No coupling to either repository's infrastructure lifecycle
-- Clear ownership boundaries and blast radius isolation
-- Cross-stack security-group rules are owned by the MCP stack using exported IDs
-- Repository stacks expose IDs but do not depend on the MCP stack (no circular dependencies)
+- Independent release and deployment cadence.
+- No coupling to either repository's infrastructure lifecycle.
+- Clear ownership and blast-radius isolation.
+- The MCP stack owns the cross-stack rules; the repository stacks export IDs and depend on nothing.
 
 ### Negative Consequences
 
-- Additional infrastructure to manage (dedicated ALB, cluster, security groups)
-- Must read remote state from both repository stacks for VPC, subnets, and SG IDs
-- Slightly higher cost from dedicated ALB (accepted for security isolation)
-- Coordination required when repository stacks change exported outputs
+- More infrastructure to manage: a dedicated load balancer, cluster, and security groups.
+- Remote state from both repository stacks is read at plan time.
+- A dedicated load balancer costs more. Accepted for the isolation.
+- Changes to the repository stacks' exported outputs need coordination.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table, Infrastructure section
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 13
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 20, 21
-- Branch: tofu-iac-starter
+- [Architecture overview](../architecture/overview.md), deployment topology
+- [Infrastructure](../reference/infrastructure.md)
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

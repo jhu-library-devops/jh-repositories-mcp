@@ -231,7 +231,7 @@ Then the constraint, stated plainly: the service must never disclose a record
 that isn't public — withdrawn theses, embargoed datasets, drafts, restricted
 deposits — and must never let a client *infer* one exists.
 
-Point them at `CONTEXT.md` and have them read it now, not later. It's the domain
+Point them at `docs/glossary.md` and have them read it now, not later. It's the domain
 glossary, it's short, and the terms are used precisely throughout the code and
 specs. The one distinction to draw their attention to: a **Candidate** is a Solr
 hit that hasn't been validated and is never returned to anyone; a

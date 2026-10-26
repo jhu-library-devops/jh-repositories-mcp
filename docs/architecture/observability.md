@@ -5,12 +5,12 @@ sources:
   - src/mcp/registry.ts
   - src/mcp/tools/get-item.ts
   - infra/modules/mcp-service/observability.tf
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
 # Observability
 
-All telemetry is JSON lines on stdout, collected by the container's log driver. `src/observability/index.ts` builds every line.
+All telemetry is JSON lines on stdout, collected by the container's log driver. `src/observability/index.ts` builds every line, and it builds each one from an approved list of fields rather than by filtering an object. That choice is what keeps query text and record metadata out of the logs.
 
 ## Log events
 

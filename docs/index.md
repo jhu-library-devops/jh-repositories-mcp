@@ -4,47 +4,56 @@ title: Developer reference
 sources:
   - src/index.ts
   - src/mcp/registry.ts
-verified: 2026-10-21
+verified: 2026-10-26
 hero:
   name: JHU Repositories MCP
-  text: Developer reference
-  tagline: A read-only Model Context Protocol server for searching and citing public records in JScholarship and JHRDR.
+  text: Search and cite JHU repositories from an AI assistant
+  tagline: A read-only Model Context Protocol server over JScholarship and JHRDR. It returns only records the repositories themselves confirm are public.
   actions:
     - theme: brand
-      text: Architecture overview
+      text: How it works
       link: /architecture/overview
-    - theme: alt
-      text: MCP surface
-      link: /reference/mcp-surface
     - theme: alt
       text: Run it locally
       link: /guides/local-development
+    - theme: alt
+      text: MCP surface
+      link: /reference/mcp-surface
 features:
-  - title: Reference
-    details: Tools, schemas, configuration, repository capabilities, errors, and infrastructure. Generated from source and checked in CI.
-    link: /reference/mcp-surface
-  - title: Architecture
-    details: The adapter seam, the canonical gate, federation and cursors, and the security model.
-    link: /architecture/overview
-  - title: Guides
-    details: Running locally, adding a repository, changing the MCP surface, testing, deploying, and troubleshooting.
+  - title: Understand it
+    details: Start with Concepts if one half of the stack is new to you, then the overview and the canonical gate.
+    link: /architecture/concepts
+  - title: Change it
+    details: Run the server, add a filter or a repository, and write the tests that keep the disclosure guarantee intact.
     link: /guides/local-development
-  - title: Decisions
-    details: Architecture decision records explaining why each structural choice was made.
-    link: /adr/
+  - title: Operate it
+    details: Configure, deploy, roll back, and read the logs when something goes wrong.
+    link: /guides/deploy-and-rollback
+  - title: Look it up
+    details: Every tool, schema, variable, error code, and infrastructure input, generated from the code.
+    link: /reference/mcp-surface
 ---
 
-# About this reference
+# What this is
 
-This site describes `jh-repositories-mcp` as it is built today. It covers interfaces, behavior, and how to extend and operate the service. Plans and history live elsewhere: release notes in [`CHANGELOG.md`](../CHANGELOG.md), and design intent in the project's specifications.
+`jh-repositories-mcp` gives AI research assistants one search interface over two Johns Hopkins repositories that run on different platforms:
 
-## How the pages are kept current
+| Repository | Holds | Platform |
+| --- | --- | --- |
+| **JScholarship** | Theses, dissertations, articles, and reports | DSpace |
+| **JHRDR**, the Johns Hopkins Research Data Repository | Research datasets | Dataverse |
 
-- Pages under **Reference** are generated from the code by `bun run docs:generate`. CI fails when they are out of date.
-- Every other page names the source files it describes. When those files change, the pull request gets an advisory comment listing the pages to recheck, and a weekly sweep flags pages whose sources changed since they were last verified.
+An assistant connected to the server can search both at once, page through merged results, fetch one record with its citation and public file list, find related records, and ask how a query would be interpreted before running it. Every record it returns was confirmed public by the repository's own API moments before it was sent.
 
-See [Maintaining these docs](./guides/maintaining-docs.md) for the details.
+## What it is not
 
-## When sources disagree
+The server is anonymous and read-only. It has no accounts, no writes, no file downloads, no embedded language model, and no vector search. The assistant does the reasoning; the server supplies evidence with persistent identifiers to cite. Those limits are deliberate, and the [decision records](./adr/README.md) explain each one.
 
-The code is the ground truth. If a page and the code disagree, the code wins: open an issue or fix the page.
+## Where to start
+
+- **New to MCP, or new to DSpace and Dataverse?** Read [Concepts](./architecture/concepts.md) first. It explains each half of the stack for people who know the other half.
+- **About to change code?** Read the [overview](./architecture/overview.md), then the [canonical gate](./architecture/canonical-gate.md). Everything else in the design follows from the gate.
+- **Running or debugging a deployment?** Go to [Deploy and roll back](./guides/deploy-and-rollback.md) and [Troubleshooting](./guides/troubleshooting.md).
+- **Need an exact schema, default, or error code?** The [reference](./reference/mcp-surface.md) pages are generated from the code and checked in CI, so they are always current.
+
+The site describes the service as built. If a page and the code disagree, the code is right. [Maintain these docs](./guides/maintaining-docs.md) explains how to report or fix the page.

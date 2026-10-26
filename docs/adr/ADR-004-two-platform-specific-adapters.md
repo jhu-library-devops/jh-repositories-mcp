@@ -7,45 +7,42 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-JScholarship is DSpace and JHRDR is Dataverse. They have different Solr schemas, metadata models, canonical APIs, access semantics, identifier systems, and field configurations. We must decide how to structure the code that interacts with each platform.
+JScholarship is DSpace and JHRDR is Dataverse. They have different Solr schemas, metadata models, canonical APIs, access semantics, identifier systems, and field configurations. We had to decide how to structure the code that talks to each platform.
 
 ## Decision Drivers
 
-- Requirement 2: JScholarship uses DSpace Discovery configuration and DSpace REST
-- Requirement 3: JHRDR preserves Dataverse dataset metadata and DOI semantics
-- Requirement 10.2: Every query field mapped through a platform-specific Field Allowlist
-- Canonical APIs and access semantics cannot safely be collapsed
-- Federation and MCP layers must not name Solr fields or construct repository URLs
+- JScholarship follows DSpace Discovery configuration and resolves through DSpace REST
+- JHRDR preserves Dataverse dataset metadata and DOI semantics
+- Every query field maps through a platform-specific field allowlist
+- The two platforms' access rules cannot safely be collapsed into one check
+- The federation and MCP layers must not name Solr fields or construct repository URLs
 
 ## Considered Options
 
-1. Two platform-specific adapters behind one RepositoryAdapter interface
-2. Single unified adapter with platform-conditional branches
-3. Abstract base class with platform subclasses sharing query logic
+1. **Two platform-specific adapters behind one `RepositoryAdapter` interface.** Chosen.
+2. **One adapter with platform-conditional branches.** Rejected: the public check is the most security-sensitive code in the service, and a shared function full of `if (platform === …)` branches is where a DSpace assumption would quietly be applied to Dataverse.
+3. **An abstract base class with platform subclasses sharing query logic.** Rejected: inheritance would invite a shared `isPublic()` in the base class, which is exactly the thing that must not exist; composition of shared helpers gives the reuse without the shared semantics.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Two platform-specific adapters behind one interface, because JScholarship is DSpace and JHRDR is Dataverse; canonical APIs and access semantics cannot safely be collapsed below the adapter boundary.
+Each platform implements `RepositoryAdapter` in its own directory, with its own client and its own public check. Shared helpers (the query builder, `canonicalizeInOrder`, caching) are composed in, not inherited.
 
 ### Positive Consequences
 
-- Clean separation: all platform-specific knowledge stays inside its adapter
-- Federation and MCP layers are platform-agnostic
-- Each adapter can evolve independently (Dataverse metadata blocks, DSpace Discovery config)
-- Solr field names, URL construction, and access rules never leak outside adapter boundaries
-- Testing is isolated: fixtures are platform-specific
+- All platform-specific knowledge stays inside its adapter.
+- The federation and MCP layers are platform-agnostic.
+- Each adapter can evolve with its platform: Dataverse metadata blocks, DSpace Discovery configuration.
+- Solr field names, URL construction, and access rules never leak past the adapter boundary.
+- Fixtures and tests are platform-specific and isolated.
 
 ### Negative Consequences
 
-- Some structural duplication between adapters (search, canonicalize, normalize patterns)
-- Adding a third repository means implementing the full interface (by design)
-- Shared query builder must be generic enough for both platforms
+- Some structure repeats between adapters (search, canonicalize, normalize).
+- A third repository means implementing the whole interface. That is intended.
+- The shared query builder has to be generic enough for both platforms.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table, Component 3
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 2, 3, 9, 10
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 7, 9
-- Branch: tofu-iac-starter
+- [Architecture overview](../architecture/overview.md), the adapter seam
+- [Add a repository](../guides/add-a-repository.md)
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

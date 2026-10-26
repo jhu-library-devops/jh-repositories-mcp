@@ -1,14 +1,14 @@
 ---
-title: Deploying and rolling back
+title: Deploy and roll back
 sources:
   - .github/workflows/
   - Dockerfile
   - scripts/smoke-test.sh
   - infra/
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
-# Deploying and rolling back
+# Deploy and roll back
 
 The service ships as one container image, built once and promoted unchanged from stage to production. Infrastructure is OpenTofu in `infra/`; its inputs and resources are listed in [Infrastructure](../reference/infrastructure.md).
 
@@ -38,7 +38,7 @@ AWS access uses GitHub OIDC; no long-lived credentials are stored in the reposit
 
 Each ECS task definition references the image by environment tag (`stage` or `prod`). A deployment moves that tag to a specific digest, then forces a new deployment so tasks pull it. The ECS deployment circuit breaker is enabled with automatic rollback, so a deployment whose tasks never become healthy reverts to the previous task set.
 
-Both the container health check and the load balancer target group check `GET /health/live`. `GET /health/ready`, which reports Solr schema validation, is not used for routing, so a task whose schema validation failed still receives traffic. Check `/health/ready` (the smoke test does) after every deployment.
+Both the container health check and the load balancer target group check `GET /health/live`. `GET /health/ready`, which reports Solr schema validation, is not used for routing, so a task whose schema validation failed still receives traffic. Check `/health/ready` after every deployment; the smoke test does. See [Known limitations](../architecture/known-limitations.md#routing-health-does-not-include-schema-validation).
 
 ## Deploy to production
 
@@ -46,7 +46,7 @@ Production is never automatic.
 
 1. Confirm stage is healthy and the smoke test passed.
 2. Get the image digest (`sha256:…`) running in stage from the build run's summary or from ECR.
-3. Run the **Deploy** workflow manually with environment `production`, the digest, and the approver's name.
+3. Run the **Deploy** workflow manually with environment `production`, the digest, and your name as approver.
 
 The workflow refuses a malformed digest or a missing approver, and warns if the digest is not the one currently tagged `stage`.
 
@@ -63,4 +63,4 @@ Rolling back an image does not roll back infrastructure. Revert OpenTofu changes
 ./scripts/smoke-test.sh https://<service-host>
 ```
 
-The script checks both health endpoints, sends an MCP `initialize`, confirms the five expected tools are listed, and runs a search that should return public JScholarship records. `SMOKE_TIMEOUT`, `REQUEST_TIMEOUT`, and `SMOKE_QUERY` adjust it.
+The script checks both health endpoints, sends an MCP `initialize`, confirms the five expected tools are listed, and runs a search that should return public JScholarship records. `SMOKE_TIMEOUT`, `REQUEST_TIMEOUT`, and `SMOKE_QUERY` adjust it. If something is wrong, start from the symptom in [Troubleshooting](./troubleshooting.md).

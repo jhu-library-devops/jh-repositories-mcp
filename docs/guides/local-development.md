@@ -1,14 +1,16 @@
 ---
-title: Local development
+title: Run the server locally
 sources:
   - package.json
   - .bun-version
   - src/config/env.ts
   - src/index.ts
-verified: 2026-10-21
+verified: 2026-10-26
 ---
 
-# Local development
+# Run the server locally
+
+This guide takes you from a fresh clone to a server answering `tools/list`. It is the one place the setup commands live; other pages link here rather than repeating them.
 
 ## Prerequisites
 
@@ -30,7 +32,7 @@ bun run build                   # bundle to dist/
 
 ## Run the server
 
-Configuration is validated at startup, so `bun run dev` with no environment exits immediately and lists every missing variable. The smallest working set:
+Configuration is validated at startup, so `bun run dev` with no environment exits immediately and lists every missing variable. That is the intended behavior, not a crash. The smallest working set:
 
 ```bash
 ENVIRONMENT=stage BUILD_VERSION=dev BUILD_COMMIT=local \
@@ -82,3 +84,8 @@ Any MCP client that supports Streamable HTTP can connect to `http://localhost:30
 | `bun run docs:check` | Lint docs, validate links and cited paths, check generated output |
 | `bun run docs:dev` | Preview this site locally |
 | `bun run changelog:new` | Add a release-note fragment to `changelog.d/` |
+
+## Next
+
+- To understand what you just started, read the [overview](../architecture/overview.md).
+- To make a change, see [Change the MCP surface](./change-the-mcp-surface.md), [Add a repository](./add-a-repository.md), and [Write tests and fixtures](./testing-and-fixtures.md).

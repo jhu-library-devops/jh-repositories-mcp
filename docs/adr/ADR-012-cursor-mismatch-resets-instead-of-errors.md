@@ -1,15 +1,41 @@
 # ADR-012: Cursor Hash Mismatch Resets Pagination Instead of Returning an Error
 
-When a client passes a cursor whose query hash does not match the current normalized request (different query, filters, sort, or limit), the server resets pagination to offset (0, 0), returns first-page results for the new query, and includes a `cursor_reset` warning. It does not reject the request as invalid input.
+**Date:** 2024-07-24
+**Status:** Accepted
+**Deciders:** Platform engineering, library research services
+**Supersedes:** N/A
 
-This serves AI host models that iterate through research workflows: a model refines its search between calls and may naively pass a cursor from the previous query. A hard error would cause retry loops. A graceful reset lets the model observe the warning and continue without special cursor-management logic.
+## Context and Problem Statement
+
+A cursor is bound to the normalized query that produced it. When a client sends a cursor with a different query, filters, sort, or limit, the offsets inside it are meaningless for the new request. We had to decide how the server responds.
+
+## Decision Drivers
+
+- AI host models refine a search between calls and may pass the previous query's cursor
+- A hard error from a tool tends to put a model into a retry loop
+- Stale offsets must never produce nonsensical results
 
 ## Considered Options
 
-1. Reject mismatched cursors as `invalid_input` (strict, prevents nonsensical offset reuse, but causes model retry loops)
-2. Reset offsets and return a `cursor_reset` warning (graceful, self-correcting, but could mask accidental query drift)
-3. Make the cursor advisory — ignore hash entirely, always use the offsets (most permissive, but allows genuinely invalid pagination across unrelated queries)
+1. **Reject a mismatched cursor as `invalid_input`.** Rejected: strict, but a model that changed one filter and re-sent its cursor would get an error, retry with the same cursor, and get the same error.
+2. **Reset the offsets, return the first page of the new query, and add a `cursor_reset` warning.** Chosen.
+3. **Treat the cursor as advisory and use its offsets regardless.** Rejected: it would apply one query's offsets to another's results, skipping or repeating records.
 
-Option 2 was chosen because it preserves the safety property (stale cursors don't produce nonsensical results) while being compatible with AI models that lack sophisticated session management. The warning makes the reset observable, and the `explore_research_topic` prompt advises models to drop cursors when refining queries as a best practice.
+## Decision Outcome
 
-Malformed cursors and unsupported versions still produce `invalid_input` errors — only hash mismatches get the graceful reset.
+A well-formed cursor whose hash does not match the request resets pagination to the first page of the new query, with a `cursor_reset` warning so the reset is visible. Malformed cursors and unknown versions are still `invalid_input`; only a hash mismatch gets the reset.
+
+### Positive Consequences
+
+- Stale cursors cannot produce wrong pages.
+- Models without cursor-management logic recover on their own.
+- The warning keeps the reset observable, and the `explore_research_topic` prompt tells models to drop the cursor when they refine a query.
+
+### Negative Consequences
+
+- A client that changed its query by accident gets page one instead of an error, and has to notice the warning.
+
+## Links
+
+- [Federation and pagination](../architecture/federation.md), the cursor
+- [Errors and warnings](../reference/errors.md#warning-codes)

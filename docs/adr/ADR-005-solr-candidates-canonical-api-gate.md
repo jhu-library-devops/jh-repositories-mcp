@@ -7,45 +7,40 @@
 
 ## Context and Problem Statement
 
-Decision arose during **jscholarship-jhrdr-mcp** (.kiro/specs/jscholarship-jhrdr-mcp/design.md).
-
-We need fast, faceted search across both repositories while guaranteeing that only publicly accessible records reach MCP clients. Solr provides speed and search features but cannot be the sole access-control authority. The canonical repository APIs (DSpace REST, Dataverse Native API) are authoritative for public access but too slow for candidate generation.
+We need fast, faceted search across both repositories while guaranteeing that only publicly accessible records reach MCP clients. Solr provides the speed and the search features, but it cannot be the access-control authority: the indexes lag the platforms and their copies of access flags drift. The canonical repository APIs (DSpace REST, the Dataverse Native API) are authoritative for public access but too slow to generate candidates.
 
 ## Decision Drivers
 
-- Requirement 9: Every returned record must pass canonical API public-access validation
-- Requirement 10: Bounded, injection-proof Solr use
-- Requirement 2.4-2.6, 3.4-3.7: Candidates validated through canonical API before return
+- Every returned record must pass the canonical API's public-access check
+- Bounded, injection-proof use of Solr
 - Low-latency search with facets and related-record signals
-- Solr indexes may contain records that are not publicly accessible
+- The Solr indexes may contain records that are not publicly accessible
 
 ## Considered Options
 
-1. Direct private Solr for candidates, canonical API gate for every returned record
-2. Canonical API only (no direct Solr access)
-3. Solr only with immutable filters (no canonical API validation)
+1. **Private Solr for candidates, with a canonical API gate on every returned record.** Chosen.
+2. **Canonical API only, with no direct Solr access.** Rejected: neither platform's public API offers the facets, "more like this", or relevance tuning that the search experience needs, and both are far slower than Solr for candidate generation.
+3. **Solr only, relying on immutable filters.** Rejected: the filters narrow candidates to *plausibly* public records, but a withdrawn item stays in the index until the next re-index, and nothing short of asking the platform can tell the difference.
 
 ## Decision Outcome
 
-**Chosen option:** Option 1 — Direct private Solr for candidates, canonical API for every returned record, because Solr supplies fast search, facets, and related signals while the repository API remains the public-access authority.
+Solr supplies candidates, facets, and related-record signals. Every candidate is confirmed through the canonical API, called anonymously, before it is returned, and all returned metadata comes from that canonical response.
 
 ### Positive Consequences
 
-- Fast candidate generation with full Solr capabilities (facets, MLT, relevance)
-- Authoritative public-access gate prevents disclosure of withdrawn/draft/restricted content
-- Defense in depth: immutable Solr filters reduce candidate volume, canonical API provides final verification
-- Solr index inconsistencies cannot produce unauthorized disclosure
+- Fast candidate generation with Solr's full feature set.
+- An authoritative gate prevents disclosure of withdrawn, draft, or restricted content.
+- Defense in depth: the immutable filters reduce candidate volume, and the canonical check decides.
+- An inconsistent index cannot produce unauthorized disclosure.
 
 ### Negative Consequences
 
-- Every returned record requires an additional API call (bounded by worker pool and over-fetch ceiling)
-- Higher latency than Solr-only approach
-- Canonicalization fan-out must be bounded to prevent cascading load
-- A damaged index or API outage can reduce result counts (mitigated by over-fetch ceiling)
+- Every returned record costs one more API call, bounded by the worker pool and the over-fetch ceiling.
+- Latency is higher than a Solr-only design.
+- The canonicalization fan-out has to be bounded to avoid cascading load on the platforms.
+- A damaged index or an API outage reduces result counts rather than failing the search.
 
-## Links and References
+## Links
 
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/design.md — Architectural Decisions table, Request Flows
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/requirements.md — Req 2.4-2.6, 3.4-3.7, 9, 10
-- Spec: .kiro/specs/jscholarship-jhrdr-mcp/tasks.md — Task 5, 6, 7.2, 8, 9.2
-- Branch: tofu-iac-starter
+- [Canonical gate](../architecture/canonical-gate.md)
+- [Specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md) (working record)

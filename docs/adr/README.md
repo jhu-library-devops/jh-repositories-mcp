@@ -1,6 +1,8 @@
 # Architecture Decision Records
 
-This directory contains Architecture Decision Records (ADRs) for the JScholarship/JHRDR MCP Server project. ADRs capture significant architectural choices — context, decision, and consequences — in [MADR](https://adr.github.io/madr/) format.
+Each record here captures one structural choice: the situation, the options that were weighed and why the others lost, the decision, and what it costs. They follow the [MADR](https://adr.github.io/madr/) format. Records are append-only: to change a decision, add a new record that supersedes the old one.
+
+Read [ADR-005](./ADR-005-solr-candidates-canonical-api-gate.md) first. Most of the others follow from it.
 
 ## Index
 
@@ -16,9 +18,9 @@ This directory contains Architecture Decision Records (ADRs) for the JScholarshi
 | [ADR-008](./ADR-008-anonymous-read-only-v1.md) | Anonymous Read-Only v1 Access Model | Accepted | 2024-07-24 |
 | [ADR-009](./ADR-009-host-model-performs-synthesis.md) | Host Model Performs Synthesis | Accepted | 2024-07-24 |
 | [ADR-010](./ADR-010-new-cross-repository-service-stack.md) | New Cross-Repository Service Stack | Accepted | 2024-07-24 |
-| [ADR-011](./ADR-011-search-cache-never-bypasses-canonical-gate.md) | Search Cache Never Bypasses the Canonical API Gate | Accepted | 2024-07-24 |
+| [ADR-011](./ADR-011-search-cache-never-bypasses-canonical-gate.md) | Search Cache Never Bypasses the Canonical API Gate | Accepted; implementation differs | 2024-07-24 |
 | [ADR-012](./ADR-012-cursor-mismatch-resets-instead-of-errors.md) | Cursor Hash Mismatch Resets Pagination Instead of Returning an Error | Accepted | 2024-07-24 |
 
 ## Source
 
-All initial ADRs were derived from the architectural decisions documented in the [JScholarship/JHRDR MCP Server specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md).
+The initial records were written from the architectural decisions in the project [specification](../../.kiro/specs/jscholarship-jhrdr-mcp/design.md), which remains the working record for intent and scope.
